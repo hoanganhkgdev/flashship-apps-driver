@@ -581,6 +581,7 @@ class _DeliveryBody extends StatelessWidget {
     children: [
       _RouteBlock(
         pickupLabel: 'Lấy hàng tại',
+        pickupPlaceName: order.pickupPlaceName,
         pickupAddress: order.pickupAddress,
         pickupName: order.pickupName,
         pickupPhone: order.pickupPhone?.isNotEmpty == true
@@ -643,6 +644,7 @@ class _ShoppingBody extends StatelessWidget {
         ),
       _RouteBlock(
         pickupLabel: 'Mua tại',
+        pickupPlaceName: order.pickupPlaceName,
         pickupAddress: order.pickupAddress,
         pickupName: order.pickupName,
         pickupPhone: order.pickupPhone?.isNotEmpty == true ? order.pickupPhone : null,
@@ -767,6 +769,7 @@ class _MotorCarBody extends StatelessWidget {
 class _RouteBlock extends StatelessWidget {
   final String pickupLabel;
   final String pickupAddress;
+  final String? pickupPlaceName;
   final String? pickupName;
   final String? pickupPhone;
   final bool showNoPickupPhone;
@@ -778,6 +781,7 @@ class _RouteBlock extends StatelessWidget {
   const _RouteBlock({
     required this.pickupLabel,
     required this.pickupAddress,
+    this.pickupPlaceName,
     this.pickupName,
     this.pickupPhone,
     this.showNoPickupPhone = false,
@@ -812,7 +816,9 @@ class _RouteBlock extends StatelessWidget {
           // Pickup
           Text(pickupLabel, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
           const SizedBox(height: 2),
-          if (pickupName != null && pickupName!.isNotEmpty)
+          if (pickupPlaceName != null && pickupPlaceName!.isNotEmpty)
+            Text(pickupPlaceName!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary))
+          else if (pickupName != null && pickupName!.isNotEmpty)
             Text(pickupName!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
           Text(pickupAddress, maxLines: 2, overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),

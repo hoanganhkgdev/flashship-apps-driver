@@ -4,6 +4,7 @@ class OrderModel {
   final String serviceType;
   final String status;
   final String? pickupName;
+  final String? pickupPlaceName;
   final String pickupAddress;
   final String? pickupPhone;
   final String? customerName;
@@ -40,6 +41,7 @@ class OrderModel {
     required this.serviceType,
     required this.status,
     this.pickupName,
+    this.pickupPlaceName,
     required this.pickupAddress,
     this.pickupPhone,
     this.customerName,
@@ -81,8 +83,9 @@ class OrderModel {
                     : (j['sender_name'] as String?)?.isNotEmpty == true
                         ? j['sender_name'] as String
                         : null,
-    pickupAddress:  j['pickup_address'] as String? ?? '',
-    pickupPhone:    j['pickup_phone'] as String?,
+    pickupPlaceName: j['pickup_place_name'] as String?,
+    pickupAddress:   j['pickup_address'] as String? ?? '',
+    pickupPhone:     j['pickup_phone'] as String?,
     customerName:   (j['receiver_name'] as String?)?.isNotEmpty == true
                     ? j['receiver_name'] as String
                     : (j['customer'] as Map<String, dynamic>?)?['name'] as String?,

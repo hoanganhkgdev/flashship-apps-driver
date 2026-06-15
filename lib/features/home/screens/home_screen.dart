@@ -21,9 +21,7 @@ import '../../wallet/screens/debt_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 import '../../score/models/score_model.dart';
 import '../../score/providers/score_provider.dart';
-
-const _kZaloNumber    = '0901234567';
-const _kHotlineNumber = '19001234';
+import '../providers/support_provider.dart';
 
 // Provider để control tab từ bên ngoài (offer screen, etc.)
 final homeTabProvider = StateProvider<int>((ref) => 0);
@@ -894,29 +892,18 @@ class _FinanceTile extends StatelessWidget {
 
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Quick actions section
+// Quick actions section (dynamic from API)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _QuickSection extends StatelessWidget {
+class _QuickSection extends ConsumerWidget {
   const _QuickSection();
 
-  Future<void> _openZalo(BuildContext context) async {
-    final uri = Uri.parse('https://zalo.me/$_kZaloNumber');
+  Future<void> _launch(BuildContext context, SupportItem item) async {
+    final uri = item.uri;
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không mở được Zalo')),
-        );
-      }
-    }
-  }
-
-  Future<void> _callHotline(BuildContext context) async {
-    final uri = Uri(scheme: 'tel', path: _kHotlineNumber);
-    if (!await launchUrl(uri)) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thực hiện được cuộc gọi')),
+          const SnackBar(content: Text('Không thể mở liên kết này')),
         );
       }
     }
@@ -931,8 +918,17 @@ class _QuickSection extends StatelessWidget {
     );
   }
 
+  IconData _iconFor(String type) => switch (type) {
+    'phone' => Icons.phone_rounded,
+    'zalo'  => Icons.chat_rounded,
+    'email' => Icons.email_rounded,
+    _       => Icons.open_in_new_rounded,
+  };
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final items = ref.watch(supportProvider).valueOrNull ?? [];
+
     return Container(
       color: Colors.white,
       child: Column(children: [
@@ -946,28 +942,28 @@ class _QuickSection extends StatelessWidget {
           ),
         ),
         const Divider(height: 1),
+        ...items.asMap().entries.map((e) {
+          final i    = e.key;
+          final item = e.value;
+          return Column(children: [
+            _QuickBtn(
+              icon:     _iconFor(item.type),
+              label:    item.title,
+              subtitle: item.subtitle ?? '',
+              color:    item.displayColor,
+              onTap:    () => _launch(context, item),
+            ),
+            if (i < items.length - 1)
+              const Divider(height: 1, indent: 56),
+          ]);
+        }),
+        if (items.isNotEmpty) const Divider(height: 1, indent: 56),
         _QuickBtn(
-          icon: Icons.chat_rounded,
-          label: 'Zalo quản lý',
-          subtitle: 'Liên hệ nhanh',
-          color: const Color(0xFF0068FF),
-          onTap: () => _openZalo(context),
-        ),
-        const Divider(height: 1, indent: 56),
-        _QuickBtn(
-          icon: Icons.phone_rounded,
-          label: 'Hotline sự cố',
-          subtitle: 'Hỗ trợ 24/7',
-          color: AppColors.danger,
-          onTap: () => _callHotline(context),
-        ),
-        const Divider(height: 1, indent: 56),
-        _QuickBtn(
-          icon: Icons.menu_book_rounded,
-          label: 'Nội quy tài xế',
+          icon:     Icons.menu_book_rounded,
+          label:    'Nội quy tài xế',
           subtitle: 'Quy định & hướng dẫn',
-          color: AppColors.info,
-          onTap: () => _showRules(context),
+          color:    AppColors.info,
+          onTap:    () => _showRules(context),
         ),
       ]),
     );

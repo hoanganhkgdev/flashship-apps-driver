@@ -918,13 +918,6 @@ class _QuickSection extends ConsumerWidget {
     );
   }
 
-  IconData _iconFor(String type) => switch (type) {
-    'phone' => Icons.phone_rounded,
-    'zalo'  => Icons.chat_rounded,
-    'email' => Icons.email_rounded,
-    _       => Icons.open_in_new_rounded,
-  };
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(supportProvider).valueOrNull ?? [];
@@ -947,11 +940,11 @@ class _QuickSection extends ConsumerWidget {
           final item = e.value;
           return Column(children: [
             _QuickBtn(
-              icon:     _iconFor(item.type),
-              label:    item.title,
-              subtitle: item.subtitle ?? '',
-              color:    item.displayColor,
-              onTap:    () => _launch(context, item),
+              materialIcon: item.materialIcon,
+              assetIcon:    item.assetIcon,
+              label:        item.title,
+              color:        item.displayColor,
+              onTap:        () => _launch(context, item),
             ),
             if (i < items.length - 1)
               const Divider(height: 1, indent: 56),
@@ -959,11 +952,10 @@ class _QuickSection extends ConsumerWidget {
         }),
         if (items.isNotEmpty) const Divider(height: 1, indent: 56),
         _QuickBtn(
-          icon:     Icons.menu_book_rounded,
-          label:    'Nội quy tài xế',
-          subtitle: 'Quy định & hướng dẫn',
-          color:    AppColors.info,
-          onTap:    () => _showRules(context),
+          materialIcon: Icons.menu_book_rounded,
+          label:        'Nội quy tài xế',
+          color:        AppColors.info,
+          onTap:        () => _showRules(context),
         ),
       ]),
     );
@@ -971,16 +963,16 @@ class _QuickSection extends ConsumerWidget {
 }
 
 class _QuickBtn extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String subtitle;
-  final Color color;
+  final IconData?   materialIcon;
+  final String?     assetIcon;
+  final String      label;
+  final Color       color;
   final VoidCallback onTap;
 
   const _QuickBtn({
-    required this.icon,
+    this.materialIcon,
+    this.assetIcon,
     required this.label,
-    required this.subtitle,
     required this.color,
     required this.onTap,
   });
@@ -998,22 +990,22 @@ class _QuickBtn extends StatelessWidget {
               color: color.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: color, size: 18),
+            child: assetIcon != null
+                ? Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Image.asset(assetIcon!, color: color),
+                  )
+                : Icon(materialIcon ?? Icons.link_rounded, color: color, size: 18),
           ),
           const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary)),
-            Text(subtitle,
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-          ])),
+          Expanded(child: Text(label,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary))),
           const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.textSecondary),
         ]),
       ),
     );
   }
-
 }
 
 // ── Rules bottom sheet ──────────────────────────────────────────────────────

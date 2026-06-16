@@ -23,7 +23,6 @@ import '../../score/models/score_model.dart';
 import '../../score/providers/score_provider.dart';
 import '../providers/support_provider.dart';
 
-// Provider để control tab từ bên ngoài (offer screen, etc.)
 final homeTabProvider = StateProvider<int>((ref) => 0);
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -71,7 +70,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    final tab = ref.watch(homeTabProvider);
+    final tab   = ref.watch(homeTabProvider);
     final pages = <Widget>[
       _DashboardPage(onGoToWallet: () => ref.read(homeTabProvider.notifier).state = 2),
       const HistoryScreen(),
@@ -79,21 +78,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       const ProfileScreen(),
     ];
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF2F4F7),
-        body: IndexedStack(index: tab, children: pages),
-        bottomNavigationBar: _BottomNav(
-          currentIndex: tab,
-          onTap: (i) => ref.read(homeTabProvider.notifier).state = i,
-        ),
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: IndexedStack(index: tab, children: pages),
+      bottomNavigationBar: _BottomNav(
+        currentIndex: tab,
+        onTap: (i) => ref.read(homeTabProvider.notifier).state = i,
       ),
     );
   }
 }
 
-// ── Flat bottom nav ───────────────────────────────────────────────────────────
+// ── Bottom nav ────────────────────────────────────────────────────────────────
 
 class _BottomNav extends StatelessWidget {
   final int currentIndex;
@@ -101,10 +97,10 @@ class _BottomNav extends StatelessWidget {
   const _BottomNav({required this.currentIndex, required this.onTap});
 
   static const _items = [
-    (icon: Icons.home_outlined,                   activeIcon: Icons.home_rounded,                      label: 'Trang chủ'),
-    (icon: Icons.receipt_long_outlined,           activeIcon: Icons.receipt_long_rounded,              label: 'Đơn hàng'),
-    (icon: Icons.account_balance_wallet_outlined, activeIcon: Icons.account_balance_wallet_rounded,    label: 'Ví tiền'),
-    (icon: Icons.person_outline_rounded,          activeIcon: Icons.person_rounded,                    label: 'Tài khoản'),
+    (icon: Icons.home_outlined,                    activeIcon: Icons.home_rounded,                   label: 'Trang chủ'),
+    (icon: Icons.receipt_long_outlined,            activeIcon: Icons.receipt_long_rounded,           label: 'Đơn hàng'),
+    (icon: Icons.account_balance_wallet_outlined,  activeIcon: Icons.account_balance_wallet_rounded, label: 'Ví tiền'),
+    (icon: Icons.person_outline_rounded,           activeIcon: Icons.person_rounded,                 label: 'Tài khoản'),
   ];
 
   @override
@@ -113,7 +109,7 @@ class _BottomNav extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
+        border: Border(top: BorderSide(color: AppColors.divider, width: 1)),
       ),
       padding: EdgeInsets.only(bottom: bottom),
       child: Row(
@@ -126,25 +122,22 @@ class _BottomNav extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      selected ? item.activeIcon : item.icon,
-                      size: 24,
-                      color: selected ? AppColors.primary : const Color(0xFF9CA3AF),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(
+                    selected ? item.activeIcon : item.icon,
+                    size: 24,
+                    color: selected ? AppColors.primary : AppColors.textTertiary,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item.label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      color: selected ? AppColors.primary : AppColors.textTertiary,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      item.label,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                        color: selected ? AppColors.primary : const Color(0xFF9CA3AF),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ]),
               ),
             ),
           );
@@ -179,7 +172,6 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
   void initState() {
     super.initState();
     _loadAll();
-    // Dùng microtask để đảm bảo authProvider đã restore xong từ SharedPreferences
     Future.microtask(() {
       _syncOnlineTimer();
       final uid = ref.read(authProvider).user?.id;
@@ -191,7 +183,6 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
     final driver = ref.read(authProvider).user;
     if (driver?.isOnline != true) return;
     OfferListenerService.instance.start(driver!.id);
-    // Reset tab về Trang chủ khi offer hết hạn/bị dismiss
     OfferListenerService.instance.onOfferDismissed =
         () => ref.read(homeTabProvider.notifier).state = 0;
     _startLocationUpdates();
@@ -200,7 +191,6 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
 
   void _startOnlineTimer() {
     _onlineTimer?.cancel();
-    // Tick mỗi giây chỉ để refresh UI — thời gian tính từ onlineSince
     _onlineTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
@@ -213,8 +203,7 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
 
   String get _onlineTimeStr {
     final driver = ref.read(authProvider).user;
-    if (driver?.isOnline != true || driver?.onlineSince == null) return '0s';
-    // Tính trực tiếp từ onlineSince — chính xác kể cả khi app ở background
+    if (driver?.isOnline != true || driver?.onlineSince == null) return '';
     final seconds = DateTime.now().difference(driver!.onlineSince!).inSeconds.clamp(0, 999999);
     final h = seconds ~/ 3600;
     final m = (seconds % 3600) ~/ 60;
@@ -241,7 +230,7 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
     try {
       final res  = await ref.read(apiClientProvider).get('/orders/dashboard');
       final data = (res.data['data'] ?? res.data) as Map<String, dynamic>;
-      if (mounted) { setState(() => _stats = data); }
+      if (mounted) setState(() => _stats = data);
     } catch (_) {}
   }
 
@@ -272,7 +261,7 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
     var perm = await Geolocator.checkPermission();
     if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
     if (perm == LocationPermission.always || perm == LocationPermission.whileInUse) return true;
-    if (!mounted) { return false; }
+    if (!mounted) return false;
     if (perm == LocationPermission.deniedForever) {
       await showDialog(
         context: context,
@@ -298,7 +287,7 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
       setState(() => _togglingOnline = true);
       final granted = await _ensureLocationPermission();
       if (!granted) {
-        if (mounted) { setState(() => _togglingOnline = false); }
+        if (mounted) setState(() => _togglingOnline = false);
         return;
       }
     }
@@ -332,7 +321,7 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
         ));
       }
     } catch (_) {}
-    if (mounted) { setState(() => _togglingOnline = false); }
+    if (mounted) setState(() => _togglingOnline = false);
   }
 
   Future<void> _startLocationUpdates() async {
@@ -361,8 +350,8 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    final user         = ref.watch(authProvider).user;
-    final wallet       = ref.watch(walletProvider);
+    final user       = ref.watch(authProvider).user;
+    final wallet     = ref.watch(walletProvider);
     final scoreState = ref.watch(scoreProvider);
     final isOnline   = user?.isOnline ?? false;
 
@@ -370,164 +359,96 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
     final rating      = (_stats['rating']        as num?)?.toDouble() ?? 0.0;
     final ratingCount = ((_stats['rating_count'] as num?) ?? 0).toInt();
 
-    return RefreshIndicator(
-      color: AppColors.primary,
-      onRefresh: _loadAll,
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: _loadAll,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
 
-          // ── Header ───────────────────────────────────────────────────
-          _HeroHeader(
-            user:     user,
-            isOnline: isOnline,
-            toggling: _togglingOnline,
-            onToggle: _toggleOnline,
+              // ── Gradient header + toggle ─────────────────────────────
+              _GradientHeader(
+                user:          user,
+                isOnline:      isOnline,
+                toggling:      _togglingOnline,
+                onlineTimeStr: _onlineTimeStr,
+                onToggle:      _toggleOnline,
+              ),
+
+              // ── Content cards ────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+
+                    // Earnings
+                    _EarningsCard(
+                      todayEarnings:     _todayEarnings,
+                      yesterdayEarnings: _yesterdayEarnings,
+                      todayOrders:       todayOrders,
+                      onlineTimeStr:     _onlineTimeStr,
+                      rating:            rating,
+                      ratingCount:       ratingCount,
+                      onTap:             widget.onGoToWallet,
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Score
+                    _ScoreCard(
+                      score:   scoreState.score,
+                      loading: scoreState.loading,
+                      onTap:   () => context.push('/score'),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Finance
+                    _FinanceCard(
+                      balance:     wallet.balance,
+                      codPending:  _codPending,
+                      debtCount:   _debtCount,
+                      onWalletTap: widget.onGoToWallet,
+                      onDebtTap:   () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const DebtScreen())),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Support
+                    _SupportCard(),
+
+                  ],
+                ),
+              ),
+            ],
           ),
-
-          const SizedBox(height: 8),
-
-          // ── Toggle online ─────────────────────────────────────────────
-          _ToggleCard(
-              isOnline: isOnline,
-              toggling: _togglingOnline,
-              onToggle: _toggleOnline,
-              onlineTimeStr: _onlineTimeStr),
-
-          const SizedBox(height: 8),
-
-          // Active orders hiển thị ở tab Đơn hàng, không hiện ở home
-
-          // ── Earnings + Stats ─────────────────────────────────────────
-          _EarningsSection(
-            todayEarnings:     _todayEarnings,
-            yesterdayEarnings: _yesterdayEarnings,
-            todayOrders:       todayOrders,
-            onlineTimeStr:     _onlineTimeStr,
-            rating:            rating,
-            ratingCount:       ratingCount,
-            onTap:             () => widget.onGoToWallet(),
-          ),
-
-          const SizedBox(height: 8),
-
-          // ── Score ─────────────────────────────────────────────────────
-          _ScoreCard(
-            score:   scoreState.score,
-            loading: scoreState.loading,
-            onTap:   () => context.push('/score'),
-          ),
-
-          const SizedBox(height: 8),
-
-          // ── Ví & Công nợ ──────────────────────────────────────────────
-          _FinanceSection(
-            balance:     wallet.balance,
-            codPending:  _codPending,
-            debtCount:   _debtCount,
-            onWalletTap: widget.onGoToWallet,
-            onDebtTap:   () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const DebtScreen())),
-          ),
-
-          const SizedBox(height: 8),
-
-          // ── Hỗ trợ ────────────────────────────────────────────────────
-          const _QuickSection(),
-
-          const SizedBox(height: 32),
-        ],
+        ),
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Hero header — matching history screen style
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Gradient header ───────────────────────────────────────────────────────────
 
-class _HeroHeader extends StatelessWidget {
+class _GradientHeader extends StatelessWidget {
   final dynamic user;
-  final bool isOnline;
-  final bool toggling;
-  final VoidCallback onToggle;
-
-  const _HeroHeader({
-    required this.user,
-    required this.isOnline,
-    required this.toggling,
-    required this.onToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final top = MediaQuery.of(context).padding.top;
-    return Container(
-      color: Colors.white,
-      padding: EdgeInsets.fromLTRB(16, top + 16, 16, 16),
-      child: Row(children: [
-        // Avatar
-        Container(
-          width: 44, height: 44,
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
-            shape: BoxShape.circle,
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: user?.profilePhotoUrl != null
-              ? Image.network(user!.profilePhotoUrl!, fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Center(
-                    child: Text(user.initials ?? 'D',
-                        style: const TextStyle(color: AppColors.primary,
-                            fontSize: 16, fontWeight: FontWeight.w800))))
-              : Center(
-                  child: Text(user?.initials ?? 'D',
-                      style: const TextStyle(color: AppColors.primary,
-                          fontSize: 16, fontWeight: FontWeight.w800))),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Xin chào',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-            Text(user?.name ?? 'Tài xế',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary, letterSpacing: -0.3),
-                maxLines: 1, overflow: TextOverflow.ellipsis),
-          ]),
-        ),
-        // Online status dot
-        Row(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 8, height: 8,
-            decoration: BoxDecoration(
-              color: isOnline ? AppColors.success : AppColors.textSecondary,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 5),
-          Text(isOnline ? 'Online' : 'Offline',
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: isOnline ? AppColors.success : AppColors.textSecondary)),
-        ]),
-      ]),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Online toggle
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ToggleCard extends StatelessWidget {
   final bool isOnline;
   final bool toggling;
   final String onlineTimeStr;
   final VoidCallback onToggle;
 
-  const _ToggleCard({
+  const _GradientHeader({
+    required this.user,
     required this.isOnline,
     required this.toggling,
     required this.onlineTimeStr,
@@ -536,66 +457,211 @@ class _ToggleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: toggling ? null : onToggle,
-      child: Container(
-        color: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        child: Row(children: [
-          // Toggle switch
-          if (toggling)
-            const SizedBox(
-              width: 52, height: 30,
-              child: Center(child: SizedBox(width: 20, height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2.5,
-                      color: AppColors.primary))))
-          else
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              width: 52, height: 30,
-              decoration: BoxDecoration(
-                color: isOnline ? AppColors.success : const Color(0xFFDDDDDD),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: AnimatedAlign(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-                alignment: isOnline ? Alignment.centerRight : Alignment.centerLeft,
-                child: Container(
-                  width: 24, height: 24,
-                  margin: const EdgeInsets.all(3),
-                  decoration: const BoxDecoration(
-                      color: Colors.white, shape: BoxShape.circle),
+    final top = MediaQuery.of(context).padding.top;
+
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFEF7C1A), AppColors.primaryDark],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(20, top + 16, 20, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+
+                // Avatar row
+                Row(children: [
+                  // Avatar
+                  Stack(children: [
+                    Container(
+                      width: 50, height: 50,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                        color: Colors.white.withValues(alpha: 0.25),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: user?.profilePhotoUrl != null
+                          ? Image.network(
+                              user!.profilePhotoUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Center(
+                                child: Text(user.initials ?? 'D',
+                                    style: const TextStyle(
+                                        color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+                              ),
+                            )
+                          : Center(
+                              child: Text(user?.initials ?? 'D',
+                                  style: const TextStyle(
+                                      color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+                            ),
+                    ),
+                    // Online dot
+                    Positioned(
+                      bottom: 2, right: 2,
+                      child: Container(
+                        width: 13, height: 13,
+                        decoration: BoxDecoration(
+                          color: isOnline ? AppColors.success : const Color(0xFF9CA3AF),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                      ),
+                    ),
+                  ]),
+
+                  const SizedBox(width: 12),
+
+                  // Name
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(
+                        'Xin chào 👋',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withValues(alpha: 0.78),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        user?.name ?? 'Tài xế',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -0.3,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ]),
+                  ),
+                ]),
+
+                const SizedBox(height: 16),
+
+                // Toggle card (white, floating on gradient)
+                GestureDetector(
+                  onTap: toggling ? null : onToggle,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.12),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(children: [
+
+                      // Toggle switch
+                      if (toggling)
+                        const SizedBox(
+                          width: 52, height: 30,
+                          child: Center(child: SizedBox(
+                            width: 20, height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.primary),
+                          )),
+                        )
+                      else
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          width: 52, height: 30,
+                          decoration: BoxDecoration(
+                            color: isOnline ? AppColors.success : const Color(0xFFDDDDDD),
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: AnimatedAlign(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                            alignment: isOnline ? Alignment.centerRight : Alignment.centerLeft,
+                            child: Container(
+                              width: 24, height: 24,
+                              margin: const EdgeInsets.all(3),
+                              decoration: const BoxDecoration(
+                                  color: Colors.white, shape: BoxShape.circle),
+                            ),
+                          ),
+                        ),
+
+                      const SizedBox(width: 14),
+
+                      // Label
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(
+                            isOnline ? 'Đang nhận đơn' : 'Bật để nhận đơn',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: isOnline ? AppColors.success : AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            isOnline && onlineTimeStr.isNotEmpty
+                                ? 'Đã online $onlineTimeStr'
+                                : isOnline ? 'Đang hoạt động' : 'Nhấn để bắt đầu',
+                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                        ]),
+                      ),
+
+                      // Time badge (online only)
+                      if (isOnline && onlineTimeStr.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: AppColors.successSoft,
+                            borderRadius: BorderRadius.circular(9),
+                          ),
+                          child: Text(
+                            onlineTimeStr,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.success,
+                            ),
+                          ),
+                        ),
+                    ]),
+                  ),
                 ),
-              ),
+
+                const SizedBox(height: 20),
+              ],
             ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(
-                isOnline ? 'Đang nhận đơn' : 'Bật để nhận đơn',
-                style: TextStyle(
-                  fontSize: 15, fontWeight: FontWeight.w700,
-                  color: isOnline ? AppColors.success : AppColors.textPrimary,
-                ),
-              ),
-              Text(
-                isOnline ? 'Online ${onlineTimeStr.isNotEmpty ? "· $onlineTimeStr" : ""}' : 'Nhấn để bắt đầu',
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-              ),
-            ]),
           ),
-        ]),
+
+          // Curved bottom
+          Container(
+            height: 20,
+            decoration: const BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Earnings + Stats section
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Earnings card ─────────────────────────────────────────────────────────────
 
-class _EarningsSection extends StatelessWidget {
+class _EarningsCard extends StatelessWidget {
   final int todayEarnings;
   final int yesterdayEarnings;
   final int todayOrders;
@@ -604,7 +670,7 @@ class _EarningsSection extends StatelessWidget {
   final int ratingCount;
   final VoidCallback onTap;
 
-  const _EarningsSection({
+  const _EarningsCard({
     required this.todayEarnings,
     required this.yesterdayEarnings,
     required this.todayOrders,
@@ -618,47 +684,67 @@ class _EarningsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        color: Colors.white,
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      child: _surfaceCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Thu nhập hôm nay',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
-                  color: AppColors.textSecondary)),
-          const SizedBox(height: 4),
+
+          // Header
           Row(children: [
+            const Icon(Icons.trending_up_rounded, size: 14, color: AppColors.textTertiary),
+            const SizedBox(width: 6),
+            const Text(
+              'THU NHẬP HÔM NAY',
+              style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w700,
+                color: AppColors.textTertiary, letterSpacing: 0.5,
+              ),
+            ),
+            const Spacer(),
+            const Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.textTertiary),
+          ]),
+
+          const SizedBox(height: 12),
+
+          // Amount + yesterday
+          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
             Expanded(
               child: Text(
                 Fmt.currency(todayEarnings),
                 style: const TextStyle(
-                  fontSize: 28, fontWeight: FontWeight.w800,
-                  color: AppColors.primary, letterSpacing: -0.5,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.success,
+                  letterSpacing: -0.5,
                 ),
               ),
             ),
             if (yesterdayEarnings > 0)
-              Text('Hôm qua ${Fmt.currency(yesterdayEarnings)}',
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary)),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  'Hôm qua ${Fmt.currency(yesterdayEarnings)}',
+                  style: const TextStyle(fontSize: 11, color: AppColors.textTertiary),
+                ),
+              ),
           ]),
 
-          const SizedBox(height: 16),
-          const Divider(height: 1),
+          const SizedBox(height: 14),
+          const Divider(height: 1, color: AppColors.divider),
           const SizedBox(height: 12),
 
           // Stats row
           Row(children: [
-            _MiniStat(label: 'Đơn hôm nay', value: '$todayOrders'),
+            _miniStat('$todayOrders', 'Đơn hôm nay', Icons.inventory_2_rounded),
             _vDivider(),
-            _MiniStat(
-              label: 'Online',
-              value: onlineTimeStr.isNotEmpty ? onlineTimeStr : '—',
+            _miniStat(
+              onlineTimeStr.isNotEmpty ? onlineTimeStr : '—',
+              'Online',
+              Icons.access_time_rounded,
             ),
             _vDivider(),
-            _MiniStat(
-              label: 'Đánh giá',
-              value: rating > 0 ? rating.toStringAsFixed(1) : '—',
-              sub: ratingCount > 0 ? '$ratingCount lượt' : null,
+            _miniStat(
+              rating > 0 ? rating.toStringAsFixed(1) : '—',
+              ratingCount > 0 ? '$ratingCount đánh giá' : 'Đánh giá',
+              Icons.star_rounded,
             ),
           ]),
         ]),
@@ -667,36 +753,26 @@ class _EarningsSection extends StatelessWidget {
   }
 
   Widget _vDivider() => Container(
-      width: 1, height: 32, margin: const EdgeInsets.symmetric(horizontal: 12),
+      width: 1, height: 28,
+      margin: const EdgeInsets.symmetric(horizontal: 14),
       color: AppColors.divider);
-}
 
-class _MiniStat extends StatelessWidget {
-  final String label;
-  final String value;
-  final String? sub;
-  const _MiniStat({required this.label, required this.value, this.sub});
-
-  @override
-  Widget build(BuildContext context) => Expanded(
+  Widget _miniStat(String value, String label, IconData icon) => Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label,
-              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-          const SizedBox(height: 2),
+          Row(children: [
+            Icon(icon, size: 11, color: AppColors.textTertiary),
+            const SizedBox(width: 4),
+            Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textTertiary)),
+          ]),
+          const SizedBox(height: 3),
           Text(value,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary)),
-          if (sub != null)
-            Text(sub!,
-                style: const TextStyle(
-                    fontSize: 10, color: AppColors.textSecondary)),
+              style: const TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
         ]),
       );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Score card
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Score card ────────────────────────────────────────────────────────────────
 
 class _ScoreCard extends StatelessWidget {
   final DriverScoreModel? score;
@@ -704,93 +780,110 @@ class _ScoreCard extends StatelessWidget {
   final VoidCallback onTap;
   const _ScoreCard({required this.score, required this.loading, required this.onTap});
 
-  Color _colorFor(int s) {
-    if (s >= 80) return AppColors.success;
-    if (s >= 60) return AppColors.warning;
-    return AppColors.danger;
-  }
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        color: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: _surfaceCard(
         child: loading || score == null
             ? const SizedBox(
-                height: 40,
-                child: Center(child: LinearProgressIndicator(
-                    color: AppColors.primary)))
+                height: 48,
+                child: Center(child: CircularProgressIndicator(
+                    color: AppColors.primary, strokeWidth: 2)))
             : _content(score!),
       ),
     );
   }
 
   Widget _content(DriverScoreModel s) {
-    final color    = _colorFor(s.score);
     final progress = s.maxScore > 0 ? s.score / s.maxScore : 0.0;
+
     return Row(children: [
+
+      // Mini ring
       SizedBox(
-        width: 48, height: 48,
+        width: 60, height: 60,
         child: Stack(alignment: Alignment.center, children: [
           SizedBox.expand(
             child: CircularProgressIndicator(
-              value: progress, strokeWidth: 4,
-              backgroundColor: color.withValues(alpha: 0.12),
-              valueColor: AlwaysStoppedAnimation(color),
+              value: 1, strokeWidth: 6,
+              color: AppColors.primary.withValues(alpha: 0.12),
+            ),
+          ),
+          SizedBox.expand(
+            child: CircularProgressIndicator(
+              value: progress, strokeWidth: 6,
               strokeCap: StrokeCap.round,
+              color: AppColors.primary,
             ),
           ),
           Text('${s.score}',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: color)),
+              style: const TextStyle(
+                  fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.primary)),
         ]),
       ),
+
       const SizedBox(width: 14),
+
+      // Info
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            const Text('Điểm tích lũy',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary)),
+            const Text(
+              'ĐIỂM TÍCH LŨY',
+              style: TextStyle(
+                  fontSize: 10, fontWeight: FontWeight.w700,
+                  color: AppColors.textTertiary, letterSpacing: 0.5),
+            ),
             const SizedBox(width: 6),
+            Text('${s.score} / ${s.maxScore}',
+                style: const TextStyle(fontSize: 10, color: AppColors.textTertiary)),
+          ]),
+          const SizedBox(height: 5),
+          Row(children: [
+            Text(s.label,
+                style: const TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            const SizedBox(width: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(4)),
-              child: Text(s.label,
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text('${s.score} điểm',
+                  style: const TextStyle(
+                      fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.primary)),
             ),
           ]),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: progress, minHeight: 4,
-              backgroundColor: const Color(0xFFF0F0F0),
-              valueColor: AlwaysStoppedAnimation(color),
+              backgroundColor: AppColors.divider,
+              valueColor: const AlwaysStoppedAnimation(AppColors.primary),
             ),
           ),
         ]),
       ),
+
       const SizedBox(width: 8),
-      const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.textSecondary),
+      const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.textTertiary),
     ]);
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Finance section (ví + công nợ)
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Finance card ──────────────────────────────────────────────────────────────
 
-class _FinanceSection extends StatelessWidget {
+class _FinanceCard extends StatelessWidget {
   final int balance;
   final int codPending;
   final int debtCount;
   final VoidCallback onWalletTap;
   final VoidCallback onDebtTap;
 
-  const _FinanceSection({
+  const _FinanceCard({
     required this.balance,
     required this.codPending,
     required this.debtCount,
@@ -800,35 +893,51 @@ class _FinanceSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
+    return _surfaceCard(
+      padding: EdgeInsets.zero,
       child: Column(children: [
+
+        // Header
         const Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text('Tài chính',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
-                    color: AppColors.textSecondary)),
-          ),
+          padding: EdgeInsets.fromLTRB(16, 14, 16, 0),
+          child: Row(children: [
+            Icon(Icons.account_balance_wallet_outlined, size: 14, color: AppColors.textTertiary),
+            SizedBox(width: 6),
+            Text(
+              'TÀI CHÍNH',
+              style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w700,
+                color: AppColors.textTertiary, letterSpacing: 0.5,
+              ),
+            ),
+          ]),
         ),
-        const Divider(height: 1),
+
+        const SizedBox(height: 10),
+        const Divider(height: 1, color: AppColors.divider),
+
+        // Wallet
         _FinanceTile(
-          icon: Icons.account_balance_wallet_rounded,
-          label: 'Ví cá nhân',
-          value: Fmt.currency(balance),
-          color: AppColors.success,
-          onTap: onWalletTap,
+          icon:    Icons.account_balance_wallet_rounded,
+          label:   'Ví cá nhân',
+          value:   Fmt.currency(balance),
+          color:   AppColors.success,
+          onTap:   onWalletTap,
         ),
-        const Divider(height: 1, indent: 56),
+
+        const Divider(height: 1, indent: 56, endIndent: 16, color: AppColors.divider),
+
+        // Debt
         _FinanceTile(
-          icon: Icons.receipt_long_rounded,
-          label: 'Công nợ',
-          value: Fmt.currency(codPending),
-          color: debtCount > 0 ? AppColors.danger : AppColors.textSecondary,
-          badge: debtCount > 0 ? debtCount : null,
-          onTap: onDebtTap,
+          icon:    Icons.receipt_long_rounded,
+          label:   'Công nợ',
+          value:   Fmt.currency(codPending),
+          color:   debtCount > 0 ? AppColors.danger : AppColors.textSecondary,
+          badge:   debtCount > 0 ? debtCount : null,
+          onTap:   onDebtTap,
         ),
+
+        const SizedBox(height: 4),
       ]),
     );
   }
@@ -858,45 +967,43 @@ class _FinanceTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
           child: Row(children: [
             Container(
-              width: 36, height: 36,
+              width: 38, height: 38,
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(11),
               ),
-              child: Icon(icon, color: color, size: 18),
+              child: Icon(icon, color: color, size: 19),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(label,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary)),
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
             ),
             if (badge != null) ...[
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)),
                 child: Text('$badge',
-                    style: const TextStyle(color: Colors.white, fontSize: 11,
-                        fontWeight: FontWeight.w700)),
+                    style: const TextStyle(
+                        color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
               ),
               const SizedBox(width: 8),
             ],
             Text(value,
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: color)),
+                style: TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w700, color: color)),
             const SizedBox(width: 4),
-            const Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.textSecondary),
+            Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.textTertiary),
           ]),
         ),
       );
 }
 
+// ── Support card ──────────────────────────────────────────────────────────────
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Quick actions section (dynamic from API)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _QuickSection extends ConsumerWidget {
-  const _QuickSection();
+class _SupportCard extends ConsumerWidget {
+  const _SupportCard();
 
   Future<void> _launch(BuildContext context, SupportItem item) async {
     final uri = item.uri;
@@ -922,93 +1029,96 @@ class _QuickSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(supportProvider).valueOrNull ?? [];
 
-    return Container(
-      color: Colors.white,
+    return _surfaceCard(
+      padding: EdgeInsets.zero,
       child: Column(children: [
+
+        // Header
         const Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text('Hỗ trợ',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
-                    color: AppColors.textSecondary)),
-          ),
-        ),
-        const Divider(height: 1),
-        ...items.asMap().entries.map((e) {
-          final i    = e.key;
-          final item = e.value;
-          return Column(children: [
-            _QuickBtn(
-              materialIcon: item.materialIcon,
-              assetIcon:    item.assetIcon,
-              label:        item.title,
-              color:        item.displayColor,
-              onTap:        () => _launch(context, item),
+          padding: EdgeInsets.fromLTRB(16, 14, 16, 0),
+          child: Row(children: [
+            Icon(Icons.headset_mic_rounded, size: 14, color: AppColors.textTertiary),
+            SizedBox(width: 6),
+            Text(
+              'HỖ TRỢ',
+              style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w700,
+                color: AppColors.textTertiary, letterSpacing: 0.5,
+              ),
             ),
-            if (i < items.length - 1)
-              const Divider(height: 1, indent: 56),
-          ]);
-        }),
-        if (items.isNotEmpty) const Divider(height: 1, indent: 56),
-        _QuickBtn(
+          ]),
+        ),
+
+        const SizedBox(height: 10),
+        const Divider(height: 1, color: AppColors.divider),
+
+        ...items.asMap().entries.map((e) => Column(children: [
+          _SupportTile(
+            materialIcon: e.value.materialIcon,
+            assetIcon:    e.value.assetIcon,
+            label:        e.value.title,
+            color:        e.value.displayColor,
+            onTap:        () => _launch(context, e.value),
+          ),
+          if (e.key < items.length - 1 || true)
+            const Divider(height: 1, indent: 56, endIndent: 16, color: AppColors.divider),
+        ])),
+
+        _SupportTile(
           materialIcon: Icons.menu_book_rounded,
           label:        'Nội quy tài xế',
           color:        AppColors.info,
           onTap:        () => _showRules(context),
         ),
+
+        const SizedBox(height: 4),
       ]),
     );
   }
 }
 
-class _QuickBtn extends StatelessWidget {
-  final IconData?   materialIcon;
-  final String?     assetIcon;
-  final String      label;
-  final Color       color;
+class _SupportTile extends StatelessWidget {
+  final IconData?  materialIcon;
+  final String?    assetIcon;
+  final String     label;
+  final Color      color;
   final VoidCallback onTap;
 
-  const _QuickBtn({
-    this.materialIcon,
-    this.assetIcon,
-    required this.label,
-    required this.color,
-    required this.onTap,
+  const _SupportTile({
+    this.materialIcon, this.assetIcon,
+    required this.label, required this.color, required this.onTap,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-        child: Row(children: [
-          Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(10),
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          child: Row(children: [
+            Container(
+              width: 38, height: 38,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: assetIcon != null
+                  ? Padding(
+                      padding: const EdgeInsets.all(9),
+                      child: Image.asset(assetIcon!, color: color),
+                    )
+                  : Icon(materialIcon ?? Icons.link_rounded, color: color, size: 19),
             ),
-            child: assetIcon != null
-                ? Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Image.asset(assetIcon!, color: color),
-                  )
-                : Icon(materialIcon ?? Icons.link_rounded, color: color, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(child: Text(label,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500,
-                  color: AppColors.textPrimary))),
-          const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.textSecondary),
-        ]),
-      ),
-    );
-  }
+            const SizedBox(width: 12),
+            Expanded(child: Text(label,
+                style: const TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary))),
+            Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.textTertiary),
+          ]),
+        ),
+      );
 }
 
-// ── Rules bottom sheet ──────────────────────────────────────────────────────
+// ── Rules bottom sheet ────────────────────────────────────────────────────────
 
 class _RulesSheet extends StatelessWidget {
   const _RulesSheet();
@@ -1026,57 +1136,55 @@ class _RulesSheet extends StatelessWidget {
           color: scheme.surface,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
-        child: Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 4),
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: scheme.outlineVariant,
-                borderRadius: BorderRadius.circular(2),
+        child: Column(children: [
+          Container(
+            margin: const EdgeInsets.only(top: 12, bottom: 4),
+            width: 40, height: 4,
+            decoration: BoxDecoration(
+              color: scheme.outlineVariant,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Row(children: [
+              const Expanded(
+                child: Text('Nội quy tài xế',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Row(children: [
-                const Expanded(
-                  child: Text('Nội quy tài xế',
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close_rounded),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ]),
-            ),
-            Divider(height: 1, color: scheme.outlineVariant),
-            Expanded(
-              child: ListView(
-                controller: controller,
-                padding: const EdgeInsets.all(20),
-                children: const [
-                  _RuleItem(num: '1', title: 'Thái độ phục vụ',
-                      body: 'Luôn lịch sự, tôn trọng khách hàng. Không từ chối đơn hàng khi đã nhận mà không có lý do chính đáng.'),
-                  SizedBox(height: 12),
-                  _RuleItem(num: '2', title: 'Đúng giờ',
-                      body: 'Nhận đơn phải đến lấy hàng đúng thời gian cam kết. Chậm trễ quá 10 phút cần thông báo cho hệ thống và khách hàng.'),
-                  SizedBox(height: 12),
-                  _RuleItem(num: '3', title: 'Bảo quản hàng hóa',
-                      body: 'Vận chuyển hàng hóa cẩn thận, không để hàng bị hỏng, đổ vỡ. Chịu trách nhiệm đền bù nếu do lỗi của tài xế.'),
-                  SizedBox(height: 12),
-                  _RuleItem(num: '4', title: 'Trung thực',
-                      body: 'Không gian lận, không tự ý hủy đơn giả mạo. Mọi vi phạm sẽ bị khóa tài khoản vĩnh viễn.'),
-                  SizedBox(height: 12),
-                  _RuleItem(num: '5', title: 'An toàn giao thông',
-                      body: 'Tuân thủ luật giao thông, không phóng nhanh vượt ẩu. Bắt buộc đội mũ bảo hiểm khi tham gia giao thông.'),
-                  SizedBox(height: 12),
-                  _RuleItem(num: '6', title: 'Thanh toán COD',
-                      body: 'Chuyển đầy đủ tiền COD về công ty theo đúng quy định. Nợ quá hạn sẽ bị tạm dừng tài khoản.'),
-                ],
+              IconButton(
+                icon: const Icon(Icons.close_rounded),
+                onPressed: () => Navigator.pop(context),
               ),
+            ]),
+          ),
+          Divider(height: 1, color: scheme.outlineVariant),
+          Expanded(
+            child: ListView(
+              controller: controller,
+              padding: const EdgeInsets.all(20),
+              children: const [
+                _RuleItem(num: '1', title: 'Thái độ phục vụ',
+                    body: 'Luôn lịch sự, tôn trọng khách hàng. Không từ chối đơn hàng khi đã nhận mà không có lý do chính đáng.'),
+                SizedBox(height: 12),
+                _RuleItem(num: '2', title: 'Đúng giờ',
+                    body: 'Nhận đơn phải đến lấy hàng đúng thời gian cam kết. Chậm trễ quá 10 phút cần thông báo cho hệ thống và khách hàng.'),
+                SizedBox(height: 12),
+                _RuleItem(num: '3', title: 'Bảo quản hàng hóa',
+                    body: 'Vận chuyển hàng hóa cẩn thận, không để hàng bị hỏng, đổ vỡ. Chịu trách nhiệm đền bù nếu do lỗi của tài xế.'),
+                SizedBox(height: 12),
+                _RuleItem(num: '4', title: 'Trung thực',
+                    body: 'Không gian lận, không tự ý hủy đơn giả mạo. Mọi vi phạm sẽ bị khóa tài khoản vĩnh viễn.'),
+                SizedBox(height: 12),
+                _RuleItem(num: '5', title: 'An toàn giao thông',
+                    body: 'Tuân thủ luật giao thông, không phóng nhanh vượt ẩu. Bắt buộc đội mũ bảo hiểm khi tham gia giao thông.'),
+                SizedBox(height: 12),
+                _RuleItem(num: '6', title: 'Thanh toán COD',
+                    body: 'Chuyển đầy đủ tiền COD về công ty theo đúng quy định. Nợ quá hạn sẽ bị tạm dừng tài khoản.'),
+              ],
             ),
-          ],
-        ),
+          ),
+        ]),
       ),
     );
   }
@@ -1086,12 +1194,10 @@ class _RuleItem extends StatelessWidget {
   final String num;
   final String title;
   final String body;
-
   const _RuleItem({required this.num, required this.title, required this.body});
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Container(
         width: 24, height: 24,
@@ -1101,7 +1207,7 @@ class _RuleItem extends StatelessWidget {
         ),
         child: Center(
           child: Text(num,
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.primary)),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.primary)),
         ),
       ),
       const SizedBox(width: 12),
@@ -1109,9 +1215,24 @@ class _RuleItem extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
           const SizedBox(height: 3),
-          Text(body, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant, height: 1.5)),
+          Text(body, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.5)),
         ]),
       ),
     ]);
   }
+}
+
+// ── Shared helper ─────────────────────────────────────────────────────────────
+
+Widget _surfaceCard({required Widget child, EdgeInsetsGeometry padding = const EdgeInsets.all(16)}) {
+  return Container(
+    width: double.infinity,
+    padding: padding,
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      boxShadow: AppColors.cardShadow,
+    ),
+    child: child,
+  );
 }

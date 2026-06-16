@@ -9,6 +9,7 @@ class OrderModel {
   final String? pickupPhone;
   final String? customerName;
   final String? customerPhone;
+  final String? deliveryPlaceName;
   final String deliveryAddress;
   final String deliveryPhone;
   final String? orderNote;
@@ -46,6 +47,7 @@ class OrderModel {
     this.pickupPhone,
     this.customerName,
     this.customerPhone,
+    this.deliveryPlaceName,
     required this.deliveryAddress,
     required this.deliveryPhone,
     this.orderNote,
@@ -91,8 +93,9 @@ class OrderModel {
                     : (j['customer'] as Map<String, dynamic>?)?['name'] as String?,
     customerPhone:  (j['customer'] as Map<String, dynamic>?)?['phone'] as String?
                     ?? j['customer_phone'] as String?,
-    deliveryAddress: j['delivery_address'] as String? ?? '',
-    deliveryPhone:   j['delivery_phone'] as String? ?? '',
+    deliveryPlaceName: j['delivery_place_name'] as String?,
+    deliveryAddress:   j['delivery_address'] as String? ?? '',
+    deliveryPhone:     j['delivery_phone'] as String? ?? '',
     orderNote:       j['order_note']  as String?,
     storeName:       j['store_name']  as String?,
     platform:        j['platform']          as String? ?? 'customer_app',

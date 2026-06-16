@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/score_model.dart';
 import '../providers/score_provider.dart';
@@ -25,185 +27,263 @@ class _ScoreScreenState extends ConsumerState<ScoreScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(scoreProvider);
     final score = state.score;
-    final top   = MediaQuery.of(context).padding.top;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: score == null && state.loading
-          ? Center(
-              child: CircularProgressIndicator(
-                  color: AppColors.primary, strokeWidth: 2))
-          : RefreshIndicator(
-              color: AppColors.primary,
-              onRefresh: () async {
-                await ref.read(scoreProvider.notifier).fetch();
-                await ref.read(scoreProvider.notifier).fetchHistory();
-              },
-              child: CustomScrollView(
-                slivers: [
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: score == null && state.loading
+            ? _buildLoading()
+            : RefreshIndicator(
+                color: AppColors.primary,
+                onRefresh: () async {
+                  await ref.read(scoreProvider.notifier).fetch();
+                  await ref.read(scoreProvider.notifier).fetchHistory();
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
 
-                  // ── AppBar ──────────────────────────────────────────────
-                  SliverAppBar(
-                    pinned: true,
-                    backgroundColor: AppColors.surface,
-                    surfaceTintColor: Colors.transparent,
-                    elevation: 0,
-                    scrolledUnderElevation: 0.5,
-                    shadowColor: const Color(0x14111827),
-                    expandedHeight: score != null ? 220 + top : null,
-                    collapsedHeight: kToolbarHeight,
-                    flexibleSpace: score != null
-                        ? FlexibleSpaceBar(
-                            collapseMode: CollapseMode.pin,
-                            background: _HeroCard(score: score, topPad: top),
-                          )
-                        : null,
-                    title: const Text(
-                      'Điểm tích lũy',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ),
+                      // ── Gradient header ─────────────────────────────────
+                      _Header(score: score),
 
-                  // ── Body ────────────────────────────────────────────────
-                  SliverPadding(
-                    padding:
-                        const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
+                      // ── Content cards ────────────────────────────────────
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                        child: Column(
+                          children: [
 
-                        if (score?.week != null) ...[
-                          _WeekCard(score: score!),
-                          const SizedBox(height: 12),
-                        ],
+                            if (score?.week != null) ...[
+                              _WeekCard(score: score!),
+                              const SizedBox(height: 12),
+                            ],
 
-                        _RulesCard(),
-                        const SizedBox(height: 12),
+                            _RulesCard(),
+                            const SizedBox(height: 12),
 
-                        _HistoryCard(
-                          history:    state.history,
-                          loading:    state.historyLoading,
-                          loadingMore: state.historyLoadingMore,
-                          hasMore:    state.historyHasMore,
-                          onLoadMore: () =>
-                              ref.read(scoreProvider.notifier).loadMoreHistory(),
+                            _HistoryCard(
+                              history:     state.history,
+                              loading:     state.historyLoading,
+                              loadingMore: state.historyLoadingMore,
+                              hasMore:     state.historyHasMore,
+                              onLoadMore:  () =>
+                                  ref.read(scoreProvider.notifier).loadMoreHistory(),
+                            ),
+
+                          ],
                         ),
-
-                      ]),
-                    ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
+      ),
+    );
+  }
+
+  Widget _buildLoading() {
+    return const Center(
+      child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2),
     );
   }
 }
 
-// ── Hero (collapsible) ────────────────────────────────────────────────────────
+// ── Gradient header ───────────────────────────────────────────────────────────
 
-class _HeroCard extends StatelessWidget {
-  final DriverScoreModel score;
-  final double topPad;
-  const _HeroCard({required this.score, required this.topPad});
+class _Header extends StatelessWidget {
+  final DriverScoreModel? score;
+  const _Header({required this.score});
 
   @override
   Widget build(BuildContext context) {
-    final progress = score.score / score.maxScore;
-    final tip      = score.tips.isNotEmpty ? score.tips.first : null;
+    final top     = MediaQuery.of(context).padding.top;
+    final s       = score;
+    final progress = s != null ? s.score / s.maxScore : 0.0;
+    final tip     = s?.tips.isNotEmpty == true ? s!.tips.first : null;
 
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.primary, AppColors.primaryDark],
+          colors: [Color(0xFFEF7C1A), AppColors.primaryDark],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
       ),
-      padding: EdgeInsets.fromLTRB(24, topPad + 56, 24, 24),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
         children: [
 
-          // Circular score
-          SizedBox(
-            width: 110, height: 110,
-            child: Stack(alignment: Alignment.center, children: [
-              SizedBox.expand(
-                child: CircularProgressIndicator(
-                  value: 1,
-                  strokeWidth: 8,
-                  color: Colors.white.withValues(alpha: 0.15),
-                ),
-              ),
-              SizedBox.expand(
-                child: CircularProgressIndicator(
-                  value: progress,
-                  strokeWidth: 8,
-                  strokeCap: StrokeCap.round,
-                  color: Colors.white,
-                ),
-              ),
-              Column(mainAxisSize: MainAxisSize.min, children: [
-                Text(
-                  '${score.score}',
-                  style: const TextStyle(
-                    fontSize: 36,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                    height: 1,
-                  ),
-                ),
-                Text(
-                  '/ ${score.maxScore}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.white.withValues(alpha: 0.75),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ]),
-            ]),
-          ),
-
-          const SizedBox(width: 20),
-
-          // Label + tip
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
+          // ── Top bar: back + title ─────────────────────────────────────
+          Padding(
+            padding: EdgeInsets.only(top: top + 4),
+            child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
+                // Back button
+                GestureDetector(
+                  onTap: () => context.pop(),
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ),
                   ),
+                ),
+
+                // Title
+                const Expanded(
                   child: Text(
-                    score.label,
-                    style: const TextStyle(
-                      fontSize: 13,
+                    'Điểm tích lũy',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 17,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
+                      letterSpacing: -0.2,
                     ),
                   ),
                 ),
-                if (tip != null) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    tip,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.white.withValues(alpha: 0.85),
-                      height: 1.4,
-                    ),
-                  ),
-                ],
+
+                // Spacer (mirrors back button width)
+                const SizedBox(width: 48),
               ],
+            ),
+          ),
+
+          const SizedBox(height: 28),
+
+          // ── Score ring ────────────────────────────────────────────────
+          SizedBox(
+            width: 136,
+            height: 136,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Background ring
+                SizedBox.expand(
+                  child: CircularProgressIndicator(
+                    value: 1,
+                    strokeWidth: 9,
+                    color: Colors.white.withValues(alpha: 0.15),
+                  ),
+                ),
+                // Progress ring
+                SizedBox.expand(
+                  child: CircularProgressIndicator(
+                    value: progress,
+                    strokeWidth: 9,
+                    strokeCap: StrokeCap.round,
+                    color: Colors.white,
+                  ),
+                ),
+                // Score text
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (s != null) ...[
+                      Text(
+                        '${s.score}',
+                        style: const TextStyle(
+                          fontSize: 42,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          height: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '/ ${s.maxScore}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ] else ...[
+                      SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // ── Label pill ────────────────────────────────────────────────
+          if (s != null)
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: Text(
+                s.label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+
+          // ── Tip text ──────────────────────────────────────────────────
+          if (tip != null) ...[
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                tip,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: Colors.white.withValues(alpha: 0.82),
+                  height: 1.45,
+                ),
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 28),
+
+          // ── Bottom curve ──────────────────────────────────────────────
+          Container(
+            height: 20,
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
             ),
           ),
         ],
@@ -262,7 +342,7 @@ class _WeekCard extends StatelessWidget {
       subtitle = 'Thưởng ${_fmt(week.bonusAmount)}đ nếu đạt ≥ ${week.bonusAt} điểm cuối tuần.';
     }
 
-    final softColor = color.withValues(alpha: 0.08);
+    final softColor   = color.withValues(alpha: 0.08);
     final borderColor = color.withValues(alpha: 0.2);
 
     return _card(
@@ -469,9 +549,9 @@ class _HistoryCard extends StatelessWidget {
               ),
             )
           else ...[
-            const SizedBox(height: 14),
             ListView.separated(
               shrinkWrap: true,
+              padding: EdgeInsets.zero,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: history.length,
               separatorBuilder: (_, __) => Divider(
@@ -523,11 +603,11 @@ class _HistoryItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color  = entry.isPositive ? AppColors.success : AppColors.danger;
-    final sign   = entry.isPositive ? '+' : '';
-    final now    = DateTime.now();
-    final diff   = now.difference(entry.createdAt);
-    final time   = diff.inMinutes < 60
+    final color = entry.isPositive ? AppColors.success : AppColors.danger;
+    final sign  = entry.isPositive ? '+' : '';
+    final now   = DateTime.now();
+    final diff  = now.difference(entry.createdAt);
+    final time  = diff.inMinutes < 60
         ? '${diff.inMinutes} phút trước'
         : diff.inHours < 24
             ? '${diff.inHours} giờ trước'

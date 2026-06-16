@@ -11,7 +11,6 @@ import '../../../core/theme/app_theme.dart';
 import 'change_password_screen.dart';
 import 'legal_page_screen.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../score/screens/score_screen.dart';
 import '../../wallet/screens/debt_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -24,7 +23,6 @@ class ProfileScreen extends ConsumerStatefulWidget {
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   String? _cityName;
   String? _photoUrl;
-
   double? _rating;
   bool _uploadingAvatar = false;
   bool _nameLocked      = false;
@@ -43,7 +41,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   int?    _score;
   int?    _maxScore;
   String? _scoreLabel;
-  int?    _pointsNeeded;
+  String? _scoreTip;
 
   @override
   void initState() {
@@ -53,11 +51,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       final info = await PackageInfo.fromPlatform();
       if (mounted) setState(() => _appVersion = info.version);
     });
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -97,11 +90,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             _completionRate = statsData['completion_rate'] as int?;
           }
           if (scoreData != null) {
-            _score        = scoreData['score'] as int?;
-            _maxScore     = scoreData['max_score'] as int?;
-            _scoreLabel   = scoreData['label'] as String?;
-            final next    = scoreData['next_wave'] as Map<String, dynamic>?;
-            _pointsNeeded = next?['points_needed'] as int?;
+            _score      = scoreData['score'] as int?;
+            _maxScore   = scoreData['max_score'] as int?;
+            _scoreLabel = scoreData['label'] as String?;
+            final tips  = scoreData['tips'] as List?;
+            _scoreTip   = tips?.isNotEmpty == true ? tips!.first as String? : null;
           }
         });
       }
@@ -115,199 +108,191 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F5F5),
+        backgroundColor: AppColors.background,
         body: RefreshIndicator(
           color: AppColors.primary,
           onRefresh: _loadData,
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
 
-              // ── Header ──────────────────────────────────────────────
-              _ProfileHeader(
-                user: user,
-                cityName: _cityName,
-                photoUrl: _photoUrl,
-                rating: _rating,
-                isUploadingAvatar: _uploadingAvatar,
-                nameLocked: _nameLocked,
-                avatarLocked: _avatarLocked,
-                onAvatarTap: _avatarLocked ? null : _onAvatarTap,
-                onEditName: _nameLocked ? null : () => _showEditName(context, user?.name ?? ''),
-              ),
-
-              const SizedBox(height: 8),
-
-              // ── Điểm tích lũy ─────────────────────────────────────────
-              if (_score != null)
-                _ScoreSection(
-                  score: _score!,
-                  maxScore: _maxScore ?? 100,
-                  label: _scoreLabel ?? '',
-                  pointsNeeded: _pointsNeeded,
+                // ── Gradient header ──────────────────────────────────
+                _ProfileHeader(
+                  user:              user,
+                  cityName:          _cityName,
+                  photoUrl:          _photoUrl,
+                  rating:            _rating,
+                  isUploadingAvatar: _uploadingAvatar,
+                  nameLocked:        _nameLocked,
+                  avatarLocked:      _avatarLocked,
+                  acceptanceRate:    _acceptanceRate,
+                  completionRate:    _completionRate,
+                  onAvatarTap: _avatarLocked ? null : _onAvatarTap,
+                  onEditName:  _nameLocked   ? null : () => _showEditName(context, user?.name ?? ''),
                 ),
 
-              const SizedBox(height: 8),
+                // ── Cards ────────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
 
-              // ── Hiệu suất ────────────────────────────────────────────
-              if (_acceptanceRate != null || _completionRate != null) ...[
-                _FlatSection(
-                  label: 'Hiệu suất 30 ngày',
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    child: Row(children: [
-                      if (_acceptanceRate != null)
-                        Expanded(child: _GaugeCard(
-                          label: 'Tỷ lệ nhận đơn',
-                          value: _acceptanceRate!,
-                          color: _acceptanceRate! >= 70
-                              ? AppColors.success
-                              : _acceptanceRate! >= 40
-                                  ? AppColors.warning
-                                  : AppColors.danger,
-                          tip: _acceptanceRate! >= 70 ? 'Tốt'
-                              : _acceptanceRate! >= 40 ? 'Trung bình'
-                              : 'Cần cải thiện',
-                        )),
-                      if (_acceptanceRate != null && _completionRate != null)
-                        const SizedBox(width: 12),
-                      if (_completionRate != null)
-                        Expanded(child: _GaugeCard(
-                          label: 'Tỷ lệ hoàn thành',
-                          value: _completionRate!,
-                          color: _completionRate! >= 80
-                              ? AppColors.success
-                              : _completionRate! >= 60
-                                  ? AppColors.warning
-                                  : AppColors.danger,
-                          tip: _completionRate! >= 80 ? 'Tốt'
-                              : _completionRate! >= 60 ? 'Trung bình'
-                              : 'Cần cải thiện',
-                        )),
-                    ]),
+                      // Score
+                      if (_score != null) ...[
+                        _ScoreCard(
+                          score:    _score!,
+                          maxScore: _maxScore ?? 150,
+                          label:    _scoreLabel ?? '',
+                          tip:      _scoreTip,
+                          onTap:    () => context.push('/score'),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // Hồ sơ tài xế
+                      _SectionCard(
+                        icon:  Icons.badge_outlined,
+                        title: 'HỒ SƠ TÀI XẾ',
+                        children: [
+                          _DocTile(
+                            icon:     Icons.badge_rounded,
+                            label:    'Hình CCCD / CMND',
+                            status:   _cccdImageStatus,
+                            imageUrl: _cccdImageUrl,
+                            onUpload: () => _showUploadCccd(context),
+                          ),
+                          const _CardDivider(),
+                          _DocTile(
+                            icon:     Icons.drive_eta_rounded,
+                            label:    'Bằng lái xe',
+                            status:   _licenseStatus,
+                            imageUrl: _licenseImageUrl,
+                            onUpload: () => _showUploadLicense(context),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // Tài chính
+                      _SectionCard(
+                        icon:  Icons.account_balance_wallet_outlined,
+                        title: 'TÀI CHÍNH',
+                        children: [
+                          _MenuTile(
+                            icon:      Icons.account_balance_wallet_outlined,
+                            iconColor: AppColors.danger,
+                            label:     'Công nợ',
+                            onTap:     () => Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const DebtScreen())),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // Bảo mật
+                      _SectionCard(
+                        icon:  Icons.security_rounded,
+                        title: 'BẢO MẬT',
+                        children: [
+                          _MenuTile(
+                            icon:      Icons.lock_outline_rounded,
+                            iconColor: AppColors.warning,
+                            label:     'Đổi mật khẩu',
+                            onTap:     () => Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const ChangePasswordScreen())),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // Pháp lý
+                      _SectionCard(
+                        icon:  Icons.gavel_rounded,
+                        title: 'PHÁP LÝ',
+                        children: [
+                          _MenuTile(
+                            icon:      Icons.privacy_tip_outlined,
+                            iconColor: AppColors.info,
+                            label:     'Chính sách bảo mật',
+                            onTap:     () => _showPage(context, 'privacy-policy', 'Chính sách bảo mật'),
+                          ),
+                          const _CardDivider(),
+                          _MenuTile(
+                            icon:      Icons.description_outlined,
+                            iconColor: const Color(0xFF8B5CF6),
+                            label:     'Điều khoản sử dụng',
+                            onTap:     () => _showPage(context, 'terms-of-service', 'Điều khoản sử dụng'),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // Tài khoản
+                      _SectionCard(
+                        icon:  Icons.manage_accounts_rounded,
+                        title: 'TÀI KHOẢN',
+                        children: [
+                          _MenuTile(
+                            icon:       Icons.logout_rounded,
+                            iconColor:  AppColors.danger,
+                            label:      'Đăng xuất',
+                            labelColor: AppColors.danger,
+                            onTap:      () => _confirmLogout(context),
+                          ),
+                          const _CardDivider(),
+                          _MenuTile(
+                            icon: _deleteRequested
+                                ? Icons.restore_rounded
+                                : Icons.delete_forever_rounded,
+                            iconColor: _deleteRequested
+                                ? AppColors.textSecondary
+                                : AppColors.danger,
+                            label: _deleteRequested
+                                ? 'Hủy yêu cầu xóa tài khoản'
+                                : 'Yêu cầu xóa tài khoản',
+                            labelColor: _deleteRequested
+                                ? AppColors.textSecondary
+                                : AppColors.danger,
+                            onTap: () => _deleteRequested
+                                ? _confirmCancelDelete(context)
+                                : _confirmDeleteAccount(context),
+                          ),
+                        ],
+                      ),
+
+                    ],
                   ),
                 ),
-                const SizedBox(height: 8),
-              ],
 
-              // ── Hồ sơ tài xế ─────────────────────────────────────────
-              _FlatSection(
-                label: 'Hồ sơ tài xế',
-                child: Column(children: [
-                  _DocTile(
-                    icon: Icons.badge_rounded,
-                    label: 'Hình CCCD / CMND',
-                    status: _cccdImageStatus,
-                    imageUrl: _cccdImageUrl,
-                    onUpload: () => _showUploadCccd(context),
-                  ),
-                  const _Divider(),
-                  _DocTile(
-                    icon: Icons.drive_eta_rounded,
-                    label: 'Bằng lái xe',
-                    status: _licenseStatus,
-                    imageUrl: _licenseImageUrl,
-                    onUpload: () => _showUploadLicense(context),
-                  ),
-                ]),
-              ),
-
-              const SizedBox(height: 8),
-
-              // ── Công nợ ───────────────────────────────────────────────
-              _FlatSection(
-                label: 'Tài chính',
-                child: Column(children: [
-                  _MenuTile(
-                    icon: Icons.account_balance_wallet_outlined,
-                    iconColor: AppColors.danger,
-                    label: 'Công nợ',
-                    onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const DebtScreen())),
-                  ),
-                ]),
-              ),
-
-              const SizedBox(height: 8),
-
-              // ── Bảo mật ───────────────────────────────────────────────
-              _FlatSection(
-                label: 'Bảo mật',
-                child: Column(children: [
-                  _MenuTile(
-                    icon: Icons.lock_outline_rounded,
-                    iconColor: AppColors.warning,
-                    label: 'Đổi mật khẩu',
-                    onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const ChangePasswordScreen())),
-                  ),
-                ]),
-              ),
-
-              const SizedBox(height: 8),
-
-              // ── Pháp lý ───────────────────────────────────────────────
-              _FlatSection(
-                label: 'Pháp lý',
-                child: Column(children: [
-                  _MenuTile(
-                    icon: Icons.privacy_tip_outlined,
-                    iconColor: AppColors.info,
-                    label: 'Chính sách bảo mật',
-                    onTap: () => _showPage(context, 'privacy-policy', 'Chính sách bảo mật'),
-                  ),
-                  const _Divider(),
-                  _MenuTile(
-                    icon: Icons.description_outlined,
-                    iconColor: const Color(0xFF8B5CF6),
-                    label: 'Điều khoản sử dụng',
-                    onTap: () => _showPage(context, 'terms-of-service', 'Điều khoản sử dụng'),
-                  ),
-                ]),
-              ),
-
-              const SizedBox(height: 8),
-
-              // ── Tài khoản ─────────────────────────────────────────────
-              _FlatSection(
-                label: 'Tài khoản',
-                child: Column(children: [
-                  _MenuTile(
-                    icon: Icons.logout_rounded,
-                    iconColor: AppColors.danger,
-                    label: 'Đăng xuất',
-                    labelColor: AppColors.danger,
-                    onTap: () => _confirmLogout(context),
-                  ),
-                  const _Divider(),
-                  _MenuTile(
-                    icon: _deleteRequested ? Icons.restore_rounded : Icons.delete_forever_rounded,
-                    iconColor: _deleteRequested ? AppColors.textSecondary : AppColors.danger,
-                    label: _deleteRequested ? 'Hủy yêu cầu xóa tài khoản' : 'Yêu cầu xóa tài khoản',
-                    labelColor: _deleteRequested ? AppColors.textSecondary : AppColors.danger,
-                    onTap: () => _deleteRequested ? _confirmCancelDelete(context) : _confirmDeleteAccount(context),
-                  ),
-                ]),
-              ),
-
-              // ── Version ───────────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 32),
-                child: Center(
-                  child: Text(
-                    _appVersion.isNotEmpty ? 'FlashShip Driver v$_appVersion' : 'FlashShip Driver',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w500,
+                // ── Version ──────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 32),
+                  child: Center(
+                    child: Text(
+                      _appVersion.isNotEmpty
+                          ? 'FlashShip Driver v$_appVersion'
+                          : 'FlashShip Driver',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textTertiary,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -377,16 +362,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     XFile? file;
     try {
       file = await ImagePicker().pickImage(
-        source: source,
-        maxWidth: 800,
-        maxHeight: 800,
-        imageQuality: 85,
+        source: source, maxWidth: 800, maxHeight: 800, imageQuality: 85,
       );
     } catch (e) {
       final msg = e.toString().toLowerCase();
-      if (msg.contains('permission') ||
-          msg.contains('denied') ||
-          msg.contains('access')) {
+      if (msg.contains('permission') || msg.contains('denied') || msg.contains('access')) {
         if (mounted) _showPermissionDeniedDialog(context);
       } else {
         if (mounted) _toast(context, 'Không thể mở ảnh. Vui lòng thử lại.');
@@ -430,13 +410,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             'Quyền truy cập bị từ chối vĩnh viễn.\n'
             'Vui lòng vào Cài đặt để cấp quyền cho ứng dụng.'),
         actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
           TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              openAppSettings();
-            },
+            onPressed: () { Navigator.pop(ctx); openAppSettings(); },
             child: const Text('Mở Cài đặt'),
           ),
         ],
@@ -444,7 +420,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  // ── Upload license ─────────────────────────────────────────────────────────
+  // ── Upload docs ────────────────────────────────────────────────────────────
 
   void _showUploadSheet({
     required BuildContext context,
@@ -467,9 +443,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               alignment: Alignment.centerLeft,
               child: Text(title,
                   style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary)),
+                      fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
             ),
           ),
           const SizedBox(height: 4),
@@ -478,22 +452,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text('Ảnh rõ nét, đủ ánh sáng, không bị mờ',
-                  style: TextStyle(
-                      fontSize: 13, color: AppColors.textSecondary)),
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
             ),
           ),
           const SizedBox(height: 8),
           const Divider(height: 1),
           _SheetOption(
-            icon: Icons.camera_alt_rounded,
-            iconColor: AppColors.primary,
+            icon: Icons.camera_alt_rounded, iconColor: AppColors.primary,
             label: 'Chụp ảnh',
             onTap: () { Navigator.pop(ctx); onCamera(); },
           ),
           const Divider(height: 1, indent: 56),
           _SheetOption(
-            icon: Icons.photo_library_rounded,
-            iconColor: AppColors.info,
+            icon: Icons.photo_library_rounded, iconColor: AppColors.info,
             label: 'Chọn từ thư viện',
             onTap: () { Navigator.pop(ctx); onGallery(); },
           ),
@@ -505,8 +476,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   void _showUploadLicense(BuildContext context) {
     _showUploadSheet(
-      context: context,
-      title: 'Tải lên bằng lái xe',
+      context: context, title: 'Tải lên bằng lái xe',
       onCamera: () => _pickAndUploadLicense(ImageSource.camera),
       onGallery: () => _pickAndUploadLicense(ImageSource.gallery),
     );
@@ -517,36 +487,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     try {
       file = await ImagePicker().pickImage(
           source: source, maxWidth: 1600, maxHeight: 1200, imageQuality: 90);
-    } catch (_) {
-      return;
-    }
+    } catch (_) { return; }
     if (file == null) return;
     try {
       final formData = FormData.fromMap(
           {'image': await MultipartFile.fromFile(file.path, filename: file.name)});
-      final res = await ref
-          .read(apiClientProvider)
-          .postMultipart('/driver/profile/license', formData);
+      final res = await ref.read(apiClientProvider).postMultipart('/driver/profile/license', formData);
       final imageUrl = res.data['image_url'] as String?;
       if (mounted) {
-        setState(() {
-          _licenseStatus = 'pending';
-          _licenseImageUrl = imageUrl;
-        });
-        _toast(context, 'Tải lên thành công, đang chờ xét duyệt',
-            success: true);
+        setState(() { _licenseStatus = 'pending'; _licenseImageUrl = imageUrl; });
+        _toast(context, 'Tải lên thành công, đang chờ xét duyệt', success: true);
       }
     } catch (_) {
       if (mounted) _toast(context, 'Tải lên thất bại');
     }
   }
 
-  // ── Upload CCCD ────────────────────────────────────────────────────────────
-
   void _showUploadCccd(BuildContext context) {
     _showUploadSheet(
-      context: context,
-      title: 'Tải lên hình CCCD / CMND',
+      context: context, title: 'Tải lên hình CCCD / CMND',
       onCamera: () => _pickAndUploadCccd(ImageSource.camera),
       onGallery: () => _pickAndUploadCccd(ImageSource.gallery),
     );
@@ -557,20 +516,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     try {
       file = await ImagePicker().pickImage(
           source: source, maxWidth: 1600, maxHeight: 1200, imageQuality: 90);
-    } catch (_) {
-      return;
-    }
+    } catch (_) { return; }
     if (file == null) return;
     try {
       final formData = FormData.fromMap(
           {'image': await MultipartFile.fromFile(file.path, filename: file.name)});
-      await ref
-          .read(apiClientProvider)
-          .postMultipart('/driver/profile/cccd-image', formData);
+      await ref.read(apiClientProvider).postMultipart('/driver/profile/cccd-image', formData);
       if (mounted) {
         setState(() => _cccdImageStatus = 'pending');
-        _toast(context, 'Tải lên thành công, đang chờ xét duyệt',
-            success: true);
+        _toast(context, 'Tải lên thành công, đang chờ xét duyệt', success: true);
       }
     } catch (_) {
       if (mounted) _toast(context, 'Tải lên thất bại');
@@ -580,8 +534,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   // ── Edit name ──────────────────────────────────────────────────────────────
 
   void _showEditName(BuildContext context, String current) {
-    final ctrl    = TextEditingController(text: current);
-    bool  saving  = false;
+    final ctrl   = TextEditingController(text: current);
+    bool  saving = false;
 
     showModalBottomSheet(
       context: context,
@@ -592,18 +546,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheet) => Padding(
-          padding: EdgeInsets.fromLTRB(
-              24, 20, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          padding: EdgeInsets.fromLTRB(24, 20, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             const SizedBox(height: 4),
-
             const Align(
               alignment: Alignment.centerLeft,
               child: Text('Chỉnh sửa tên',
-                  style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary)),
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
             ),
             const SizedBox(height: 4),
             const Align(
@@ -611,87 +560,57 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: Text('Tên chỉ được thay đổi một lần.',
                   style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
             ),
-
             const SizedBox(height: 20),
-
-            // Input
             TextField(
               controller: ctrl,
               textCapitalization: TextCapitalization.words,
               autofocus: true,
-              style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textPrimary),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
               decoration: InputDecoration(
                 hintText: 'Họ và tên',
                 hintStyle: const TextStyle(color: AppColors.textSecondary),
                 filled: true,
                 fillColor: const Color(0xFFF5F5F5),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
-                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(
-                      color: AppColors.primary, width: 1.5),
+                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
-
             SizedBox(
-              width: double.infinity,
-              height: 50,
+              width: double.infinity, height: 50,
               child: FilledButton(
-                onPressed: saving
-                    ? null
-                    : () async {
-                        final name = ctrl.text.trim();
-                        if (name.isEmpty) return;
-                        setSheet(() => saving = true);
-                        try {
-                          await ref.read(apiClientProvider).post(
-                              '/driver/profile/update', data: {'name': name});
-                          await ref
-                              .read(authProvider.notifier)
-                              .refreshName(name);
-                          setState(() => _nameLocked = true);
-                          if (ctx.mounted) {
-                            Navigator.pop(ctx);
-                            _toast(context, 'Cập nhật thành công',
-                                success: true);
-                          }
-                        } catch (_) {
-                          setSheet(() => saving = false);
-                          if (ctx.mounted) _toast(ctx, 'Cập nhật thất bại');
-                        }
-                      },
+                onPressed: saving ? null : () async {
+                  final name = ctrl.text.trim();
+                  if (name.isEmpty) return;
+                  setSheet(() => saving = true);
+                  try {
+                    await ref.read(apiClientProvider).post('/driver/profile/update', data: {'name': name});
+                    await ref.read(authProvider.notifier).refreshName(name);
+                    setState(() => _nameLocked = true);
+                    if (ctx.mounted) {
+                      Navigator.pop(ctx);
+                      _toast(context, 'Cập nhật thành công', success: true);
+                    }
+                  } catch (_) {
+                    setSheet(() => saving = false);
+                    if (ctx.mounted) _toast(ctx, 'Cập nhật thất bại');
+                  }
+                },
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  disabledBackgroundColor:
-                      AppColors.primary.withValues(alpha: 0.5),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
+                  disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 child: saving
-                    ? const SizedBox(
-                        width: 20, height: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
+                    ? const SizedBox(width: 20, height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : const Text('Lưu',
-                        style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white)),
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
               ),
             ),
           ]),
@@ -714,23 +633,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Đăng xuất',
-            style: TextStyle(fontWeight: FontWeight.w700)),
-        content: const Text(
-            'Bạn có muốn đăng xuất khỏi tài khoản không?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Đăng xuất', style: TextStyle(fontWeight: FontWeight.w700)),
+        content: const Text('Bạn có muốn đăng xuất khỏi tài khoản không?'),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
               await ref.read(authProvider.notifier).logout();
               if (context.mounted) context.go('/login');
             },
-            child: const Text('Đăng xuất',
-                style: TextStyle(color: AppColors.danger)),
+            child: const Text('Đăng xuất', style: TextStyle(color: AppColors.danger)),
           ),
         ],
       ),
@@ -743,32 +657,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Xóa tài khoản',
-            style: TextStyle(fontWeight: FontWeight.w700)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Xóa tài khoản', style: TextStyle(fontWeight: FontWeight.w700)),
         content: const Text(
           'Tài khoản và toàn bộ dữ liệu của bạn sẽ bị xóa vĩnh viễn sau khi xác nhận.\n\n'
-          'Hành động này không thể hoàn tác. '
-          'Bạn sẽ bị đăng xuất ngay lập tức.',
+          'Hành động này không thể hoàn tác. Bạn sẽ bị đăng xuất ngay lập tức.',
         ),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
               try {
-                await ref
-                    .read(apiClientProvider)
-                    .post('/driver/delete-account/request');
+                await ref.read(apiClientProvider).post('/driver/delete-account/request');
                 if (mounted) setState(() => _deleteRequested = true);
               } catch (_) {}
               await ref.read(authProvider.notifier).logout();
               if (context.mounted) context.go('/login');
             },
-            child: const Text('Xác nhận',
-                style: TextStyle(color: AppColors.danger)),
+            child: const Text('Xác nhận', style: TextStyle(color: AppColors.danger)),
           ),
         ],
       ),
@@ -779,24 +686,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Hủy yêu cầu xóa',
-            style: TextStyle(fontWeight: FontWeight.w700)),
-        content: const Text(
-            'Bạn muốn hủy yêu cầu xóa tài khoản và tiếp tục sử dụng?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Hủy yêu cầu xóa', style: TextStyle(fontWeight: FontWeight.w700)),
+        content: const Text('Bạn muốn hủy yêu cầu xóa tài khoản và tiếp tục sử dụng?'),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Để sau')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Để sau')),
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
               final messenger = ScaffoldMessenger.of(context);
               try {
-                await ref
-                    .read(apiClientProvider)
-                    .post('/driver/delete-account/cancel');
+                await ref.read(apiClientProvider).post('/driver/delete-account/cancel');
                 if (!mounted) return;
                 setState(() => _deleteRequested = false);
                 messenger.showSnackBar(const SnackBar(
@@ -811,8 +711,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ));
               }
             },
-            child: const Text('Hủy yêu cầu xóa',
-                style: TextStyle(color: AppColors.primary)),
+            child: const Text('Hủy yêu cầu xóa', style: TextStyle(color: AppColors.primary)),
           ),
         ],
       ),
@@ -828,152 +727,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 }
 
-// ── Flat section ─────────────────────────────────────────────────────────────
-
-class _FlatSection extends StatelessWidget {
-  final String label;
-  final Widget child;
-  const _FlatSection({required this.label, required this.child});
-
-  @override
-  Widget build(BuildContext context) => Container(
-        color: Colors.white,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ),
-            child,
-          ],
-        ),
-      );
-}
-
-// ── Score section ─────────────────────────────────────────────────────────────
-
-class _ScoreSection extends StatelessWidget {
-  final int score;
-  final int maxScore;
-  final String label;
-  final int? pointsNeeded;
-
-  const _ScoreSection({
-    required this.score,
-    required this.maxScore,
-    required this.label,
-    this.pointsNeeded,
-  });
-
-  Color get _color {
-    if (score >= 80) return AppColors.success;
-    if (score >= 50) return AppColors.warning;
-    return AppColors.danger;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final progress = (score / maxScore).clamp(0.0, 1.0);
-
-    return GestureDetector(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const ScoreScreen()),
-      ),
-      child: Container(
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Điểm tích lũy',
-              style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textSecondary)),
-          const SizedBox(height: 14),
-
-          Row(children: [
-            // Score circle
-            Container(
-              width: 56, height: 56,
-              decoration: BoxDecoration(
-                color: _color.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  '$score',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: _color,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(label,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: _color,
-                          )),
-                      Text('$score/$maxScore',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          )),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      minHeight: 6,
-                      backgroundColor: const Color(0xFFF0F0F0),
-                      valueColor: AlwaysStoppedAnimation(_color),
-                    ),
-                  ),
-                  if (pointsNeeded != null && pointsNeeded! > 0) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      'Cần thêm $pointsNeeded điểm để lên cấp tiếp theo',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ]),
-        ],
-      ),
-    ));
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Profile Header
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Profile header ────────────────────────────────────────────────────────────
 
 class _ProfileHeader extends StatelessWidget {
   final dynamic user;
@@ -983,6 +737,8 @@ class _ProfileHeader extends StatelessWidget {
   final bool isUploadingAvatar;
   final bool nameLocked;
   final bool avatarLocked;
+  final int? acceptanceRate;
+  final int? completionRate;
   final VoidCallback? onAvatarTap;
   final VoidCallback? onEditName;
 
@@ -994,6 +750,8 @@ class _ProfileHeader extends StatelessWidget {
     this.isUploadingAvatar = false,
     this.nameLocked = false,
     this.avatarLocked = false,
+    this.acceptanceRate,
+    this.completionRate,
     this.onAvatarTap,
     this.onEditName,
   });
@@ -1001,251 +759,416 @@ class _ProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final top = MediaQuery.of(context).padding.top;
-    return Container(
-      color: Colors.white,
-      padding: EdgeInsets.fromLTRB(20, top + 16, 20, 20),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+    final hasStats = acceptanceRate != null || completionRate != null;
 
-        // Avatar
-        GestureDetector(
-          onTap: onAvatarTap,
-          child: Stack(children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.primary, width: 2),
-              ),
-              child: ClipOval(
-                child: isUploadingAvatar
-                    ? Container(
-                        color: const Color(0xFFF5F5F5),
-                        child: const Center(
-                          child: SizedBox(
-                            width: 22, height: 22,
-                            child: CircularProgressIndicator(
-                                color: AppColors.primary, strokeWidth: 2),
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFEF7C1A), AppColors.primaryDark],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+
+          // ── Avatar + Info ──────────────────────────────────────────
+          Padding(
+            padding: EdgeInsets.fromLTRB(20, top + 16, 20, hasStats ? 16 : 24),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+
+                // Avatar
+                GestureDetector(
+                  onTap: onAvatarTap,
+                  child: Stack(children: [
+                    Container(
+                      width: 76, height: 76,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2.5),
+                      ),
+                      child: ClipOval(
+                        child: isUploadingAvatar
+                            ? Container(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 22, height: 22,
+                                    child: CircularProgressIndicator(
+                                        color: Colors.white, strokeWidth: 2),
+                                  ),
+                                ),
+                              )
+                            : (photoUrl != null
+                                ? Image.network(photoUrl!, fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => _AvatarInitials(user: user))
+                                : _AvatarInitials(user: user)),
+                      ),
+                    ),
+                    // Online dot
+                    Positioned(
+                      bottom: 3, right: 3,
+                      child: Container(
+                        width: 14, height: 14,
+                        decoration: BoxDecoration(
+                          color: user?.isOnline == true
+                              ? AppColors.success
+                              : Colors.grey.shade400,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                      ),
+                    ),
+                    // Camera badge
+                    if (!isUploadingAvatar && !avatarLocked)
+                      Positioned(
+                        bottom: 0, left: 0,
+                        child: Container(
+                          width: 22, height: 22,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.5), width: 1.5),
+                          ),
+                          child: const Icon(Icons.camera_alt_rounded,
+                              size: 12, color: AppColors.primary),
+                        ),
+                      ),
+                  ]),
+                ),
+
+                const SizedBox(width: 16),
+
+                // Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+
+                      // Name row
+                      Row(children: [
+                        Expanded(
+                          child: Text(
+                            user?.name ?? 'Tài xế',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: -0.3,
+                            ),
                           ),
                         ),
-                      )
-                    : (photoUrl != null
-                        ? Image.network(photoUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
-                                _AvatarInitials(user: user))
-                        : _AvatarInitials(user: user)),
-              ),
-            ),
-            // Online dot
-            Positioned(
-              bottom: 2, right: 2,
-              child: Container(
-                width: 14, height: 14,
-                decoration: BoxDecoration(
-                  color: user?.isOnline == true
-                      ? AppColors.success
-                      : Colors.grey.shade400,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
-                ),
-              ),
-            ),
-            // Camera badge — ẩn nếu đã locked
-            if (!isUploadingAvatar && !avatarLocked)
-              Positioned(
-                bottom: 0, left: 0,
-                child: Container(
-                  width: 22, height: 22,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 1.5),
-                  ),
-                  child: const Icon(Icons.camera_alt_rounded,
-                      size: 12, color: Colors.white),
-                ),
-              ),
-          ]),
-        ),
+                        if (!nameLocked)
+                          GestureDetector(
+                            onTap: onEditName,
+                            child: Container(
+                              width: 30, height: 30,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(Icons.edit_rounded,
+                                  size: 14, color: Colors.white),
+                            ),
+                          ),
+                      ]),
 
-        const SizedBox(width: 16),
+                      const SizedBox(height: 4),
 
-        // Info
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Expanded(
-                  child: Text(
-                    user?.name ?? 'Tài xế',
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                ),
-                if (!nameLocked)
-                  GestureDetector(
-                    onTap: onEditName,
-                    child: Container(
-                      width: 30, height: 30,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF5F5F5),
-                        borderRadius: BorderRadius.circular(8),
+                      // Phone
+                      Text(
+                        user?.phone ?? '',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.white.withValues(alpha: 0.82),
+                        ),
                       ),
-                      child: const Icon(Icons.edit_rounded,
-                          size: 15, color: AppColors.textSecondary),
-                    ),
+
+                      // City
+                      if (cityName != null) ...[
+                        const SizedBox(height: 3),
+                        Row(children: [
+                          Icon(Icons.location_on_rounded,
+                              size: 12, color: Colors.white.withValues(alpha: 0.75)),
+                          const SizedBox(width: 3),
+                          Text(cityName!,
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white.withValues(alpha: 0.75))),
+                        ]),
+                      ],
+
+                      // Rating
+                      if (rating != null) ...[
+                        const SizedBox(height: 6),
+                        Row(children: [
+                          const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
+                          const SizedBox(width: 4),
+                          Text(
+                            rating!.toStringAsFixed(1),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ]),
+                      ],
+                    ],
                   ),
-              ]),
-              const SizedBox(height: 4),
-              Text(
-                user?.phone ?? '',
-                style: const TextStyle(
-                  color: AppColors.textSecondary, fontSize: 13),
-              ),
-              if (cityName != null) ...[
-                const SizedBox(height: 3),
-                Row(children: [
-                  const Icon(Icons.location_on_rounded,
-                      size: 12, color: AppColors.textSecondary),
-                  const SizedBox(width: 3),
-                  Text(cityName!,
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary)),
-                ]),
+                ),
               ],
-              if (rating != null) ...[
-                const SizedBox(height: 6),
-                Row(children: [
-                  const Icon(Icons.star_rounded,
-                      size: 14, color: Colors.amber),
-                  const SizedBox(width: 4),
-                  Text(
-                    rating!.toStringAsFixed(1),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ]),
-              ],
-            ],
+            ),
           ),
-        ),
-      ]),
+
+          // ── Stats row ──────────────────────────────────────────────
+          if (hasStats)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+              child: Row(
+                children: [
+                  if (acceptanceRate != null) ...[
+                    _StatChip(
+                      icon: Icons.check_circle_outline_rounded,
+                      value: '$acceptanceRate%',
+                      label: 'Nhận đơn',
+                    ),
+                    const SizedBox(width: 10),
+                  ],
+                  if (completionRate != null)
+                    _StatChip(
+                      icon: Icons.done_all_rounded,
+                      value: '$completionRate%',
+                      label: 'Hoàn thành',
+                    ),
+                ],
+              ),
+            ),
+
+          // ── Curved bottom ──────────────────────────────────────────
+          Container(
+            height: 20,
+            decoration: const BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _AvatarInitials extends StatelessWidget {
-  final dynamic user;
-  const _AvatarInitials({required this.user});
+class _StatChip extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+  const _StatChip({required this.icon, required this.value, required this.label});
 
   @override
-  Widget build(BuildContext context) => Container(
-        color: AppColors.primary.withValues(alpha: 0.15),
-        child: Center(
-          child: Text(
-            user?.initials ?? 'D',
-            style: const TextStyle(
-              color: AppColors.primary,
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-            ),
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: Colors.white.withValues(alpha: 0.9)),
+          const SizedBox(width: 7),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(value,
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 10, color: Colors.white.withValues(alpha: 0.78))),
+            ],
           ),
-        ),
-      );
+        ],
+      ),
+    );
+  }
 }
 
-class _GaugeCard extends StatelessWidget {
-  final String label;
-  final int value;
-  final Color color;
-  final String tip;
+// ── Score card ────────────────────────────────────────────────────────────────
 
-  const _GaugeCard({
+class _ScoreCard extends StatelessWidget {
+  final int score;
+  final int maxScore;
+  final String label;
+  final String? tip;
+  final VoidCallback onTap;
+
+  const _ScoreCard({
+    required this.score,
+    required this.maxScore,
     required this.label,
-    required this.value,
-    required this.color,
-    required this.tip,
+    this.tip,
+    required this.onTap,
   });
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(16),
+  Widget build(BuildContext context) {
+    final progress = (score / maxScore).clamp(0.0, 1.0);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 12,
-              offset: const Offset(0, 2),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          boxShadow: AppColors.cardShadow,
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+
+            // Mini ring
+            SizedBox(
+              width: 64, height: 64,
+              child: Stack(alignment: Alignment.center, children: [
+                SizedBox.expand(
+                  child: CircularProgressIndicator(
+                    value: 1,
+                    strokeWidth: 6,
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                  ),
+                ),
+                SizedBox.expand(
+                  child: CircularProgressIndicator(
+                    value: progress,
+                    strokeWidth: 6,
+                    strokeCap: StrokeCap.round,
+                    color: AppColors.primary,
+                  ),
+                ),
+                Text(
+                  '$score',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ]),
             ),
+
+            const SizedBox(width: 14),
+
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    const Text(
+                      'ĐIỂM TÍCH LŨY',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textTertiary,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '$score / $maxScore',
+                      style: const TextStyle(
+                          fontSize: 10, color: AppColors.textTertiary),
+                    ),
+                  ]),
+                  const SizedBox(height: 5),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  if (tip != null) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      tip!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        height: 1.35,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+            const SizedBox(width: 4),
+            const Icon(Icons.chevron_right_rounded,
+                size: 20, color: AppColors.textTertiary),
           ],
         ),
-        child: Column(children: [
-          SizedBox(
-            width: 76,
-            height: 76,
-            child: Stack(alignment: Alignment.center, children: [
-              SizedBox.expand(
-                child: CircularProgressIndicator(
-                  value: value / 100,
-                  strokeWidth: 8,
-                  backgroundColor: color.withValues(alpha: 0.12),
-                  valueColor: AlwaysStoppedAnimation(color),
-                  strokeCap: StrokeCap.round,
-                ),
-              ),
+      ),
+    );
+  }
+}
+
+// ── Section card ──────────────────────────────────────────────────────────────
+
+class _SectionCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final List<Widget> children;
+  const _SectionCard({required this.icon, required this.title, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 2),
+            child: Row(children: [
+              Icon(icon, size: 14, color: AppColors.textTertiary),
+              const SizedBox(width: 6),
               Text(
-                '$value%',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: color,
+                title,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textTertiary,
+                  letterSpacing: 0.5,
                 ),
               ),
             ]),
           ),
-          const SizedBox(height: 10),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              tip,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
-            ),
-          ),
-        ]),
-      );
+          ...children,
+          const SizedBox(height: 4),
+        ],
+      ),
+    );
+  }
 }
 
-class _Divider extends StatelessWidget {
-  const _Divider();
+class _CardDivider extends StatelessWidget {
+  const _CardDivider();
 
   @override
   Widget build(BuildContext context) => const Divider(
@@ -1256,9 +1179,7 @@ class _Divider extends StatelessWidget {
       );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Menu tile
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Menu tile ─────────────────────────────────────────────────────────────────
 
 class _MenuTile extends StatelessWidget {
   final IconData icon;
@@ -1278,13 +1199,12 @@ class _MenuTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(AppRadius.card)),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
           child: Row(children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 36, height: 36,
               decoration: BoxDecoration(
                 color: iconColor.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(10),
@@ -1305,17 +1225,14 @@ class _MenuTile extends StatelessWidget {
             Icon(
               Icons.chevron_right_rounded,
               size: 20,
-              color: labelColor?.withValues(alpha: 0.6) ??
-                  AppColors.textSecondary,
+              color: labelColor?.withValues(alpha: 0.6) ?? AppColors.textTertiary,
             ),
           ]),
         ),
       );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Document tile
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Document tile ─────────────────────────────────────────────────────────────
 
 class _DocTile extends StatelessWidget {
   final IconData icon;
@@ -1336,29 +1253,21 @@ class _DocTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final (statusLabel, color, statusIcon) = switch (status) {
       'approved' => ('Đã xác minh', AppColors.success, Icons.verified_rounded),
-      'rejected' => ('Bị từ chối', AppColors.danger, Icons.cancel_rounded),
-      'pending' => (
-          'Đang xét duyệt',
-          AppColors.warning,
-          Icons.hourglass_top_rounded
-        ),
-      _ => ('Chưa tải lên', AppColors.textSecondary, Icons.upload_rounded),
+      'rejected' => ('Bị từ chối',  AppColors.danger,  Icons.cancel_rounded),
+      'pending'  => ('Đang xét duyệt', AppColors.warning, Icons.hourglass_top_rounded),
+      _          => ('Chưa tải lên', AppColors.textSecondary, Icons.upload_rounded),
     };
 
     return InkWell(
       onTap: status != 'approved' ? onUpload : null,
-      borderRadius: BorderRadius.circular(18),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
         child: Row(children: [
-          // Thumbnail or icon
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: imageUrl != null
                 ? Image.network(imageUrl!,
-                    width: 42,
-                    height: 36,
-                    fit: BoxFit.cover,
+                    width: 42, height: 36, fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => _docIconBox(icon, color))
                 : _docIconBox(icon, color),
           ),
@@ -1369,19 +1278,13 @@ class _DocTile extends StatelessWidget {
               children: [
                 Text(label,
                     style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    )),
+                        fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                 const SizedBox(height: 3),
                 Row(children: [
                   Icon(statusIcon, size: 11, color: color),
                   const SizedBox(width: 4),
                   Text(statusLabel,
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: color,
-                          fontWeight: FontWeight.w500)),
+                      style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500)),
                 ]),
               ],
             ),
@@ -1389,18 +1292,14 @@ class _DocTile extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: status == 'approved'
-                  ? AppColors.success.withValues(alpha: 0.08)
-                  : color.withValues(alpha: 0.08),
+              color: color.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               status == 'approved' ? 'Xem' : 'Cập nhật',
               style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: status == 'approved' ? AppColors.success : color,
-              ),
+                  fontSize: 12, fontWeight: FontWeight.w600,
+                  color: status == 'approved' ? AppColors.success : color),
             ),
           ),
         ]),
@@ -1409,16 +1308,35 @@ class _DocTile extends StatelessWidget {
   }
 
   Widget _docIconBox(IconData icon, Color color) => Container(
-        width: 42,
-        height: 36,
+        width: 42, height: 36,
         color: color.withValues(alpha: 0.10),
         child: Icon(icon, size: 18, color: color),
       );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Shared
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Avatar initials ───────────────────────────────────────────────────────────
+
+class _AvatarInitials extends StatelessWidget {
+  final dynamic user;
+  const _AvatarInitials({required this.user});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        color: Colors.white.withValues(alpha: 0.3),
+        child: Center(
+          child: Text(
+            user?.initials ?? 'D',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      );
+}
+
+// ── Sheet option ──────────────────────────────────────────────────────────────
 
 class _SheetOption extends StatelessWidget {
   final IconData icon;
@@ -1426,10 +1344,8 @@ class _SheetOption extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   const _SheetOption({
-    required this.icon,
-    required this.iconColor,
-    required this.label,
-    required this.onTap,
+    required this.icon, required this.iconColor,
+    required this.label, required this.onTap,
   });
 
   @override
@@ -1449,9 +1365,7 @@ class _SheetOption extends StatelessWidget {
             const SizedBox(width: 14),
             Text(label,
                 style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary)),
+                    fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
           ]),
         ),
       );

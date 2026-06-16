@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -132,116 +133,127 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
 
     if (order == null) {
       return Scaffold(
+        backgroundColor: AppColors.background,
         appBar: AppBar(title: const Text('Đơn hàng')),
         body: const Center(child: Text('Không có đơn hàng đang hoạt động')),
       );
     }
 
-    final isTopup = order.serviceType == 'topup';
-    final isRide  = const ['bike', 'motor', 'car'].contains(order.serviceType);
+    final isTopup  = order.serviceType == 'topup';
+    final isRide   = const ['bike', 'motor', 'car'].contains(order.serviceType);
     final isPickup = order.status == 'assigned';
     final color    = Fmt.serviceColor(order.serviceType);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      body: Column(children: [
-        _Header(order: order, color: color),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: Column(children: [
 
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.only(top: 10, bottom: 16),
-            children: [
+          // ── Gradient header ────────────────────────────────────────
+          _Header(order: order, color: color),
 
-              // ── Route card ──────────────────────────────────────────
-              if (isTopup)
-                _TopupCard(
-                  order: order,
-                  color: color,
-                  onCall: order.deliveryPhone.isNotEmpty
-                      ? () => _callPhone(order.deliveryPhone)
-                      : null,
-                  onNavigate: () => _navigateTo(
-                    lat: order.pickupLat, lng: order.pickupLng,
-                    address: order.pickupAddress,
+          // ── Scrollable content ─────────────────────────────────────
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              children: [
+
+                // Route or Topup
+                if (isTopup)
+                  _TopupCard(
+                    order:      order,
+                    color:      color,
+                    onCall:     order.deliveryPhone.isNotEmpty
+                        ? () => _callPhone(order.deliveryPhone) : null,
+                    onNavigate: () => _navigateTo(
+                      lat: order.pickupLat, lng: order.pickupLng,
+                      address: order.pickupAddress,
+                    ),
+                  )
+                else
+                  _RouteCard(
+                    order:         order,
+                    isPickup:      isPickup,
+                    isRide:        isRide,
+                    color:         color,
+                    onCallPickup:  isRide
+                        ? (order.deliveryPhone.isNotEmpty ? () => _callPhone(order.deliveryPhone) : null)
+                        : (order.pickupPhone != null ? () => _callPhone(order.pickupPhone!) : null),
+                    onNavPickup:   () => _navigateTo(
+                      lat: order.pickupLat, lng: order.pickupLng,
+                      address: order.pickupAddress,
+                    ),
+                    onCallDelivery: isRide ? null
+                        : (order.deliveryPhone.isNotEmpty ? () => _callPhone(order.deliveryPhone) : null),
+                    onNavDelivery:  () => _navigateTo(
+                      lat: order.deliveryLat, lng: order.deliveryLng,
+                      address: order.deliveryAddress,
+                    ),
                   ),
-                )
-              else
-                _RouteCard(
-                  order: order,
-                  isPickup: isPickup,
-                  isRide: isRide,
-                  color: color,
-                  onCallPickup: isRide
-                      ? (order.deliveryPhone.isNotEmpty ? () => _callPhone(order.deliveryPhone) : null)
-                      : (order.pickupPhone != null ? () => _callPhone(order.pickupPhone!) : null),
-                  onNavPickup: () => _navigateTo(
-                    lat: order.pickupLat, lng: order.pickupLng,
-                    address: order.pickupAddress,
+
+                // Note
+                if (order.orderNote != null && order.orderNote!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _NoteCard(note: order.orderNote!),
+                ],
+
+                // Cargo type
+                if (order.cargoType != 'standard') ...[
+                  const SizedBox(height: 12),
+                  _CargoCard(
+                    cargoType:   order.cargoType,
+                    cargoNote:   order.cargoNote,
+                    cargoWeight: order.cargoWeight,
                   ),
-                  onCallDelivery: isRide ? null
-                      : (order.deliveryPhone.isNotEmpty ? () => _callPhone(order.deliveryPhone) : null),
-                  onNavDelivery: () => _navigateTo(
-                    lat: order.deliveryLat, lng: order.deliveryLng,
-                    address: order.deliveryAddress,
+                ],
+
+                // Batch stops
+                if (order.isBatch && order.stops.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _BatchStopsCard(
+                    order: order,
+                    onCompleted: () {
+                      setState(() => _completing = true);
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Hoàn thành tất cả điểm giao!'),
+                          backgroundColor: AppColors.success,
+                        ),
+                      );
+                      context.go('/home');
+                    },
                   ),
-                ),
+                ],
 
-              // ── Ghi chú ─────────────────────────────────────────────
-              if (order.orderNote != null && order.orderNote!.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                _NoteCard(note: order.orderNote!),
+                // Earnings
+                const SizedBox(height: 12),
+                _EarningCard(order: order, color: color),
               ],
-
-              // ── Loại hàng ────────────────────────────────────────────
-              if (order.cargoType != 'standard') ...[
-                const SizedBox(height: 10),
-                _CargoCard(
-                  cargoType:   order.cargoType,
-                  cargoNote:   order.cargoNote,
-                  cargoWeight: order.cargoWeight,
-                ),
-              ],
-
-              // ── Đơn gộp ─────────────────────────────────────────────
-              if (order.isBatch && order.stops.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                _BatchStopsCard(
-                  order: order,
-                  onCompleted: () {
-                    setState(() => _completing = true);
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Hoàn thành tất cả điểm giao!'),
-                        backgroundColor: AppColors.success,
-                      ),
-                    );
-                    context.go('/home');
-                  },
-                ),
-              ],
-
-              // ── Thu nhập ─────────────────────────────────────────────
-              const SizedBox(height: 10),
-              _EarningCard(order: order, color: color),
-            ],
+            ),
           ),
-        ),
 
-        _BottomBar(
-          order: order,
-          isLast: order.isLastStep,
-          color: color,
-          actionLoading: _actionLoading,
-          onAction: order.nextAction.isNotEmpty ? () => _handleAction(order) : null,
-        ),
-      ]),
+          // ── Action bar ─────────────────────────────────────────────
+          _BottomBar(
+            order:         order,
+            isLast:        order.isLastStep,
+            color:         color,
+            actionLoading: _actionLoading,
+            onAction:      order.nextAction.isNotEmpty ? () => _handleAction(order) : null,
+          ),
+        ]),
+      ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Header
+// Gradient header
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _Header extends StatelessWidget {
@@ -262,92 +274,133 @@ class _Header extends StatelessWidget {
     };
 
     final stepLabel = order.status == 'assigned' ? 'Bước 1/2' : 'Bước 2/2';
+    final isLastStep = order.isLastStep;
 
     return Container(
-      color: Colors.white,
-      padding: EdgeInsets.fromLTRB(16, top + 12, 16, 12),
-      child: Row(children: [
-        // Back
-        GestureDetector(
-          onTap: () => context.go('/home'),
-          child: Container(
-            width: 38, height: 38,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF2F2F2),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.arrow_back_rounded,
-                size: 18, color: AppColors.textPrimary),
-          ),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFEF7C1A), AppColors.primaryDark],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        const SizedBox(width: 12),
+      ),
+      child: Column(children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(16, top + 12, 16, 0),
+          child: Row(children: [
 
-        // Status text
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(statusLabel,
-                style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary)),
-            const SizedBox(height: 2),
-            Row(children: [
-              Text(
-                order.isShopOrder
-                    ? switch (order.shopServiceType) {
-                        'shop_batch'  => 'Đơn gộp',
-                        'shop_pickup' => 'Lấy hộ',
-                        _             => 'Giao đơn',
-                      }
-                    : Fmt.serviceLabel(order.serviceType),
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary)),
-              if (order.isShopOrder) ...[
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            // Back button
+            GestureDetector(
+              onTap: () => context.go('/home'),
+              child: Container(
+                width: 48, height: 48,
+                alignment: Alignment.center,
+                child: Container(
+                  width: 36, height: 36,
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(4),
+                    color: Colors.white.withValues(alpha: 0.20),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Text(order.isBatch ? 'SHOP•${order.stopsCount}đ' : 'SHOP',
-                      style: const TextStyle(
-                          fontSize: 9, fontWeight: FontWeight.w800,
-                          color: Colors.white)),
+                  child: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: Colors.white, size: 16,
+                  ),
                 ),
-              ],
+              ),
+            ),
+
+            const SizedBox(width: 4),
+
+            // Status info
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(
+                  statusLabel,
+                  style: const TextStyle(
+                    fontSize: 17, fontWeight: FontWeight.w800,
+                    color: Colors.white, letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(children: [
+                  Text(
+                    order.isShopOrder
+                        ? switch (order.shopServiceType) {
+                            'shop_batch'  => 'Đơn gộp',
+                            'shop_pickup' => 'Lấy hộ',
+                            _             => 'Giao đơn',
+                          }
+                        : Fmt.serviceLabel(order.serviceType),
+                    style: TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w500,
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                  ),
+                  if (order.isShopOrder) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: Text(
+                        order.isBatch ? 'SHOP•${order.stopsCount}đ' : 'SHOP',
+                        style: const TextStyle(
+                            fontSize: 9, fontWeight: FontWeight.w800,
+                            color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ]),
+              ]),
+            ),
+
+            // Step + code
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isLastStep
+                      ? AppColors.success.withValues(alpha: 0.85)
+                      : Colors.white.withValues(alpha: 0.22),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  stepLabel,
+                  style: const TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                '#${order.code}',
+                style: TextStyle(
+                  fontSize: 11, fontWeight: FontWeight.w500,
+                  color: Colors.white.withValues(alpha: 0.75),
+                ),
+              ),
             ]),
           ]),
         ),
 
-        // Step badge + code
-        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(stepLabel,
-                style: TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+        const SizedBox(height: 16),
+
+        // Curved bottom
+        Container(
+          height: 20,
+          decoration: const BoxDecoration(
+            color: AppColors.background,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
-          const SizedBox(height: 4),
-          Text('#${order.code}',
-              style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textSecondary)),
-        ]),
+        ),
       ]),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Route card — pickup + delivery in one connected card
+// Route card
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _RouteCard extends StatelessWidget {
@@ -389,55 +442,76 @@ class _RouteCard extends StatelessWidget {
     final deliveryPhone = isRide ? null
         : (order.deliveryPhone.isNotEmpty ? order.deliveryPhone : null);
 
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+    return _card(
       child: Column(children: [
-        // ── Pickup stop ────────────────────────────────────────────────
+
+        // Section label
+        Row(children: [
+          Icon(Icons.route_rounded, size: 13, color: AppColors.textTertiary),
+          const SizedBox(width: 6),
+          const Text(
+            'TUYẾN ĐƯỜNG',
+            style: TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w700,
+              color: AppColors.textTertiary, letterSpacing: 0.5,
+            ),
+          ),
+        ]),
+
+        const SizedBox(height: 14),
+
+        // Pickup stop
         _RouteStop(
           dot: _RouteDot(
             active: isPickup,
             color: isPickup ? color : AppColors.success,
             icon: Icons.location_on_rounded,
           ),
-          label: _pickupLabel,
-          name: order.pickupName,
-          address: order.pickupAddress,
-          phone: pickupPhone,
-          isActive: isPickup,
+          label:     _pickupLabel,
+          placeName: order.isShopOrder
+              ? (order.storeName?.isNotEmpty == true ? order.storeName : order.pickupPlaceName)
+              : order.pickupPlaceName,
+          name: null,
+          address:   order.pickupAddress,
+          phone:     pickupPhone,
+          isActive:  isPickup,
           activeColor: color,
-          onCall: onCallPickup,
+          onCall:    onCallPickup,
           onNavigate: onNavPickup,
         ),
 
-        // ── Connector ──────────────────────────────────────────────────
+        // Connector line
         Row(children: [
           const SizedBox(width: 14),
           Container(
-            width: 2,
-            height: 28,
-            color: isPickup ? AppColors.divider : AppColors.success,
+            width: 2, height: 28,
+            color: isPickup
+                ? AppColors.divider
+                : AppColors.success.withValues(alpha: 0.4),
           ),
         ]),
 
-        // ── Delivery stop ──────────────────────────────────────────────
+        // Delivery stop
         _RouteStop(
           dot: _RouteDot(
             active: !isPickup,
             color: !isPickup ? color : AppColors.divider,
             icon: Icons.flag_rounded,
           ),
-          label: _deliveryLabel,
-          name: order.customerName,
+          label:     _deliveryLabel,
+          placeName: order.deliveryPlaceName?.isNotEmpty == true
+              ? order.deliveryPlaceName
+              : order.customerName,
+          name:    null,
           address: order.deliveryAddress,
-          phone: deliveryPhone,
-          isActive: !isPickup,
+          phone:   deliveryPhone,
+          isActive:    !isPickup,
           activeColor: color,
-          onCall: onCallDelivery,
+          onCall:     onCallDelivery,
           onNavigate: onNavDelivery,
         ),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: 4),
       ]),
     );
   }
@@ -451,20 +525,19 @@ class _RouteDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    width: 30, height: 30,
+    width: 32, height: 32,
     decoration: BoxDecoration(
-      color: active ? color : color.withValues(alpha: 0.15),
-      borderRadius: BorderRadius.circular(8),
+      color: active ? color : color.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(9),
     ),
-    child: Icon(icon,
-        size: 16,
-        color: active ? Colors.white : color),
+    child: Icon(icon, size: 16, color: active ? Colors.white : color),
   );
 }
 
 class _RouteStop extends StatelessWidget {
   final Widget dot;
   final String label;
+  final String? placeName;
   final String? name;
   final String address;
   final String? phone;
@@ -476,7 +549,8 @@ class _RouteStop extends StatelessWidget {
   const _RouteStop({
     required this.dot,
     required this.label,
-    required this.name,
+    this.placeName,
+    this.name,
     required this.address,
     required this.phone,
     required this.isActive,
@@ -490,52 +564,70 @@ class _RouteStop extends StatelessWidget {
     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       dot,
       const SizedBox(width: 12),
-
-      // Address block
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Text(label,
-                style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isActive ? activeColor : AppColors.textSecondary)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10, fontWeight: FontWeight.w700,
+                color: isActive ? activeColor : AppColors.textTertiary,
+                letterSpacing: 0.3,
+              ),
+            ),
             if (isActive) ...[
               const SizedBox(width: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: activeColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(4),
+                  color: activeColor.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(5),
                 ),
-                child: Text('Hiện tại',
-                    style: TextStyle(
-                        fontSize: 9, fontWeight: FontWeight.w700,
-                        color: activeColor)),
+                child: Text(
+                  'Hiện tại',
+                  style: TextStyle(
+                    fontSize: 9, fontWeight: FontWeight.w700, color: activeColor),
+                ),
               ),
             ],
           ]),
           const SizedBox(height: 4),
+          if (placeName != null && placeName!.isNotEmpty) ...[
+            Text(placeName!,
+                style: const TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary)),
+            const SizedBox(height: 1),
+          ],
           if (name != null && name!.isNotEmpty) ...[
             Text(name!,
-                style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary)),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: (placeName != null && placeName!.isNotEmpty)
+                      ? AppColors.textSecondary
+                      : AppColors.textPrimary,
+                )),
             const SizedBox(height: 2),
           ],
-          Text(address,
-              style: TextStyle(
-                  fontSize: 13,
-                  color: isActive ? AppColors.textPrimary : AppColors.textSecondary,
-                  fontWeight: isActive ? FontWeight.w500 : FontWeight.w400)),
+          Text(
+            address,
+            style: TextStyle(
+              fontSize: 13,
+              color: isActive ? AppColors.textPrimary : AppColors.textSecondary,
+              fontWeight: isActive ? FontWeight.w500 : FontWeight.w400,
+              height: 1.4,
+            ),
+          ),
           if (phone != null && phone!.isNotEmpty) ...[
-            const SizedBox(height: 3),
-            Text(phone!,
-                style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.info,
-                    fontWeight: FontWeight.w500)),
+            const SizedBox(height: 4),
+            Row(children: [
+              const Icon(Icons.phone_rounded, size: 12, color: AppColors.info),
+              const SizedBox(width: 4),
+              Text(phone!,
+                  style: const TextStyle(
+                    fontSize: 12, color: AppColors.info, fontWeight: FontWeight.w600)),
+            ]),
           ],
           const SizedBox(height: 10),
         ]),
@@ -543,13 +635,13 @@ class _RouteStop extends StatelessWidget {
 
       // Action buttons
       Column(children: [
-        _IconAction(
+        _ActionBtn(
           icon: Icons.near_me_rounded,
           color: AppColors.info,
           onTap: onNavigate,
         ),
-        const SizedBox(height: 6),
-        _IconAction(
+        const SizedBox(height: 8),
+        _ActionBtn(
           icon: Icons.call_rounded,
           color: AppColors.success,
           onTap: onCall,
@@ -559,27 +651,24 @@ class _RouteStop extends StatelessWidget {
   }
 }
 
-class _IconAction extends StatelessWidget {
+class _ActionBtn extends StatelessWidget {
   final IconData icon;
   final Color color;
   final VoidCallback? onTap;
 
-  const _IconAction({required this.icon, required this.color, required this.onTap});
+  const _ActionBtn({required this.icon, required this.color, required this.onTap});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
     child: Container(
-      width: 36, height: 36,
+      width: 38, height: 38,
       decoration: BoxDecoration(
-        color: onTap != null
-            ? color.withValues(alpha: 0.1)
-            : const Color(0xFFF5F5F5),
-        borderRadius: BorderRadius.circular(10),
+        color: onTap != null ? color.withValues(alpha: 0.10) : AppColors.divider,
+        borderRadius: BorderRadius.circular(11),
       ),
-      child: Icon(icon,
-          size: 18,
-          color: onTap != null ? color : AppColors.textSecondary),
+      child: Icon(icon, size: 18,
+          color: onTap != null ? color : AppColors.textTertiary),
     ),
   );
 }
@@ -603,74 +692,97 @@ class _TopupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.all(16),
+    return _card(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-        // Location row
+        // Section label
+        Row(children: [
+          Icon(Icons.phonelink_rounded, size: 13, color: AppColors.textTertiary),
+          const SizedBox(width: 6),
+          const Text(
+            'THÔNG TIN NẠP TIỀN',
+            style: TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w700,
+              color: AppColors.textTertiary, letterSpacing: 0.5,
+            ),
+          ),
+        ]),
+
+        const SizedBox(height: 14),
+
+        // Location
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
-            width: 30, height: 30,
+            width: 32, height: 32,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(9),
             ),
             child: Icon(Icons.location_on_rounded, size: 16, color: color),
           ),
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('Điểm nạp tiền',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
-            const SizedBox(height: 4),
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
+            const SizedBox(height: 3),
             Text(order.pickupAddress,
                 style: const TextStyle(
                     fontSize: 13, fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary)),
+                    color: AppColors.textPrimary, height: 1.4)),
           ])),
-          _IconAction(icon: Icons.near_me_rounded, color: AppColors.info, onTap: onNavigate),
+          _ActionBtn(icon: Icons.near_me_rounded, color: AppColors.info, onTap: onNavigate),
         ]),
 
-        const SizedBox(height: 16),
-        const Divider(height: 1, color: Color(0xFFF0F0F0)),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
+        const Divider(height: 1, color: AppColors.divider),
+        const SizedBox(height: 14),
 
-        // Topup info
-        Row(children: [
+        // Phone + amount
+        Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('SĐT cần nạp',
-                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                  style: TextStyle(fontSize: 10, color: AppColors.textTertiary,
+                      fontWeight: FontWeight.w600)),
               const SizedBox(height: 4),
               Text(order.deliveryPhone,
                   style: const TextStyle(
-                      fontSize: 22, fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary)),
+                    fontSize: 24, fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary, letterSpacing: -0.5)),
             ]),
           ),
-          _IconAction(icon: Icons.call_rounded, color: AppColors.success, onTap: onCall),
+          _ActionBtn(icon: Icons.call_rounded, color: AppColors.success, onTap: onCall),
         ]),
 
         if ((order.codAmount ?? 0) > 0) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: AppColors.warning.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.warning.withValues(alpha: 0.25)),
             ),
             child: Row(children: [
-              const Icon(Icons.account_balance_wallet_rounded,
-                  size: 18, color: AppColors.warning),
-              const SizedBox(width: 10),
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.account_balance_wallet_rounded,
+                    size: 18, color: AppColors.warning),
+              ),
+              const SizedBox(width: 12),
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('Số tiền cần nạp',
-                    style: TextStyle(fontSize: 11, color: AppColors.warning)),
+                    style: TextStyle(fontSize: 10, color: AppColors.warning,
+                        fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
                 Text(Fmt.currency(order.codAmount!),
                     style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w800,
-                        color: AppColors.warning)),
+                      fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.warning)),
               ]),
             ]),
           ),
@@ -690,16 +802,27 @@ class _NoteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    color: const Color(0xFFFFFBEC),
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    decoration: BoxDecoration(
+      color: const Color(0xFFFFF8E1),
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.30)),
+      boxShadow: AppColors.cardShadow,
+    ),
     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Icon(Icons.notes_rounded, size: 16, color: AppColors.warning),
+      const Icon(Icons.sticky_note_2_outlined, size: 18, color: AppColors.warning),
       const SizedBox(width: 10),
-      Expanded(
-        child: Text(note,
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('GHI CHÚ',
+            style: TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w700,
+              color: AppColors.warning, letterSpacing: 0.5,
+            )),
+        const SizedBox(height: 4),
+        Text(note,
             style: const TextStyle(
                 fontSize: 13, color: AppColors.textPrimary, height: 1.5)),
-      ),
+      ])),
     ]),
   );
 }
@@ -725,31 +848,41 @@ class _CargoCard extends StatelessWidget {
     final entry = _info[cargoType];
     if (entry == null) return const SizedBox.shrink();
     final (icon, label, color) = entry;
+
     return Container(
-      color: color.withValues(alpha: 0.07),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+        boxShadow: AppColors.cardShadow,
+      ),
       child: Row(children: [
         Container(
-          width: 36, height: 36,
+          width: 38, height: 38,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(10),
+            color: color.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(11),
           ),
-          child: Icon(icon, size: 18, color: color),
+          child: Icon(icon, size: 20, color: color),
         ),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(label,
               style: TextStyle(
                   fontSize: 13, fontWeight: FontWeight.w700, color: color)),
-          if (cargoWeight != null)
+          if (cargoWeight != null) ...[
+            const SizedBox(height: 2),
             Text(
               'Khoảng ${cargoWeight!.toStringAsFixed(cargoWeight! % 1 == 0 ? 0 : 1)} kg',
               style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
-          if (cargoNote != null && cargoNote!.isNotEmpty)
+          ],
+          if (cargoNote != null && cargoNote!.isNotEmpty) ...[
+            const SizedBox(height: 2),
             Text(cargoNote!,
                 style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          ],
         ])),
       ]),
     );
@@ -795,121 +928,140 @@ class _BatchStopsCardState extends ConsumerState<_BatchStopsCard> {
 
   @override
   Widget build(BuildContext context) {
-    final stops     = widget.order.stops;
-    final delivered = stops.where((s) => s['delivered_at'] != null).length;
+    final stops      = widget.order.stops;
+    final delivered  = stops.where((s) => s['delivered_at'] != null).length;
     final canDeliver = widget.order.status == 'processing';
 
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.all(16),
+    return _card(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          const Icon(Icons.route_rounded, size: 16, color: AppColors.primary),
-          const SizedBox(width: 8),
-          Text('Các điểm giao ($delivered/${stops.length})',
-              style: const TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary)),
-        ]),
-        const SizedBox(height: 10),
 
+        // Header
+        Row(children: [
+          Icon(Icons.route_rounded, size: 13, color: AppColors.textTertiary),
+          const SizedBox(width: 6),
+          Text(
+            'CÁC ĐIỂM GIAO ($delivered/${stops.length})',
+            style: const TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w700,
+              color: AppColors.textTertiary, letterSpacing: 0.5,
+            ),
+          ),
+        ]),
+
+        const SizedBox(height: 12),
+
+        // Progress bar
         ClipRRect(
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
             value: stops.isEmpty ? 0 : delivered / stops.length,
-            backgroundColor: const Color(0xFFF0F0F0),
-            color: AppColors.success,
-            minHeight: 4,
+            minHeight: 5,
+            backgroundColor: AppColors.divider,
+            valueColor: const AlwaysStoppedAnimation(AppColors.success),
           ),
         ),
+
         const SizedBox(height: 14),
 
+        // Stops list
         ...stops.asMap().entries.map((e) {
           final i       = e.key;
           final stop    = e.value;
-          final seq     = stop['seq'] as int? ?? (i + 1);
+          final seq     = stop['seq']       as int?    ?? (i + 1);
           final isDone  = stop['delivered_at'] != null;
-          final addr    = stop['address']    as String? ?? '';
-          final phone   = stop['phone']      as String? ?? '';
-          final name    = stop['name']       as String? ?? '';
+          final addr    = stop['address']   as String? ?? '';
+          final phone   = stop['phone']     as String? ?? '';
+          final name    = stop['name']      as String? ?? '';
           final cod     = (stop['cod_amount'] as num?)?.toInt() ?? 0;
           final loading = _delivering.contains(seq);
 
           return Column(children: [
-            if (i > 0) const Divider(height: 16, color: Color(0xFFF5F5F5)),
+            if (i > 0) const Divider(height: 20, color: AppColors.divider),
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+              // Seq badge
               Container(
-                width: 26, height: 26,
+                width: 28, height: 28,
                 decoration: BoxDecoration(
                   color: isDone ? AppColors.success : AppColors.primary,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
                   child: isDone
-                      ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
+                      ? const Icon(Icons.check_rounded, size: 15, color: Colors.white)
                       : Text('$seq',
                           style: const TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.w800,
-                              color: Colors.white)),
+                              fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
                 ),
               ),
+
               const SizedBox(width: 10),
+
+              // Info
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 if (name.isNotEmpty)
                   Text(name,
                       style: TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w700,
-                          color: isDone ? AppColors.textSecondary : AppColors.textPrimary,
-                          decoration: isDone ? TextDecoration.lineThrough : null)),
+                        fontSize: 13, fontWeight: FontWeight.w700,
+                        color: isDone ? AppColors.textSecondary : AppColors.textPrimary,
+                        decoration: isDone ? TextDecoration.lineThrough : null,
+                        decorationColor: AppColors.textSecondary,
+                      )),
                 Text(addr,
                     style: TextStyle(
-                        fontSize: 12,
-                        color: isDone ? AppColors.textSecondary : AppColors.textPrimary),
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                      fontSize: 12,
+                      color: isDone ? AppColors.textSecondary : AppColors.textPrimary,
+                    ),
+                    maxLines: 2, overflow: TextOverflow.ellipsis),
                 if (phone.isNotEmpty)
                   GestureDetector(
                     onTap: () => launchUrl(Uri.parse('tel:$phone')),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.phone_outlined, size: 12, color: AppColors.primary),
-                      const SizedBox(width: 3),
-                      Text(phone,
-                          style: const TextStyle(
-                              fontSize: 11, color: AppColors.primary,
-                              fontWeight: FontWeight.w500)),
-                    ]),
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.phone_rounded, size: 12, color: AppColors.info),
+                        const SizedBox(width: 4),
+                        Text(phone,
+                            style: const TextStyle(
+                                fontSize: 11, color: AppColors.info,
+                                fontWeight: FontWeight.w600)),
+                      ]),
+                    ),
                   ),
                 if (cod > 0)
-                  Text('Thu COD: ${Fmt.currency(cod)}',
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.warning,
-                          fontWeight: FontWeight.w600)),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 3),
+                    child: Text('Thu COD: ${Fmt.currency(cod)}',
+                        style: const TextStyle(
+                            fontSize: 11, color: AppColors.warning,
+                            fontWeight: FontWeight.w600)),
+                  ),
               ])),
+
+              // Action
               if (!isDone)
                 SizedBox(
-                  width: 72, height: 32,
+                  width: 76, height: 34,
                   child: FilledButton(
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.success,
                       padding: EdgeInsets.zero,
                       minimumSize: Size.zero,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
-                      textStyle: const TextStyle(
-                          fontSize: 11, fontWeight: FontWeight.w700),
+                          borderRadius: BorderRadius.circular(9)),
+                      textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                     ),
                     onPressed: (!canDeliver || loading) ? null : () => _deliverStop(seq),
                     child: loading
-                        ? const SizedBox(width: 14, height: 14,
+                        ? const SizedBox(width: 15, height: 15,
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white))
                         : const Text('Đã giao'),
                   ),
                 )
               else
-                Text('✓',
-                    style: TextStyle(
-                        fontSize: 18, color: AppColors.success,
-                        fontWeight: FontWeight.w800)),
+                const Icon(Icons.check_circle_rounded,
+                    size: 22, color: AppColors.success),
             ]),
           ]);
         }),
@@ -929,39 +1081,63 @@ class _EarningCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.all(16),
-      child: Column(children: [
+    return _card(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+        // Section label
+        Row(children: [
+          Icon(Icons.account_balance_wallet_outlined, size: 13, color: AppColors.textTertiary),
+          const SizedBox(width: 6),
+          const Text(
+            'THU NHẬP ĐƠN NÀY',
+            style: TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w700,
+              color: AppColors.textTertiary, letterSpacing: 0.5,
+            ),
+          ),
+        ]),
+
+        const SizedBox(height: 14),
 
         // Shopping advance
         if (order.serviceType == 'shopping' && (order.codAmount ?? 0) > 0) ...[
-          Row(children: [
-            Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(
-                color: AppColors.warning.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.shopping_cart_checkout_rounded,
-                  size: 18, color: AppColors.warning),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.warning.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.warning.withValues(alpha: 0.25)),
             ),
-            const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Tiền ứng mua hàng',
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-              Text(Fmt.currency(order.codAmount!),
-                  style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w700,
-                      color: AppColors.warning)),
-            ])),
-          ]),
-          const SizedBox(height: 12),
+            child: Row(children: [
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.shopping_cart_checkout_rounded,
+                    size: 18, color: AppColors.warning),
+              ),
+              const SizedBox(width: 12),
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Tiền ứng mua hàng',
+                    style: TextStyle(fontSize: 11, color: AppColors.warning,
+                        fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text(Fmt.currency(order.codAmount!),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w800,
+                        color: AppColors.warning)),
+              ]),
+            ]),
+          ),
+          const SizedBox(height: 14),
           const Divider(height: 1, color: AppColors.divider),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
         ],
 
-        // Fee rows — hiển thị gross fee khi có discount
+        // Fee breakdown
         _FeeRow(
           label: 'Phí giao hàng',
           value: Fmt.currency(order.shippingFee + order.discountAmount),
@@ -985,54 +1161,52 @@ class _EarningCard extends StatelessWidget {
           ),
         ],
 
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         const Divider(height: 1, color: AppColors.divider),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
 
         // Earning highlight
         Row(children: [
           Container(
-            width: 36, height: 36,
+            width: 44, height: 44,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+              color: color.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(13),
             ),
-            child: Icon(Icons.account_balance_wallet_rounded,
-                size: 18, color: color),
+            child: Icon(Icons.account_balance_wallet_rounded, size: 22, color: color),
           ),
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('Tài xế nhận',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                style: TextStyle(fontSize: 11, color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500)),
+            const SizedBox(height: 2),
             Text(Fmt.currency(order.driverEarning),
                 style: TextStyle(
-                    fontSize: 20, fontWeight: FontWeight.w800, color: color)),
-            // Chỉ hiện khi có voucher — system trả phần giảm vào ví driver
-            // Không voucher → driver thu tiền mặt toàn bộ, không có gì vào ví
+                    fontSize: 24, fontWeight: FontWeight.w900,
+                    color: color, letterSpacing: -0.5)),
             if (order.hasDiscount) ...[
-              const SizedBox(height: 2),
+              const SizedBox(height: 3),
               Text(
                 order.driverEarning == 0
                     ? 'Tiền ship được + vào ví sau khi hoàn thành'
                     : '+ ${Fmt.currency(order.discountAmount)} được cộng vào ví',
                 style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.success,
-                    fontWeight: FontWeight.w500),
+                    fontSize: 11, color: AppColors.success, fontWeight: FontWeight.w500),
               ),
             ],
           ])),
-          // Chỉ hiện THU TIỀN khi thực sự cần thu tiền mặt
           if (order.isCod && order.driverEarning > 0)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: AppColors.warning.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(6),
+                color: AppColors.warning.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.warning.withValues(alpha: 0.30)),
               ),
               child: const Text('THU TIỀN',
                   style: TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.w700,
+                      fontSize: 11, fontWeight: FontWeight.w800,
                       color: AppColors.warning)),
             ),
         ]),
@@ -1060,12 +1234,12 @@ class _FeeRow extends StatelessWidget {
     ),
     Text(value,
         style: TextStyle(
-            fontSize: 13, fontWeight: FontWeight.w600, color: valueColor)),
+            fontSize: 13, fontWeight: FontWeight.w700, color: valueColor)),
   ]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Bottom bar
+// Bottom action bar
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _BottomBar extends StatelessWidget {
@@ -1092,11 +1266,18 @@ class _BottomBar extends StatelessWidget {
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: AppColors.divider)),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 12,
+            offset: Offset(0, -4),
+          ),
+        ],
       ),
       child: _SwipeButton(
-        label: order.nextAction,
-        color: isLast ? AppColors.success : color,
-        loading: actionLoading,
+        label:     order.nextAction,
+        color:     isLast ? AppColors.success : color,
+        loading:   actionLoading,
         onConfirm: onAction,
       ),
     );
@@ -1104,7 +1285,7 @@ class _BottomBar extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Swipe-to-confirm button
+// Swipe-to-confirm button (unchanged logic)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SwipeButton extends StatefulWidget {
@@ -1126,8 +1307,8 @@ class _SwipeButton extends StatefulWidget {
 
 class _SwipeButtonState extends State<_SwipeButton>
     with SingleTickerProviderStateMixin {
-  static const double _h     = 56.0;
-  static const double _thumb = 48.0;
+  static const double _h     = 58.0;
+  static const double _thumb = 50.0;
   static const double _pad   = 4.0;
 
   double _dragX     = 0;
@@ -1180,11 +1361,13 @@ class _SwipeButtonState extends State<_SwipeButton>
 
         return Container(
           decoration: BoxDecoration(
-            color: widget.color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: widget.color.withValues(alpha: 0.3)),
+            color: widget.color.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(17),
+            border: Border.all(color: widget.color.withValues(alpha: 0.30)),
           ),
           child: Stack(children: [
+
+            // Fill progress
             Positioned.fill(
               child: FractionallySizedBox(
                 alignment: Alignment.centerLeft,
@@ -1192,26 +1375,32 @@ class _SwipeButtonState extends State<_SwipeButton>
                 child: Container(
                   decoration: BoxDecoration(
                     color: widget.color.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(17),
                   ),
                 ),
               ),
             ),
+
+            // Label
             Center(
               child: Opacity(
                 opacity: (1 - progress * 1.8).clamp(0.0, 1.0),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text(widget.label,
-                      style: TextStyle(
-                          color: widget.color,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700)),
+                  Text(
+                    widget.label,
+                    style: TextStyle(
+                        color: widget.color,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700),
+                  ),
                   const SizedBox(width: 6),
                   Icon(Icons.keyboard_double_arrow_right_rounded,
                       color: widget.color.withValues(alpha: 0.5), size: 18),
                 ]),
               ),
             ),
+
+            // Thumb
             Positioned(
               left: _pad + _dragX,
               top:  _pad,
@@ -1221,16 +1410,13 @@ class _SwipeButtonState extends State<_SwipeButton>
                 child: Container(
                   width: _thumb, height: _thumb,
                   decoration: BoxDecoration(
-                    color: widget.loading
-                        ? AppColors.textSecondary
-                        : widget.color,
-                    borderRadius: BorderRadius.circular(12),
+                    color: widget.loading ? AppColors.textSecondary : widget.color,
+                    borderRadius: BorderRadius.circular(13),
                   ),
                   child: widget.loading
-                      ? const Center(
-                          child: SizedBox(width: 20, height: 20,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white)))
+                      ? const Center(child: SizedBox(width: 20, height: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white)))
                       : const Icon(Icons.arrow_forward_ios_rounded,
                           color: Colors.white, size: 20),
                 ),
@@ -1242,3 +1428,18 @@ class _SwipeButtonState extends State<_SwipeButton>
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared card helper
+// ─────────────────────────────────────────────────────────────────────────────
+
+Widget _card({required Widget child}) => Container(
+  width: double.infinity,
+  padding: const EdgeInsets.all(16),
+  decoration: BoxDecoration(
+    color: AppColors.surface,
+    borderRadius: BorderRadius.circular(AppRadius.card),
+    boxShadow: AppColors.cardShadow,
+  ),
+  child: child,
+);

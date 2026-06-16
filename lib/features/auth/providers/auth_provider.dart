@@ -201,12 +201,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await _persistUser(updated);
   }
 
-  Future<void> updateOnlineStatus(bool isOnline, {DateTime? onlineSince}) async {
+  Future<void> updateOnlineStatus(
+    bool isOnline, {
+    DateTime? onlineSince,
+    int? dailyOnlineSeconds,
+  }) async {
     if (state.user == null) return;
     _toggleInFlight = true;
     final updated = isOnline
-        ? state.user!.copyWith(isOnline: true, onlineSince: onlineSince ?? DateTime.now())
-        : state.user!.copyWith(isOnline: false, clearOnlineSince: true);
+        ? state.user!.copyWith(
+            isOnline: true,
+            onlineSince: onlineSince ?? DateTime.now(),
+            dailyOnlineSeconds: dailyOnlineSeconds,
+          )
+        : state.user!.copyWith(
+            isOnline: false,
+            clearOnlineSince: true,
+            dailyOnlineSeconds: dailyOnlineSeconds,
+          );
     state = state.copyWith(user: updated);
     await _persistUser(updated);
     _toggleInFlight = false;
@@ -233,6 +245,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       'id': user.id, 'name': user.name, 'phone': user.phone,
       'email': user.email, 'is_online': user.isOnline,
       'online_since': user.onlineSince?.toIso8601String(),
+      'daily_online_seconds': user.dailyOnlineSeconds,
       'latitude': user.latitude, 'longitude': user.longitude,
       'plan_type': user.planType, 'balance': user.balance,
       'profile_photo_url': user.profilePhotoUrl,

@@ -203,11 +203,22 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
 
   String get _onlineTimeStr {
     final driver = ref.read(authProvider).user;
-    if (driver?.isOnline != true || driver?.onlineSince == null) return '';
-    final seconds = DateTime.now().difference(driver!.onlineSince!).inSeconds.clamp(0, 999999);
-    final h = seconds ~/ 3600;
-    final m = (seconds % 3600) ~/ 60;
-    final s = seconds % 60;
+    if (driver == null) return '';
+
+    // Giây tích lũy từ các session trước trong ngày
+    final accumulated = driver.dailyOnlineSeconds;
+
+    // Giây của session hiện tại (chỉ khi đang online)
+    final currentSession = (driver.isOnline && driver.onlineSince != null)
+        ? DateTime.now().difference(driver.onlineSince!).inSeconds.clamp(0, 86400)
+        : 0;
+
+    final total = (accumulated + currentSession).clamp(0, 86400);
+    if (total == 0 && !driver.isOnline) return '';
+
+    final h = total ~/ 3600;
+    final m = (total % 3600) ~/ 60;
+    final s = total % 60;
     if (h > 0) return '${h}g ${m.toString().padLeft(2, '0')}p';
     if (m > 0) return '${m}p ${s.toString().padLeft(2, '0')}s';
     return '${s}s';
@@ -293,12 +304,17 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
     }
     setState(() => _togglingOnline = true);
     try {
-      final res        = await ref.read(apiClientProvider).post('/driver/toggle-status');
-      final raw        = res.data['is_online'];
-      final isOnline   = raw == true || raw == 1;
-      final onlineSince = res.data['online_since'] != null
+      final res              = await ref.read(apiClientProvider).post('/driver/toggle-status');
+      final raw              = res.data['is_online'];
+      final isOnline         = raw == true || raw == 1;
+      final onlineSince      = res.data['online_since'] != null
           ? DateTime.tryParse(res.data['online_since'] as String) : null;
-      await ref.read(authProvider.notifier).updateOnlineStatus(isOnline, onlineSince: onlineSince);
+      final dailyOnlineSecs  = (res.data['daily_online_seconds'] as num?)?.toInt();
+      await ref.read(authProvider.notifier).updateOnlineStatus(
+        isOnline,
+        onlineSince: onlineSince,
+        dailyOnlineSeconds: dailyOnlineSecs,
+      );
       if (isOnline) {
         _startOnlineTimer();
         _startLocationUpdates();

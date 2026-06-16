@@ -3,16 +3,36 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
-  static const primary   = Color(0xFFF18330);
-  static const success   = Color(0xFF10B981);
-  static const danger    = Color(0xFFEF4444);
-  static const warning   = Color(0xFFF59E0B);
-  static const info      = Color(0xFF3B82F6);
-  static const dark      = Color(0xFF1A1A2E);
-  static const textPrimary   = Color(0xFF1F2937);
+  static const primary       = Color(0xFFE8720C);
+  static const primaryDark   = Color(0xFFCC5A08);
+  static const primarySoft   = Color(0xFFFDF0E3);
+  static const background    = Color(0xFFF5F6F8);
+  static const surface       = Colors.white;
+  static const surfaceAlt    = Color(0xFFF3F4F6);
+  static const textPrimary   = Color(0xFF111827);
   static const textSecondary = Color(0xFF6B7280);
-  static const surface   = Color(0xFFF9FAFB);
-  static const divider   = Color(0xFFE5E7EB);
+  static const textTertiary  = Color(0xFF9CA3AF);
+  static const divider       = Color(0xFFE5E7EB);
+  static const success       = Color(0xFF10B981);
+  static const successSoft   = Color(0xFFE7F8F1);
+  static const danger        = Color(0xFFEF4444);
+  static const dangerSoft    = Color(0xFFFEF2F2);
+  static const warning       = Color(0xFFF59E0B);
+  static const warningSoft   = Color(0xFFFEF7E8);
+  static const info          = Color(0xFF3B82F6);
+  static const infoSoft      = Color(0xFFEFF5FF);
+
+  static const List<BoxShadow> cardShadow = [
+    BoxShadow(color: Color(0x14111827), blurRadius: 12, offset: Offset(0, 3)),
+  ];
+}
+
+class AppRadius {
+  static const sm   = 8.0;
+  static const md   = 12.0;
+  static const lg   = 16.0;
+  static const xl   = 20.0;
+  static const card = 16.0;
 }
 
 class AppTheme {
@@ -20,171 +40,137 @@ class AppTheme {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: AppColors.primary,
       brightness: Brightness.light,
+      surface: AppColors.surface,
+      error: AppColors.danger,
     );
 
-    final textTheme = GoogleFonts.interTextTheme(
+    final textTheme = GoogleFonts.beVietnamProTextTheme(
       ThemeData(colorScheme: colorScheme).textTheme,
+    ).apply(
+      bodyColor: AppColors.textPrimary,
+      displayColor: AppColors.textPrimary,
     );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
       textTheme: textTheme,
-      scaffoldBackgroundColor: colorScheme.surface,
+      scaffoldBackgroundColor: AppColors.background,
+      dividerColor: AppColors.divider,
+      dividerTheme: const DividerThemeData(
+          color: AppColors.divider, thickness: 1, space: 1),
 
-      // ── AppBar ───────────────────────────────────────────────────────────
       appBarTheme: AppBarTheme(
-        backgroundColor: colorScheme.surface,
-        foregroundColor: colorScheme.onSurface,
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.textPrimary,
         elevation: 0,
-        scrolledUnderElevation: 2,
-        surfaceTintColor: colorScheme.primary,
+        scrolledUnderElevation: 0.5,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: const Color(0x14111827),
         centerTitle: false,
         systemOverlayStyle: const SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
           statusBarIconBrightness: Brightness.dark,
           statusBarBrightness: Brightness.light,
         ),
-        titleTextStyle: GoogleFonts.inter(
+        titleTextStyle: GoogleFonts.beVietnamPro(
           fontSize: 17,
           fontWeight: FontWeight.w600,
-          color: colorScheme.onSurface,
+          color: AppColors.textPrimary,
         ),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),
 
-      // ── Cards ────────────────────────────────────────────────────────────
       cardTheme: CardThemeData(
-        elevation: 1,
-        color: colorScheme.surfaceContainerLowest,
-        surfaceTintColor: colorScheme.primary,
+        elevation: 0,
+        color: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+            borderRadius: BorderRadius.circular(AppRadius.card)),
         margin: EdgeInsets.zero,
       ),
 
-      // ── FilledButton (M3 primary action) ─────────────────────────────────
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size.fromHeight(50),
-          shape: const StadiumBorder(),
-          textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.4),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.md)),
+          minimumSize: const Size(double.infinity, 50),
+          textStyle: GoogleFonts.beVietnamPro(
+              fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
 
-      // ── ElevatedButton (keep compat) ────────────────────────────────────
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: colorScheme.primary,
-          foregroundColor: colorScheme.onPrimary,
-          minimumSize: const Size.fromHeight(50),
-          elevation: 0,
-          shadowColor: Colors.transparent,
-          shape: const StadiumBorder(),
-          textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
-        ),
-      ),
-
-      // ── OutlinedButton ───────────────────────────────────────────────────
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(50),
-          shape: const StadiumBorder(),
-          side: BorderSide(color: colorScheme.outline),
-          textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
+          foregroundColor: AppColors.primary,
+          side: const BorderSide(color: AppColors.primary),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.md)),
+          textStyle: GoogleFonts.beVietnamPro(
+              fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
 
-      // ── Input ────────────────────────────────────────────────────────────
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          textStyle: GoogleFonts.beVietnamPro(
+              fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+      ),
+
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colorScheme.surfaceContainerHighest,
+        fillColor: AppColors.surfaceAlt,
+        hintStyle: const TextStyle(
+            color: AppColors.textTertiary, fontSize: 15),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: colorScheme.primary, width: 2),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: colorScheme.error),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: const BorderSide(color: AppColors.danger),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: colorScheme.error, width: 2),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: const BorderSide(color: AppColors.danger, width: 1.5),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        labelStyle: TextStyle(color: colorScheme.onSurfaceVariant),
-        hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
-        floatingLabelStyle: TextStyle(color: colorScheme.primary),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
 
-      // ── NavigationBar (M3) ───────────────────────────────────────────────
-      navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: colorScheme.surfaceContainer,
-        indicatorColor: colorScheme.primaryContainer,
-        iconTheme: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return IconThemeData(color: colorScheme.onPrimaryContainer);
-          }
-          return IconThemeData(color: colorScheme.onSurfaceVariant);
-        }),
-        labelTextStyle: WidgetStateProperty.resolveWith((states) {
-          final base = GoogleFonts.inter(fontSize: 12);
-          if (states.contains(WidgetState.selected)) {
-            return base.copyWith(
-              fontWeight: FontWeight.w600,
-              color: colorScheme.onSurface,
-            );
-          }
-          return base.copyWith(color: colorScheme.onSurfaceVariant);
-        }),
-        elevation: 3,
-        surfaceTintColor: colorScheme.primary,
-      ),
-
-      // ── Chips ────────────────────────────────────────────────────────────
-      chipTheme: ChipThemeData(
-        shape: const StadiumBorder(),
-        side: BorderSide.none,
-        backgroundColor: colorScheme.surfaceContainerHighest,
-        selectedColor: colorScheme.primaryContainer,
-        labelStyle: GoogleFonts.inter(fontSize: 13),
-      ),
-
-      // ── BottomSheet ──────────────────────────────────────────────────────
-      bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: colorScheme.surface,
-        surfaceTintColor: colorScheme.primary,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
         ),
-        showDragHandle: true,
       ),
 
-      // ── Divider ──────────────────────────────────────────────────────────
-      dividerTheme: DividerThemeData(
-        color: colorScheme.outlineVariant,
-        thickness: 1,
-        space: 1,
-      ),
-
-      // ── SnackBar ─────────────────────────────────────────────────────────
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        backgroundColor: colorScheme.inverseSurface,
-        contentTextStyle: GoogleFonts.inter(
-          color: colorScheme.onInverseSurface,
-          fontSize: 14,
-        ),
+        backgroundColor: const Color(0xFF1F2937),
+        contentTextStyle: GoogleFonts.beVietnamPro(
+            fontSize: 14, color: Colors.white),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md)),
       ),
+
+      progressIndicatorTheme:
+          const ProgressIndicatorThemeData(color: AppColors.primary),
     );
   }
 }

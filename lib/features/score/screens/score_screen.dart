@@ -25,25 +25,12 @@ class _ScoreScreenState extends ConsumerState<ScoreScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(scoreProvider);
     final score = state.score;
+    final top   = MediaQuery.of(context).padding.top;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: false,
-        title: const Text(
-          'Điểm tích lũy',
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
-          ),
-        ),
-      ),
+      backgroundColor: AppColors.background,
       body: score == null && state.loading
-          ? const Center(
+          ? Center(
               child: CircularProgressIndicator(
                   color: AppColors.primary, strokeWidth: 2))
           : RefreshIndicator(
@@ -52,23 +39,62 @@ class _ScoreScreenState extends ConsumerState<ScoreScreen> {
                 await ref.read(scoreProvider.notifier).fetch();
                 await ref.read(scoreProvider.notifier).fetchHistory();
               },
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  if (score != null) _HeroSection(score: score),
-                  const SizedBox(height: 8),
-                  if (score?.week != null) _WeekSection(score: score!),
-                  if (score?.week != null) const SizedBox(height: 8),
-                  const _RulesSection(),
-                  const SizedBox(height: 8),
-                  _HistorySection(
-                    history:    state.history,
-                    loading:    state.historyLoading,
-                    loadingMore: state.historyLoadingMore,
-                    hasMore:    state.historyHasMore,
-                    onLoadMore: () => ref.read(scoreProvider.notifier).loadMoreHistory(),
+              child: CustomScrollView(
+                slivers: [
+
+                  // ── AppBar ──────────────────────────────────────────────
+                  SliverAppBar(
+                    pinned: true,
+                    backgroundColor: AppColors.surface,
+                    surfaceTintColor: Colors.transparent,
+                    elevation: 0,
+                    scrolledUnderElevation: 0.5,
+                    shadowColor: const Color(0x14111827),
+                    expandedHeight: score != null ? 220 + top : null,
+                    collapsedHeight: kToolbarHeight,
+                    flexibleSpace: score != null
+                        ? FlexibleSpaceBar(
+                            collapseMode: CollapseMode.pin,
+                            background: _HeroCard(score: score, topPad: top),
+                          )
+                        : null,
+                    title: const Text(
+                      'Điểm tích lũy',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 32),
+
+                  // ── Body ────────────────────────────────────────────────
+                  SliverPadding(
+                    padding:
+                        const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+
+                        if (score?.week != null) ...[
+                          _WeekCard(score: score!),
+                          const SizedBox(height: 12),
+                        ],
+
+                        _RulesCard(),
+                        const SizedBox(height: 12),
+
+                        _HistoryCard(
+                          history:    state.history,
+                          loading:    state.historyLoading,
+                          loadingMore: state.historyLoadingMore,
+                          hasMore:    state.historyHasMore,
+                          onLoadMore: () =>
+                              ref.read(scoreProvider.notifier).loadMoreHistory(),
+                        ),
+
+                      ]),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -76,103 +102,121 @@ class _ScoreScreenState extends ConsumerState<ScoreScreen> {
   }
 }
 
-// ── Hero ──────────────────────────────────────────────────────────────────────
+// ── Hero (collapsible) ────────────────────────────────────────────────────────
 
-class _HeroSection extends StatelessWidget {
+class _HeroCard extends StatelessWidget {
   final DriverScoreModel score;
-  const _HeroSection({required this.score});
-
-  Color get _color {
-    if (score.score >= 110) return AppColors.success;
-    if (score.score >= 90)  return AppColors.primary;
-    if (score.score >= 70)  return const Color(0xFFF59E0B);
-    return AppColors.danger;
-  }
+  final double topPad;
+  const _HeroCard({required this.score, required this.topPad});
 
   @override
   Widget build(BuildContext context) {
     final progress = score.score / score.maxScore;
-    final tip = score.tips.isNotEmpty ? score.tips.first : null;
+    final tip      = score.tips.isNotEmpty ? score.tips.first : null;
 
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(24, 32, 24, 28),
-      child: Column(children: [
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.primary, AppColors.primaryDark],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      padding: EdgeInsets.fromLTRB(24, topPad + 56, 24, 24),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
 
-        // Circular score
-        SizedBox(
-          width: 148, height: 148,
-          child: Stack(alignment: Alignment.center, children: [
-            SizedBox.expand(
-              child: CircularProgressIndicator(
-                value: 1,
-                strokeWidth: 10,
-                color: const Color(0xFFEEEEEE),
-              ),
-            ),
-            SizedBox.expand(
-              child: CircularProgressIndicator(
-                value: progress,
-                strokeWidth: 10,
-                strokeCap: StrokeCap.round,
-                color: _color,
-              ),
-            ),
-            Column(mainAxisSize: MainAxisSize.min, children: [
-              Text(
-                '${score.score}',
-                style: TextStyle(
-                  fontSize: 44,
-                  fontWeight: FontWeight.w900,
-                  color: _color,
-                  height: 1,
+          // Circular score
+          SizedBox(
+            width: 110, height: 110,
+            child: Stack(alignment: Alignment.center, children: [
+              SizedBox.expand(
+                child: CircularProgressIndicator(
+                  value: 1,
+                  strokeWidth: 8,
+                  color: Colors.white.withValues(alpha: 0.15),
                 ),
               ),
-              Text(
-                '/ ${score.maxScore}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w500,
+              SizedBox.expand(
+                child: CircularProgressIndicator(
+                  value: progress,
+                  strokeWidth: 8,
+                  strokeCap: StrokeCap.round,
+                  color: Colors.white,
                 ),
               ),
+              Column(mainAxisSize: MainAxisSize.min, children: [
+                Text(
+                  '${score.score}',
+                  style: const TextStyle(
+                    fontSize: 36,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    height: 1,
+                  ),
+                ),
+                Text(
+                  '/ ${score.maxScore}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.white.withValues(alpha: 0.75),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ]),
             ]),
-          ]),
-        ),
-
-        const SizedBox(height: 16),
-
-        Text(
-          score.label,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: _color,
           ),
-        ),
 
-        if (tip != null) ...[
-          const SizedBox(height: 8),
-          Text(
-            tip,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-              height: 1.4,
+          const SizedBox(width: 20),
+
+          // Label + tip
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    score.label,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                if (tip != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    tip,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white.withValues(alpha: 0.85),
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ],
-      ]),
+      ),
     );
   }
 }
 
-// ── Week section ──────────────────────────────────────────────────────────────
+// ── Week card ─────────────────────────────────────────────────────────────────
 
-class _WeekSection extends StatelessWidget {
+class _WeekCard extends StatelessWidget {
   final DriverScoreModel score;
-  const _WeekSection({required this.score});
+  const _WeekCard({required this.score});
 
   @override
   Widget build(BuildContext context) {
@@ -180,229 +224,204 @@ class _WeekSection extends StatelessWidget {
     final s          = score.score;
     final settlement = week.settlement;
 
-    // Màu & trạng thái
-    final Color cardColor;
-    final Color textColor;
+    final Color color;
     final IconData icon;
-    final String statusText;
+    final String title;
+    final String subtitle;
 
     if (settlement != null) {
       if (settlement.type == 'bonus') {
-        cardColor  = AppColors.success;
-        textColor  = Colors.white;
-        icon       = Icons.emoji_events_rounded;
-        statusText = settlement.status == 'paid'
+        color    = AppColors.success;
+        icon     = Icons.emoji_events_rounded;
+        title    = settlement.status == 'paid'
             ? 'Đã nhận thưởng ${_fmt(settlement.amount)}đ'
             : 'Chờ nhận thưởng ${_fmt(settlement.amount)}đ';
+        subtitle = 'Tuần này bạn đã đạt mức thưởng!';
       } else {
-        cardColor  = AppColors.danger;
-        textColor  = Colors.white;
-        icon       = Icons.warning_rounded;
-        statusText = settlement.status == 'paid'
+        color    = AppColors.danger;
+        icon     = Icons.warning_amber_rounded;
+        title    = settlement.status == 'paid'
             ? 'Đã bị phạt ${_fmt(settlement.amount)}đ'
             : 'Chờ xử lý phạt ${_fmt(settlement.amount)}đ';
+        subtitle = 'Điểm tuần này dưới ngưỡng an toàn.';
       }
     } else if (s >= week.bonusAt) {
-      cardColor  = AppColors.success;
-      textColor  = Colors.white;
-      icon       = Icons.emoji_events_rounded;
-      statusText = 'Đạt thưởng ${_fmt(week.bonusAmount)}đ cuối tuần!';
+      color    = AppColors.success;
+      icon     = Icons.emoji_events_rounded;
+      title    = 'Đạt thưởng ${_fmt(week.bonusAmount)}đ cuối tuần!';
+      subtitle = 'Duy trì điểm ≥ ${week.bonusAt} đến hết Chủ Nhật.';
     } else if (s <= week.penaltyAt) {
-      cardColor  = AppColors.danger;
-      textColor  = Colors.white;
-      icon       = Icons.warning_rounded;
-      statusText = 'Nguy hiểm — cố gắng lên trên ${week.penaltyAt} điểm';
+      color    = AppColors.danger;
+      icon     = Icons.warning_amber_rounded;
+      title    = 'Nguy hiểm — điểm ≤ ${week.penaltyAt}';
+      subtitle = 'Cần vượt ${week.penaltyAt} điểm để tránh phạt ${_fmt(week.penaltyAmount)}đ.';
     } else {
-      cardColor  = Colors.white;
-      textColor  = AppColors.textPrimary;
-      icon       = Icons.calendar_today_rounded;
-      statusText = 'Cần +${week.bonusAt - s} điểm để nhận thưởng ${_fmt(week.bonusAmount)}đ';
+      color    = AppColors.primary;
+      icon     = Icons.star_rounded;
+      title    = 'Cần +${week.bonusAt - s} điểm để nhận thưởng';
+      subtitle = 'Thưởng ${_fmt(week.bonusAmount)}đ nếu đạt ≥ ${week.bonusAt} điểm cuối tuần.';
     }
 
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.all(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: cardColor.withValues(alpha: cardColor == Colors.white ? 1 : 0.08),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: cardColor == Colors.white
-                ? const Color(0xFFE8E8E8)
-                : cardColor.withValues(alpha: 0.25),
+    final softColor = color.withValues(alpha: 0.08);
+    final borderColor = color.withValues(alpha: 0.2);
+
+    return _card(
+      child: Row(children: [
+        Container(
+          width: 44, height: 44,
+          decoration: BoxDecoration(
+            color: softColor,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          child: Icon(icon, color: color, size: 22),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+            ],
           ),
         ),
-        child: Row(children: [
-          Icon(icon,
-              size: 22,
-              color: cardColor == Colors.white ? AppColors.textSecondary : cardColor),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Thưởng/Phạt cuối tuần',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: cardColor == Colors.white
-                        ? AppColors.textSecondary
-                        : cardColor.withValues(alpha: 0.8),
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  statusText,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: cardColor == Colors.white ? textColor : cardColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ]),
-      ),
+      ]),
+      border: Border.all(color: borderColor),
     );
   }
 
-  String _fmt(int n) {
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(0)}.000';
-    return '$n';
-  }
+  String _fmt(int n) =>
+      n >= 1000 ? '${(n / 1000).toStringAsFixed(0)}.000' : '$n';
 }
 
-// ── Rules section ─────────────────────────────────────────────────────────────
+// ── Rules card ────────────────────────────────────────────────────────────────
 
-class _RulesSection extends StatelessWidget {
-  const _RulesSection();
+class _RulesCard extends StatelessWidget {
+  const _RulesCard();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
+    return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
-            child: Text(
-              'Cách tính điểm',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
-          const Divider(height: 1),
+          _sectionTitle(Icons.info_outline_rounded, 'CÁCH TÍNH ĐIỂM'),
+          const SizedBox(height: 14),
 
-          _group('Cộng điểm', [
-            ('+1', 'Hoàn thành đơn hàng', AppColors.success),
-            ('+1', 'Khách đánh giá 5★', AppColors.success),
-          ]),
-          const Divider(height: 1, indent: 16, endIndent: 16),
+          _ruleRow('+1', 'Hoàn thành đơn hàng', AppColors.success),
+          const SizedBox(height: 8),
+          _ruleRow('+1', 'Khách đánh giá 5★', AppColors.success),
+          const SizedBox(height: 16),
 
-          _group('Trừ điểm', [
-            ('-1', 'Khách đánh giá 3★', AppColors.danger),
-            ('-2', 'Từ chối đơn hàng', AppColors.danger),
-            ('-3', 'Khách đánh giá 2★', AppColors.danger),
-            ('-5', 'Khách đánh giá 1★', AppColors.danger),
-          ]),
-          const Divider(height: 1, indent: 16, endIndent: 16),
+          Divider(height: 1, color: AppColors.divider),
+          const SizedBox(height: 16),
 
-          _group('Cuối tuần', [
-            ('🎁', 'Điểm ≥ 150 → Thưởng 50.000đ', const Color(0xFF10B981)),
-            ('⚠️', 'Điểm ≤ 70  → Phạt 50.000đ',  const Color(0xFFEF4444)),
-            ('🔄', 'Reset về 100 đầu tuần mới',    AppColors.textSecondary),
-          ], emoji: true),
+          _ruleRow('-1', 'Khách đánh giá 3★', AppColors.danger),
+          const SizedBox(height: 8),
+          _ruleRow('-2', 'Từ chối đơn hàng', AppColors.danger),
+          const SizedBox(height: 8),
+          _ruleRow('-3', 'Khách đánh giá 2★', AppColors.danger),
+          const SizedBox(height: 8),
+          _ruleRow('-5', 'Khách đánh giá 1★', AppColors.danger),
+          const SizedBox(height: 16),
 
-          const Divider(height: 1),
-          const SizedBox(height: 4),
+          Divider(height: 1, color: AppColors.divider),
+          const SizedBox(height: 14),
+
+          _weekRule(Icons.emoji_events_rounded, 'Điểm ≥ 150 cuối tuần', 'Thưởng 50.000đ', AppColors.success),
+          const SizedBox(height: 10),
+          _weekRule(Icons.warning_amber_rounded, 'Điểm ≤ 70 cuối tuần', 'Phạt 50.000đ', AppColors.danger),
+          const SizedBox(height: 10),
+          _weekRule(Icons.refresh_rounded, 'Đầu tuần mới', 'Reset về 100 điểm', AppColors.textSecondary),
         ],
       ),
     );
   }
 
-  Widget _group(
-    String title,
-    List<(String, String, Color)> items, {
-    bool emoji = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-            ),
+  Widget _ruleRow(String badge, String label, Color color) {
+    return Row(children: [
+      Container(
+        width: 36, height: 28,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          badge,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: color,
           ),
-          const SizedBox(height: 10),
-          ...items.map((item) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Row(children: [
-                  if (emoji)
-                    SizedBox(
-                      width: 36,
-                      child: Text(item.$1,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 16)),
-                    )
-                  else
-                    Container(
-                      width: 36,
-                      padding: const EdgeInsets.symmetric(vertical: 3),
-                      decoration: BoxDecoration(
-                        color: item.$3.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        item.$1,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: item.$3,
-                        ),
-                      ),
-                    ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      item.$2,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: emoji ? item.$3 : AppColors.textPrimary,
-                        fontWeight: emoji ? FontWeight.w600 : FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                ]),
-              )),
-        ],
+        ),
       ),
-    );
+      const SizedBox(width: 12),
+      Text(
+        label,
+        style: const TextStyle(
+          fontSize: 14,
+          color: AppColors.textPrimary,
+        ),
+      ),
+    ]);
+  }
+
+  Widget _weekRule(IconData icon, String label, String value, Color color) {
+    return Row(children: [
+      Container(
+        width: 36, height: 36,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: Icon(icon, size: 18, color: color),
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 13, color: AppColors.textSecondary)),
+            Text(value,
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: color)),
+          ],
+        ),
+      ),
+    ]);
   }
 }
 
-// ── History section ───────────────────────────────────────────────────────────
+// ── History card ──────────────────────────────────────────────────────────────
 
-class _HistorySection extends StatelessWidget {
+class _HistoryCard extends StatelessWidget {
   final List<ScoreLogEntry> history;
   final bool loading;
   final bool loadingMore;
   final bool hasMore;
   final VoidCallback onLoadMore;
 
-  const _HistorySection({
+  const _HistoryCard({
     required this.history,
     required this.loading,
     required this.loadingMore,
@@ -412,23 +431,11 @@ class _HistorySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
+    return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
-            child: Text(
-              'Lịch sử điểm',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
-          const Divider(height: 1),
+          _sectionTitle(Icons.history_rounded, 'LỊCH SỬ ĐIỂM'),
 
           if (loading)
             const Padding(
@@ -439,66 +446,67 @@ class _HistorySection extends StatelessWidget {
               ),
             )
           else if (history.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 32),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32),
               child: Center(
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.history_rounded,
-                      size: 36, color: AppColors.textSecondary),
-                  SizedBox(height: 8),
-                  Text(
-                    'Chưa có lịch sử điểm',
-                    style: TextStyle(
-                        color: AppColors.textSecondary, fontSize: 13),
+                  Container(
+                    width: 56, height: 56,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceAlt,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(Icons.history_rounded,
+                        size: 26, color: AppColors.textTertiary),
                   ),
+                  const SizedBox(height: 10),
+                  const Text('Chưa có lịch sử điểm',
+                      style: TextStyle(
+                          color: AppColors.textSecondary, fontSize: 13)),
                 ]),
               ),
             )
           else ...[
+            const SizedBox(height: 14),
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: history.length,
-              separatorBuilder: (_, __) => const Divider(
-                  height: 1,
-                  color: AppColors.divider,
-                  indent: 68,
-                  endIndent: 16),
+              separatorBuilder: (_, __) => Divider(
+                height: 1,
+                color: AppColors.divider,
+                indent: 56,
+              ),
               itemBuilder: (_, i) => _HistoryItem(entry: history[i]),
             ),
 
             if (hasMore || loadingMore) ...[
-              const Divider(height: 1),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 12),
-                child: loadingMore
-                    ? const Center(
-                        child: SizedBox(
-                          width: 22, height: 22,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: AppColors.primary),
-                        ),
-                      )
-                    : OutlinedButton(
-                        onPressed: onLoadMore,
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 44),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8)),
-                          side: const BorderSide(
-                              color: AppColors.divider),
-                        ),
-                        child: const Text(
+              const SizedBox(height: 12),
+              Divider(height: 1, color: AppColors.divider),
+              const SizedBox(height: 12),
+              loadingMore
+                  ? const Center(
+                      child: SizedBox(
+                        width: 22, height: 22,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primary),
+                      ),
+                    )
+                  : GestureDetector(
+                      onTap: onLoadMore,
+                      child: const Center(
+                        child: Text(
                           'Xem thêm',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary,
+                            color: AppColors.primary,
                           ),
                         ),
                       ),
-              ),
+                    ),
+              const SizedBox(height: 4),
             ],
           ],
         ],
@@ -517,17 +525,17 @@ class _HistoryItem extends StatelessWidget {
     final sign   = entry.isPositive ? '+' : '';
     final now    = DateTime.now();
     final diff   = now.difference(entry.createdAt);
-    final timeStr = diff.inMinutes < 60
+    final time   = diff.inMinutes < 60
         ? '${diff.inMinutes} phút trước'
         : diff.inHours < 24
             ? '${diff.inHours} giờ trước'
             : '${diff.inDays} ngày trước';
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(children: [
         Container(
-          width: 40, height: 40,
+          width: 38, height: 38,
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
@@ -536,7 +544,7 @@ class _HistoryItem extends StatelessWidget {
             entry.isPositive
                 ? Icons.arrow_upward_rounded
                 : Icons.arrow_downward_rounded,
-            color: color, size: 18,
+            color: color, size: 17,
           ),
         ),
         const SizedBox(width: 12),
@@ -554,11 +562,9 @@ class _HistoryItem extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                '${entry.scoreBefore} → ${entry.scoreAfter} điểm  ·  $timeStr',
+                '${entry.scoreBefore} → ${entry.scoreAfter} điểm  ·  $time',
                 style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
-                ),
+                    fontSize: 12, color: AppColors.textSecondary),
               ),
             ],
           ),
@@ -574,4 +580,36 @@ class _HistoryItem extends StatelessWidget {
       ]),
     );
   }
+}
+
+// ── Shared helpers ────────────────────────────────────────────────────────────
+
+Widget _card({required Widget child, Border? border}) {
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      border: border,
+      boxShadow: AppColors.cardShadow,
+    ),
+    child: child,
+  );
+}
+
+Widget _sectionTitle(IconData icon, String label) {
+  return Row(children: [
+    Icon(icon, size: 15, color: AppColors.textTertiary),
+    const SizedBox(width: 6),
+    Text(
+      label,
+      style: const TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textTertiary,
+        letterSpacing: 0.5,
+      ),
+    ),
+  ]);
 }

@@ -305,7 +305,7 @@ class OrderHistoryNotifier extends StateNotifier<OrderHistoryState> {
     try {
       final res = await _ref.read(apiClientProvider).get(
         '/orders/completed',
-        params: {'page': _page},
+        params: {'page': _page, 'per_page': 10},
       );
       final raw = res.data['data'] ?? res.data;
       List<dynamic> list = [];

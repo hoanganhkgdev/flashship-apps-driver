@@ -331,6 +331,8 @@ class _RulesCard extends StatelessWidget {
           Divider(height: 1, color: AppColors.divider),
           const SizedBox(height: 16),
 
+          _ruleRow('-1', 'Để đơn trôi qua (timeout)', AppColors.danger),
+          const SizedBox(height: 8),
           _ruleRow('-1', 'Khách đánh giá 3★', AppColors.danger),
           const SizedBox(height: 8),
           _ruleRow('-2', 'Từ chối đơn hàng', AppColors.danger),

@@ -33,11 +33,14 @@ class _ScoreScreenState extends ConsumerState<ScoreScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        title: const Text('Điểm tích lũy',
-            style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary)),
+        title: const Text(
+          'Điểm tích lũy',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
+          ),
+        ),
       ),
       body: score == null && state.loading
           ? const Center(
@@ -52,32 +55,19 @@ class _ScoreScreenState extends ConsumerState<ScoreScreen> {
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
-                  // ── Hero ─────────────────────────────────────────────
                   if (score != null) _HeroSection(score: score),
-
                   const SizedBox(height: 8),
-
-                  // ── Streak ───────────────────────────────────────────
-                  if (score != null && score.streak.consecutive > 0)
-                    _StreakSection(score: score),
-
-                  if (score != null && score.streak.consecutive > 0)
-                    const SizedBox(height: 8),
-
-                  // ── Rules ────────────────────────────────────────────
-                  _RulesSection(),
-
+                  if (score?.week != null) _WeekSection(score: score!),
+                  if (score?.week != null) const SizedBox(height: 8),
+                  const _RulesSection(),
                   const SizedBox(height: 8),
-
-                  // ── History ──────────────────────────────────────────
                   _HistorySection(
-                    history:     state.history,
-                    loading:     state.historyLoading,
+                    history:    state.history,
+                    loading:    state.historyLoading,
                     loadingMore: state.historyLoadingMore,
-                    hasMore:     state.historyHasMore,
-                    onLoadMore:  () => ref.read(scoreProvider.notifier).loadMoreHistory(),
+                    hasMore:    state.historyHasMore,
+                    onLoadMore: () => ref.read(scoreProvider.notifier).loadMoreHistory(),
                   ),
-
                   const SizedBox(height: 32),
                 ],
               ),
@@ -86,37 +76,38 @@ class _ScoreScreenState extends ConsumerState<ScoreScreen> {
   }
 }
 
-// ── Hero section ──────────────────────────────────────────────────────────────
+// ── Hero ──────────────────────────────────────────────────────────────────────
 
 class _HeroSection extends StatelessWidget {
   final DriverScoreModel score;
   const _HeroSection({required this.score});
 
   Color get _color {
-    if (score.score >= 80) return AppColors.success;
-    if (score.score >= 60) return AppColors.info;
-    if (score.score >= 40) return AppColors.warning;
+    if (score.score >= 110) return AppColors.success;
+    if (score.score >= 90)  return AppColors.primary;
+    if (score.score >= 70)  return const Color(0xFFF59E0B);
     return AppColors.danger;
   }
 
   @override
   Widget build(BuildContext context) {
     final progress = score.score / score.maxScore;
+    final tip = score.tips.isNotEmpty ? score.tips.first : null;
 
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(vertical: 28),
+      padding: const EdgeInsets.fromLTRB(24, 32, 24, 28),
       child: Column(children: [
 
         // Circular score
         SizedBox(
-          width: 140, height: 140,
+          width: 148, height: 148,
           child: Stack(alignment: Alignment.center, children: [
             SizedBox.expand(
               child: CircularProgressIndicator(
                 value: 1,
                 strokeWidth: 10,
-                color: const Color(0xFFF0F0F0),
+                color: const Color(0xFFEEEEEE),
               ),
             ),
             SizedBox.expand(
@@ -131,7 +122,7 @@ class _HeroSection extends StatelessWidget {
               Text(
                 '${score.score}',
                 style: TextStyle(
-                  fontSize: 40,
+                  fontSize: 44,
                   fontWeight: FontWeight.w900,
                   color: _color,
                   height: 1,
@@ -140,9 +131,10 @@ class _HeroSection extends StatelessWidget {
               Text(
                 '/ ${score.maxScore}',
                 style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w500),
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ]),
           ]),
@@ -150,72 +142,136 @@ class _HeroSection extends StatelessWidget {
 
         const SizedBox(height: 16),
 
-        Text(score.label,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: _color,
-            )),
-
-        const SizedBox(height: 6),
-
-        if (score.nextWave != null)
-          Text(
-            'Cần thêm ${score.nextWave!.pointsNeeded} điểm để lên cấp tiếp theo',
-            style: const TextStyle(
-                fontSize: 13, color: AppColors.textSecondary),
+        Text(
+          score.label,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: _color,
           ),
+        ),
+
+        if (tip != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            tip,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              height: 1.4,
+            ),
+          ),
+        ],
       ]),
     );
   }
 }
 
-// ── Streak section ────────────────────────────────────────────────────────────
+// ── Week section ──────────────────────────────────────────────────────────────
 
-class _StreakSection extends StatelessWidget {
+class _WeekSection extends StatelessWidget {
   final DriverScoreModel score;
-  const _StreakSection({required this.score});
+  const _WeekSection({required this.score});
 
   @override
   Widget build(BuildContext context) {
-    final s = score.streak;
+    final week       = score.week!;
+    final s          = score.score;
+    final settlement = week.settlement;
+
+    // Màu & trạng thái
+    final Color cardColor;
+    final Color textColor;
+    final IconData icon;
+    final String statusText;
+
+    if (settlement != null) {
+      if (settlement.type == 'bonus') {
+        cardColor  = AppColors.success;
+        textColor  = Colors.white;
+        icon       = Icons.emoji_events_rounded;
+        statusText = settlement.status == 'paid'
+            ? 'Đã nhận thưởng ${_fmt(settlement.amount)}đ'
+            : 'Chờ nhận thưởng ${_fmt(settlement.amount)}đ';
+      } else {
+        cardColor  = AppColors.danger;
+        textColor  = Colors.white;
+        icon       = Icons.warning_rounded;
+        statusText = settlement.status == 'paid'
+            ? 'Đã bị phạt ${_fmt(settlement.amount)}đ'
+            : 'Chờ xử lý phạt ${_fmt(settlement.amount)}đ';
+      }
+    } else if (s >= week.bonusAt) {
+      cardColor  = AppColors.success;
+      textColor  = Colors.white;
+      icon       = Icons.emoji_events_rounded;
+      statusText = 'Đạt thưởng ${_fmt(week.bonusAmount)}đ cuối tuần!';
+    } else if (s <= week.penaltyAt) {
+      cardColor  = AppColors.danger;
+      textColor  = Colors.white;
+      icon       = Icons.warning_rounded;
+      statusText = 'Nguy hiểm — cố gắng lên trên ${week.penaltyAt} điểm';
+    } else {
+      cardColor  = Colors.white;
+      textColor  = AppColors.textPrimary;
+      icon       = Icons.calendar_today_rounded;
+      statusText = 'Cần +${week.bonusAt - s} điểm để nhận thưởng ${_fmt(week.bonusAmount)}đ';
+    }
+
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-      child: Row(children: [
-        Container(
-          width: 42, height: 42,
-          decoration: BoxDecoration(
-            color: AppColors.warning.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(12),
+      padding: const EdgeInsets.all(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: cardColor.withValues(alpha: cardColor == Colors.white ? 1 : 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: cardColor == Colors.white
+                ? const Color(0xFFE8E8E8)
+                : cardColor.withValues(alpha: 0.25),
           ),
-          child: const Icon(Icons.local_fire_department_rounded,
-              color: AppColors.warning, size: 22),
         ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Streak ${s.consecutive}/${s.bonusAt}',
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+        child: Row(children: [
+          Icon(icon,
+              size: 22,
+              color: cardColor == Colors.white ? AppColors.textSecondary : cardColor),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Thưởng/Phạt cuối tuần',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: cardColor == Colors.white
+                        ? AppColors.textSecondary
+                        : cardColor.withValues(alpha: 0.8),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Hoàn thành thêm ${s.bonusAt - s.consecutive} đơn để nhận +${s.bonusPts} điểm',
-                style: const TextStyle(
-                    fontSize: 13, color: AppColors.textSecondary),
-              ),
-            ],
+                const SizedBox(height: 3),
+                Text(
+                  statusText,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: cardColor == Colors.white ? textColor : cardColor,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ]),
+        ]),
+      ),
     );
+  }
+
+  String _fmt(int n) {
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(0)}.000';
+    return '$n';
   }
 }
 
@@ -223,22 +279,6 @@ class _StreakSection extends StatelessWidget {
 
 class _RulesSection extends StatelessWidget {
   const _RulesSection();
-
-  static const _gain = [
-    ('+1', 'Hoàn thành 2 đơn liên tiếp (streak)', AppColors.success),
-    ('+1', 'Khách đánh giá 5★', AppColors.success),
-  ];
-  static const _neutral = [
-    ('0', 'Khách đánh giá 3★ hoặc 4★', AppColors.textSecondary),
-  ];
-  static const _lose = [
-    ('-1', 'Không phản hồi đơn (timeout)', AppColors.danger),
-    ('-3', 'Từ chối đơn', AppColors.danger),
-    ('-2', 'Khách đánh giá 2★', AppColors.danger),
-    ('-5', 'Khách đánh giá 1★', AppColors.danger),
-    ('-2', 'Không hoạt động 7 ngày', AppColors.danger),
-    ('-5', 'Không hoạt động 14 ngày', AppColors.danger),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -249,81 +289,101 @@ class _RulesSection extends StatelessWidget {
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
-            child: Text('Cách điểm thay đổi',
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textSecondary)),
-          ),
-          const Divider(height: 1),
-
-          _ruleGroup('Cộng điểm', _gain),
-          const Divider(height: 1, indent: 16, endIndent: 16),
-          _ruleGroup('Không đổi', _neutral),
-          const Divider(height: 1, indent: 16, endIndent: 16),
-          _ruleGroup('Trừ điểm', _lose),
-          const Divider(height: 1),
-
-          // Warning note
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.info_outline_rounded,
-                    size: 15, color: AppColors.warning),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'Điểm ≤ 20: bị tạm khóa nhận đơn 2 giờ',
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.warning,
-                        fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ],
+            child: Text(
+              'Cách tính điểm',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textSecondary,
+              ),
             ),
           ),
+          const Divider(height: 1),
+
+          _group('Cộng điểm', [
+            ('+1', 'Hoàn thành đơn hàng', AppColors.success),
+            ('+1', 'Khách đánh giá 5★', AppColors.success),
+          ]),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+
+          _group('Trừ điểm', [
+            ('-1', 'Khách đánh giá 3★', AppColors.danger),
+            ('-2', 'Từ chối đơn hàng', AppColors.danger),
+            ('-3', 'Khách đánh giá 2★', AppColors.danger),
+            ('-5', 'Khách đánh giá 1★', AppColors.danger),
+          ]),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+
+          _group('Cuối tuần', [
+            ('🎁', 'Điểm ≥ 150 → Thưởng 50.000đ', const Color(0xFF10B981)),
+            ('⚠️', 'Điểm ≤ 70  → Phạt 50.000đ',  const Color(0xFFEF4444)),
+            ('🔄', 'Reset về 100 đầu tuần mới',    AppColors.textSecondary),
+          ], emoji: true),
+
+          const Divider(height: 1),
+          const SizedBox(height: 4),
         ],
       ),
     );
   }
 
-  Widget _ruleGroup(String title, List<(String, String, Color)> items) {
+  Widget _group(
+    String title,
+    List<(String, String, Color)> items, {
+    bool emoji = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary)),
-          const SizedBox(height: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 10),
           ...items.map((item) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.only(bottom: 10),
                 child: Row(children: [
-                  Container(
-                    width: 36,
-                    padding: const EdgeInsets.symmetric(vertical: 3),
-                    decoration: BoxDecoration(
-                      color: item.$3.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(item.$1,
+                  if (emoji)
+                    SizedBox(
+                      width: 36,
+                      child: Text(item.$1,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 16)),
+                    )
+                  else
+                    Container(
+                      width: 36,
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      decoration: BoxDecoration(
+                        color: item.$3.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        item.$1,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: item.$3)),
-                  ),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: item.$3,
+                        ),
+                      ),
+                    ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(item.$2,
-                        style: const TextStyle(
-                            fontSize: 13, color: AppColors.textPrimary)),
+                    child: Text(
+                      item.$2,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: emoji ? item.$3 : AppColors.textPrimary,
+                        fontWeight: emoji ? FontWeight.w600 : FontWeight.w400,
+                      ),
+                    ),
                   ),
                 ]),
               )),
@@ -359,11 +419,14 @@ class _HistorySection extends StatelessWidget {
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
-            child: Text('Lịch sử điểm',
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textSecondary)),
+            child: Text(
+              'Lịch sử điểm',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textSecondary,
+              ),
+            ),
           ),
           const Divider(height: 1),
 
@@ -383,9 +446,11 @@ class _HistorySection extends StatelessWidget {
                   Icon(Icons.history_rounded,
                       size: 36, color: AppColors.textSecondary),
                   SizedBox(height: 8),
-                  Text('Chưa có lịch sử điểm',
-                      style: TextStyle(
-                          color: AppColors.textSecondary, fontSize: 13)),
+                  Text(
+                    'Chưa có lịch sử điểm',
+                    style: TextStyle(
+                        color: AppColors.textSecondary, fontSize: 13),
+                  ),
                 ]),
               ),
             )
@@ -402,7 +467,6 @@ class _HistorySection extends StatelessWidget {
               itemBuilder: (_, i) => _HistoryItem(entry: history[i]),
             ),
 
-            // Load more
             if (hasMore || loadingMore) ...[
               const Divider(height: 1),
               Padding(
@@ -413,8 +477,7 @@ class _HistorySection extends StatelessWidget {
                         child: SizedBox(
                           width: 22, height: 22,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppColors.primary),
+                              strokeWidth: 2, color: AppColors.primary),
                         ),
                       )
                     : OutlinedButton(
@@ -423,13 +486,17 @@ class _HistorySection extends StatelessWidget {
                           minimumSize: const Size(double.infinity, 44),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8)),
-                          side: const BorderSide(color: AppColors.divider),
+                          side: const BorderSide(
+                              color: AppColors.divider),
                         ),
-                        child: const Text('Xem thêm',
-                            style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textSecondary)),
+                        child: const Text(
+                          'Xem thêm',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       ),
               ),
             ],
@@ -446,10 +513,10 @@ class _HistoryItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color   = entry.isPositive ? AppColors.success : AppColors.danger;
-    final sign    = entry.isPositive ? '+' : '';
-    final now     = DateTime.now();
-    final diff    = now.difference(entry.createdAt);
+    final color  = entry.isPositive ? AppColors.success : AppColors.danger;
+    final sign   = entry.isPositive ? '+' : '';
+    final now    = DateTime.now();
+    final diff   = now.difference(entry.createdAt);
     final timeStr = diff.inMinutes < 60
         ? '${diff.inMinutes} phút trước'
         : diff.inHours < 24
@@ -477,15 +544,21 @@ class _HistoryItem extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(entry.reasonLabel,
-                  style: const TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary)),
+              Text(
+                entry.label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
               const SizedBox(height: 2),
               Text(
                 '${entry.scoreBefore} → ${entry.scoreAfter} điểm  ·  $timeStr',
                 style: const TextStyle(
-                    fontSize: 11, color: AppColors.textSecondary),
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ),
@@ -493,9 +566,10 @@ class _HistoryItem extends StatelessWidget {
         Text(
           '$sign${entry.delta}',
           style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: color),
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
         ),
       ]),
     );

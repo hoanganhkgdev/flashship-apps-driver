@@ -1,56 +1,79 @@
-class NextWaveInfo {
-  final int pointsNeeded;
-  const NextWaveInfo({required this.pointsNeeded});
-  factory NextWaveInfo.fromJson(Map<String, dynamic> json) =>
-      NextWaveInfo(pointsNeeded: (json['points_needed'] as num?)?.toInt() ?? 0);
-}
+class WeekSettlement {
+  final String type;   // 'bonus' | 'penalty'
+  final int amount;
+  final String status; // 'pending' | 'paid'
 
-class DriverScoreModel {
-  final int score;
-  final int maxScore;
-  final String label;
-  final StreakInfo streak;
-  final List<String> tips;
-  final NextWaveInfo? nextWave;
-
-  const DriverScoreModel({
-    required this.score,
-    required this.maxScore,
-    required this.label,
-    required this.streak,
-    this.tips = const [],
-    this.nextWave,
+  const WeekSettlement({
+    required this.type,
+    required this.amount,
+    required this.status,
   });
 
-  factory DriverScoreModel.fromJson(Map<String, dynamic> json) {
-    final nextWaveJson = json['next_wave'] as Map<String, dynamic>?;
-    return DriverScoreModel(
-      score:    (json['score'] as num?)?.toInt() ?? 80,
-      maxScore: (json['max_score'] as num?)?.toInt() ?? 100,
-      label:    json['label'] as String? ?? '',
-      streak:   StreakInfo.fromJson(json['streak'] as Map<String, dynamic>? ?? {}),
-      tips:     (json['tips'] as List?)?.cast<String>() ?? [],
-      nextWave: nextWaveJson != null ? NextWaveInfo.fromJson(nextWaveJson) : null,
+  factory WeekSettlement.fromJson(Map<String, dynamic> json) => WeekSettlement(
+        type:   json['type']   as String? ?? '',
+        amount: (json['amount'] as num?)?.toInt() ?? 0,
+        status: json['status'] as String? ?? '',
+      );
+}
+
+class WeekInfo {
+  final int bonusAt;
+  final int penaltyAt;
+  final int bonusAmount;
+  final int penaltyAmount;
+  final String weekStart;
+  final WeekSettlement? settlement;
+
+  const WeekInfo({
+    required this.bonusAt,
+    required this.penaltyAt,
+    required this.bonusAmount,
+    required this.penaltyAmount,
+    required this.weekStart,
+    this.settlement,
+  });
+
+  factory WeekInfo.fromJson(Map<String, dynamic> json) {
+    final s = json['settlement'] as Map<String, dynamic>?;
+    return WeekInfo(
+      bonusAt:      (json['bonus_at']       as num?)?.toInt() ?? 150,
+      penaltyAt:    (json['penalty_at']     as num?)?.toInt() ?? 70,
+      bonusAmount:  (json['bonus_amount']   as num?)?.toInt() ?? 50000,
+      penaltyAmount:(json['penalty_amount'] as num?)?.toInt() ?? 50000,
+      weekStart:    json['week_start']      as String? ?? '',
+      settlement:   s != null ? WeekSettlement.fromJson(s) : null,
     );
   }
 }
 
-class StreakInfo {
-  final int consecutive;
-  final int bonusAt;
-  final int bonusPts;
+class DriverScoreModel {
+  final int score;
+  final int minScore;
+  final int maxScore;
+  final String label;
+  final List<String> tips;
+  final WeekInfo? week;
 
-  const StreakInfo({
-    required this.consecutive,
-    required this.bonusAt,
-    required this.bonusPts,
+  const DriverScoreModel({
+    required this.score,
+    required this.minScore,
+    required this.maxScore,
+    required this.label,
+    this.tips = const [],
+    this.week,
   });
 
-  factory StreakInfo.fromJson(Map<String, dynamic> json) => StreakInfo(
-        consecutive: (json['consecutive'] as num?)?.toInt() ?? 0,
-        bonusAt:     (json['bonus_at'] as num?)?.toInt() ?? 2,
-        bonusPts:    (json['bonus_pts'] as num?)?.toInt() ?? 5,
-      );
+  factory DriverScoreModel.fromJson(Map<String, dynamic> json) {
+    final weekJson = json['week'] as Map<String, dynamic>?;
+    return DriverScoreModel(
+      score:    (json['score']     as num?)?.toInt() ?? 100,
+      minScore: (json['min_score'] as num?)?.toInt() ?? 0,
+      maxScore: (json['max_score'] as num?)?.toInt() ?? 150,
+      label:    json['label']      as String? ?? '',
+      tips:     (json['tips']      as List?)?.cast<String>() ?? [],
+      week:     weekJson != null ? WeekInfo.fromJson(weekJson) : null,
+    );
+  }
 }
 
 class ScoreLogEntry {
@@ -58,6 +81,7 @@ class ScoreLogEntry {
   final int scoreBefore;
   final int scoreAfter;
   final String reason;
+  final String label;
   final DateTime createdAt;
 
   const ScoreLogEntry({
@@ -65,28 +89,18 @@ class ScoreLogEntry {
     required this.scoreBefore,
     required this.scoreAfter,
     required this.reason,
+    required this.label,
     required this.createdAt,
   });
 
   factory ScoreLogEntry.fromJson(Map<String, dynamic> json) => ScoreLogEntry(
-        delta:       (json['delta'] as num?)?.toInt() ?? 0,
+        delta:       (json['delta']        as num?)?.toInt() ?? 0,
         scoreBefore: (json['score_before'] as num?)?.toInt() ?? 0,
-        scoreAfter:  (json['score_after'] as num?)?.toInt() ?? 0,
-        reason:      json['reason'] as String? ?? '',
+        scoreAfter:  (json['score_after']  as num?)?.toInt() ?? 0,
+        reason:      json['reason']        as String? ?? '',
+        label:       json['label']         as String? ?? json['reason'] as String? ?? '',
         createdAt:   DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
       );
 
   bool get isPositive => delta > 0;
-
-  String get reasonLabel => switch (reason) {
-        'decline'      => 'Từ chối đơn',
-        'timeout'      => 'Không phản hồi',
-        'streak_bonus' => 'Hoàn thành liên tiếp',
-        'reset'        => 'Reset điểm',
-        String r when r.startsWith('rated_') => () {
-            final stars = r.replaceAll(RegExp(r'[^0-9]'), '');
-            return 'Khách đánh giá $stars★';
-          }(),
-        _ => reason,
-      };
 }

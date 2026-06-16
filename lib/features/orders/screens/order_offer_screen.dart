@@ -580,17 +580,19 @@ class _DeliveryBody extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       _RouteBlock(
-        pickupLabel: 'Lấy hàng tại',
-        pickupPlaceName: order.pickupPlaceName,
-        pickupAddress: order.pickupAddress,
-        pickupName: order.pickupName,
-        pickupPhone: order.pickupPhone?.isNotEmpty == true
-            ? order.pickupPhone
-            : null,
+        pickupLabel:    'Lấy hàng tại',
+        pickupPlaceName: order.isShopOrder
+            ? (order.storeName?.isNotEmpty == true ? order.storeName : order.pickupPlaceName)
+            : order.pickupPlaceName,
+        pickupAddress:  order.pickupAddress,
+        pickupPhone:    order.pickupPhone?.isNotEmpty == true ? order.pickupPhone : null,
         showNoPickupPhone: true,
-        deliveryLabel: 'Giao đến',
+        deliveryLabel:    'Giao đến',
+        deliveryPlaceName: order.deliveryPlaceName?.isNotEmpty == true
+            ? order.deliveryPlaceName
+            : order.customerName,
         deliveryAddress: order.deliveryAddress,
-        deliveryPhone: order.deliveryPhone,
+        deliveryPhone:   order.deliveryPhone,
       ),
       if (order.orderNote?.isNotEmpty == true) ...[
         const SizedBox(height: 10),
@@ -643,14 +645,18 @@ class _ShoppingBody extends StatelessWidget {
           ]),
         ),
       _RouteBlock(
-        pickupLabel: 'Mua tại',
-        pickupPlaceName: order.pickupPlaceName,
-        pickupAddress: order.pickupAddress,
-        pickupName: order.pickupName,
-        pickupPhone: order.pickupPhone?.isNotEmpty == true ? order.pickupPhone : null,
-        deliveryLabel: 'Giao đến',
+        pickupLabel:    'Mua tại',
+        pickupPlaceName: order.isShopOrder
+            ? (order.storeName?.isNotEmpty == true ? order.storeName : order.pickupPlaceName)
+            : order.pickupPlaceName,
+        pickupAddress:  order.pickupAddress,
+        pickupPhone:    order.pickupPhone?.isNotEmpty == true ? order.pickupPhone : null,
+        deliveryLabel:    'Giao đến',
+        deliveryPlaceName: order.deliveryPlaceName?.isNotEmpty == true
+            ? order.deliveryPlaceName
+            : order.customerName,
         deliveryAddress: order.deliveryAddress,
-        deliveryPhone: order.deliveryPhone,
+        deliveryPhone:   order.deliveryPhone,
       ),
       if (order.orderNote?.isNotEmpty == true) ...[
         const SizedBox(height: 10),
@@ -770,11 +776,11 @@ class _RouteBlock extends StatelessWidget {
   final String pickupLabel;
   final String pickupAddress;
   final String? pickupPlaceName;
-  final String? pickupName;
   final String? pickupPhone;
   final bool showNoPickupPhone;
   final String deliveryLabel;
   final String deliveryAddress;
+  final String? deliveryPlaceName;
   final String? deliveryPhone;
   final String? deliveryPhoneLabel;
 
@@ -782,11 +788,11 @@ class _RouteBlock extends StatelessWidget {
     required this.pickupLabel,
     required this.pickupAddress,
     this.pickupPlaceName,
-    this.pickupName,
     this.pickupPhone,
     this.showNoPickupPhone = false,
     required this.deliveryLabel,
     required this.deliveryAddress,
+    this.deliveryPlaceName,
     this.deliveryPhone,
     this.deliveryPhoneLabel,
   });
@@ -817,9 +823,7 @@ class _RouteBlock extends StatelessWidget {
           Text(pickupLabel, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
           const SizedBox(height: 2),
           if (pickupPlaceName != null && pickupPlaceName!.isNotEmpty)
-            Text(pickupPlaceName!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary))
-          else if (pickupName != null && pickupName!.isNotEmpty)
-            Text(pickupName!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            Text(pickupPlaceName!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
           Text(pickupAddress, maxLines: 2, overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
           if (pickupPhone != null && pickupPhone!.isNotEmpty)
@@ -844,6 +848,8 @@ class _RouteBlock extends StatelessWidget {
           // Delivery
           Text(deliveryLabel, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
           const SizedBox(height: 2),
+          if (deliveryPlaceName != null && deliveryPlaceName!.isNotEmpty)
+            Text(deliveryPlaceName!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
           Text(deliveryAddress, maxLines: 2, overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
           if (deliveryPhone != null && deliveryPhone!.isNotEmpty)

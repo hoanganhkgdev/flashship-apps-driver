@@ -193,37 +193,27 @@ class _SplashScreenState extends ConsumerState<_SplashScreen>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Logo
+                      // Logo splash
                       Container(
-                        width: 96, height: 96,
+                        width: 280,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(28),
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
                         ),
-                        padding: const EdgeInsets.all(16),
                         child: Image.asset(
-                          'assets/images/logo.png',
+                          'assets/images/logo-splash.png',
                           fit: BoxFit.contain,
                         ),
                       ),
                       const SizedBox(height: 20),
-                      const Text(
-                        'FlashShip',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 34,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -1,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
                       Text(
                         'Ứng dụng tài xế',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.80),
+                          color: Colors.white.withValues(alpha: 0.85),
                           fontSize: 15,
                           fontWeight: FontWeight.w500,
-                          letterSpacing: 0.2,
+                          letterSpacing: 0.3,
                         ),
                       ),
                     ],

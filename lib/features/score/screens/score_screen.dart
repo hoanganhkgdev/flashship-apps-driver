@@ -257,6 +257,12 @@ class _Header extends StatelessWidget {
               ),
             ),
 
+          // ── Streak badge ──────────────────────────────────────────────
+          if (s?.streak != null && s!.streak!.count > 0) ...[
+            const SizedBox(height: 10),
+            _StreakBadge(streak: s.streak!),
+          ],
+
           // ── Tip text ──────────────────────────────────────────────────
           if (tip != null) ...[
             const SizedBox(height: 10),
@@ -286,6 +292,57 @@ class _Header extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Streak badge ──────────────────────────────────────────────────────────────
+
+class _StreakBadge extends StatelessWidget {
+  final StreakInfo streak;
+  const _StreakBadge({required this.streak});
+
+  @override
+  Widget build(BuildContext context) {
+    final nm = streak.nextMilestone;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('🔥', style: TextStyle(fontSize: 14)),
+          const SizedBox(width: 6),
+          Text(
+            '${streak.count} đơn liên tiếp',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+          if (nm != null) ...[
+            Container(
+              width: 1,
+              height: 14,
+              margin: const EdgeInsets.symmetric(horizontal: 8),
+              color: Colors.white.withValues(alpha: 0.35),
+            ),
+            Text(
+              'Còn ${nm.remaining} đơn → +${nm.bonus}đ',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white.withValues(alpha: 0.85),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -403,31 +460,43 @@ class _RulesCard extends StatelessWidget {
           _sectionTitle(Icons.info_outline_rounded, 'CÁCH TÍNH ĐIỂM'),
           const SizedBox(height: 14),
 
-          _ruleRow('+1', 'Hoàn thành đơn hàng', AppColors.success),
-          const SizedBox(height: 8),
           _ruleRow('+1', 'Khách đánh giá 5★', AppColors.success),
+          const SizedBox(height: 8),
+          _ruleRow('+1', '3 đơn liên tiếp (streak)', AppColors.success),
+          const SizedBox(height: 8),
+          _ruleRow('+2', '6 đơn liên tiếp (streak)', AppColors.success),
+          const SizedBox(height: 8),
+          _ruleRow('+4', '10 đơn liên tiếp (streak)', AppColors.success),
           const SizedBox(height: 16),
 
           Divider(height: 1, color: AppColors.divider),
           const SizedBox(height: 16),
 
-          _ruleRow('-1', 'Để đơn trôi qua (timeout)', AppColors.danger),
-          const SizedBox(height: 8),
           _ruleRow('-1', 'Khách đánh giá 3★', AppColors.danger),
           const SizedBox(height: 8),
           _ruleRow('-2', 'Từ chối đơn hàng', AppColors.danger),
           const SizedBox(height: 8),
+          _ruleRow('-2', 'Để đơn trôi qua (timeout)', AppColors.danger),
+          const SizedBox(height: 8),
           _ruleRow('-3', 'Khách đánh giá 2★', AppColors.danger),
           const SizedBox(height: 8),
           _ruleRow('-5', 'Khách đánh giá 1★', AppColors.danger),
+          const SizedBox(height: 8),
+          _ruleRow('-5', 'Không giao đơn 1 ngày', AppColors.danger),
+          const SizedBox(height: 8),
+          _ruleRow('-5', 'Online dưới 8 giờ/ngày', AppColors.danger),
+          const SizedBox(height: 8),
+          _ruleRow('-10', 'Không giao đơn 2+ ngày', AppColors.danger),
           const SizedBox(height: 16),
 
           Divider(height: 1, color: AppColors.divider),
           const SizedBox(height: 14),
 
-          _weekRule(Icons.emoji_events_rounded, 'Điểm ≥ 150 cuối tuần', 'Thưởng 50.000đ', AppColors.success),
+          _weekRule(Icons.add_circle_outline_rounded, 'Giới hạn cộng điểm', 'Tối đa +10 điểm/ngày', AppColors.primary),
           const SizedBox(height: 10),
-          _weekRule(Icons.warning_amber_rounded, 'Điểm ≤ 70 cuối tuần', 'Phạt 50.000đ', AppColors.danger),
+          _weekRule(Icons.emoji_events_rounded, 'Điểm ≥ 150 cuối tuần', 'Thưởng 50.000đ vào ví', AppColors.success),
+          const SizedBox(height: 10),
+          _weekRule(Icons.warning_amber_rounded, 'Điểm ≤ 70 cuối tuần', 'Phạt 50.000đ từ ví', AppColors.danger),
           const SizedBox(height: 10),
           _weekRule(Icons.refresh_rounded, 'Đầu tuần mới', 'Reset về 100 điểm', AppColors.textSecondary),
         ],

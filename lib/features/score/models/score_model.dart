@@ -46,12 +46,46 @@ class WeekInfo {
   }
 }
 
+class StreakNextMilestone {
+  final int at;
+  final int bonus;
+  final int remaining;
+
+  const StreakNextMilestone({
+    required this.at,
+    required this.bonus,
+    required this.remaining,
+  });
+
+  factory StreakNextMilestone.fromJson(Map<String, dynamic> json) => StreakNextMilestone(
+        at:        (json['at']        as num?)?.toInt() ?? 0,
+        bonus:     (json['bonus']     as num?)?.toInt() ?? 0,
+        remaining: (json['remaining'] as num?)?.toInt() ?? 0,
+      );
+}
+
+class StreakInfo {
+  final int count;
+  final StreakNextMilestone? nextMilestone;
+
+  const StreakInfo({required this.count, this.nextMilestone});
+
+  factory StreakInfo.fromJson(Map<String, dynamic> json) {
+    final nm = json['next_milestone'] as Map<String, dynamic>?;
+    return StreakInfo(
+      count:         (json['count'] as num?)?.toInt() ?? 0,
+      nextMilestone: nm != null ? StreakNextMilestone.fromJson(nm) : null,
+    );
+  }
+}
+
 class DriverScoreModel {
   final int score;
   final int minScore;
   final int maxScore;
   final String label;
   final List<String> tips;
+  final StreakInfo? streak;
   final WeekInfo? week;
 
   const DriverScoreModel({
@@ -59,19 +93,22 @@ class DriverScoreModel {
     required this.minScore,
     required this.maxScore,
     required this.label,
-    this.tips = const [],
+    this.tips   = const [],
+    this.streak,
     this.week,
   });
 
   factory DriverScoreModel.fromJson(Map<String, dynamic> json) {
-    final weekJson = json['week'] as Map<String, dynamic>?;
+    final weekJson   = json['week']   as Map<String, dynamic>?;
+    final streakJson = json['streak'] as Map<String, dynamic>?;
     return DriverScoreModel(
       score:    (json['score']     as num?)?.toInt() ?? 100,
       minScore: (json['min_score'] as num?)?.toInt() ?? 0,
       maxScore: (json['max_score'] as num?)?.toInt() ?? 150,
       label:    json['label']      as String? ?? '',
       tips:     (json['tips']      as List?)?.cast<String>() ?? [],
-      week:     weekJson != null ? WeekInfo.fromJson(weekJson) : null,
+      streak:   streakJson != null ? StreakInfo.fromJson(streakJson) : null,
+      week:     weekJson   != null ? WeekInfo.fromJson(weekJson)     : null,
     );
   }
 }

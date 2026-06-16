@@ -202,15 +202,6 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
                   _NoteCard(note: order.orderNote!),
                 ],
 
-                // Cargo type
-                if (order.cargoType != 'standard') ...[
-                  const SizedBox(height: 12),
-                  _CargoCard(
-                    cargoType:   order.cargoType,
-                    cargoNote:   order.cargoNote,
-                    cargoWeight: order.cargoWeight,
-                  ),
-                ],
 
                 // Batch stops
                 if (order.isBatch && order.stops.isNotEmpty) ...[
@@ -324,13 +315,22 @@ class _Header extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(children: [
                   Text(
-                    order.isShopOrder
-                        ? switch (order.shopServiceType) {
-                            'shop_batch'  => 'Đơn gộp',
-                            'shop_pickup' => 'Lấy hộ',
-                            _             => 'Giao đơn',
-                          }
-                        : Fmt.serviceLabel(order.serviceType),
+                    () {
+                      final svc = order.isShopOrder
+                          ? switch (order.shopServiceType) {
+                              'shop_batch'  => 'Đơn gộp',
+                              'shop_pickup' => 'Lấy hộ',
+                              _             => 'Giao đơn',
+                            }
+                          : Fmt.serviceLabel(order.serviceType);
+                      final cargo = switch (order.cargoType) {
+                        'food'    => 'Đồ ăn',
+                        'flowers' => 'Hoa / Trái cây',
+                        'parcel'  => 'Bưu kiện',
+                        _         => null,
+                      };
+                      return cargo != null ? '$svc  •  $cargo' : svc;
+                    }(),
                     style: TextStyle(
                       fontSize: 12, fontWeight: FontWeight.w500,
                       color: Colors.white.withValues(alpha: 0.85),
@@ -825,68 +825,6 @@ class _NoteCard extends StatelessWidget {
       ])),
     ]),
   );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Cargo card
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _CargoCard extends StatelessWidget {
-  final String cargoType;
-  final String? cargoNote;
-  final double? cargoWeight;
-  const _CargoCard({required this.cargoType, this.cargoNote, this.cargoWeight});
-
-  static const _info = {
-    'food':    (Icons.lunch_dining_rounded,  'Đồ ăn',                       Color(0xFFF59E0B)),
-    'flowers': (Icons.local_florist_rounded, 'Giỏ hoa / Trái cây / Bó hoa', Color(0xFFEC4899)),
-    'parcel':  (Icons.inventory_2_rounded,   'Bưu kiện / Thùng / Kệ hoa',   Color(0xFF6B7280)),
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    final entry = _info[cargoType];
-    if (entry == null) return const SizedBox.shrink();
-    final (icon, label, color) = entry;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
-        boxShadow: AppColors.cardShadow,
-      ),
-      child: Row(children: [
-        Container(
-          width: 38, height: 38,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(11),
-          ),
-          child: Icon(icon, size: 20, color: color),
-        ),
-        const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label,
-              style: TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w700, color: color)),
-          if (cargoWeight != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              'Khoảng ${cargoWeight!.toStringAsFixed(cargoWeight! % 1 == 0 ? 0 : 1)} kg',
-              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-            ),
-          ],
-          if (cargoNote != null && cargoNote!.isNotEmpty) ...[
-            const SizedBox(height: 2),
-            Text(cargoNote!,
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-          ],
-        ])),
-      ]),
-    );
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

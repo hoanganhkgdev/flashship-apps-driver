@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/order_model.dart';
 import '../providers/order_provider.dart';
+import '../../wallet/providers/wallet_provider.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
@@ -81,9 +82,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
 
   @override
   Widget build(BuildContext context) {
-    final historyState = ref.watch(orderHistoryProvider);
-    final activeState  = ref.watch(activeOrderProvider);
-    final allOrders    = historyState.orders;
+    final historyState  = ref.watch(orderHistoryProvider);
+    final activeState   = ref.watch(activeOrderProvider);
+    final walletBalance = ref.watch(walletProvider).balance;
+    final allOrders     = historyState.orders;
     final activeOrders = activeState.orders;
 
     final orders = _filterStatus == 'completed'
@@ -126,6 +128,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
                 child: _Header(
                   todayCount:    todayOrders.length,
                   todayEarnings: todayEarnings,
+                  walletBalance: walletBalance,
                   tabController: _tabCtrl,
                   filters:       _filters,
                 ),
@@ -234,12 +237,14 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen>
 class _Header extends StatelessWidget {
   final int todayCount;
   final int todayEarnings;
+  final int walletBalance;
   final TabController tabController;
   final List<(String, String)> filters;
 
   const _Header({
     required this.todayCount,
     required this.todayEarnings,
+    required this.walletBalance,
     required this.tabController,
     required this.filters,
   });
@@ -278,16 +283,24 @@ class _Header extends StatelessWidget {
 
                 const SizedBox(height: 16),
 
-                // Stats chips
+                // Stat cards
                 Row(children: [
-                  _StatChip(
-                    icon: Icons.inventory_2_rounded,
-                    label: '$todayCount đơn hôm nay',
+                  _StatCard(
+                    icon:  Icons.inventory_2_rounded,
+                    label: 'Đơn hôm nay',
+                    value: '$todayCount',
                   ),
                   const SizedBox(width: 10),
-                  _StatChip(
-                    icon: Icons.payments_outlined,
-                    label: Fmt.currency(todayEarnings),
+                  _StatCard(
+                    icon:  Icons.payments_outlined,
+                    label: 'Thu nhập',
+                    value: Fmt.currency(todayEarnings),
+                  ),
+                  const SizedBox(width: 10),
+                  _StatCard(
+                    icon:  Icons.account_balance_wallet_rounded,
+                    label: 'Trong ví',
+                    value: Fmt.currency(walletBalance),
                   ),
                 ]),
 
@@ -341,32 +354,42 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _StatChip extends StatelessWidget {
+class _StatCard extends StatelessWidget {
   final IconData icon;
   final String label;
-  const _StatChip({required this.icon, required this.label});
+  final String value;
+  const _StatCard({required this.icon, required this.label, required this.value});
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.18),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 13, color: Colors.white.withValues(alpha: 0.9)),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
+  Widget build(BuildContext context) => Expanded(
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(icon, size: 14, color: Colors.white.withValues(alpha: 0.85)),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white,
           ),
-        ]),
-      );
+          maxLines: 1, overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10, fontWeight: FontWeight.w500,
+            color: Colors.white.withValues(alpha: 0.75),
+          ),
+        ),
+      ]),
+    ),
+  );
 }
 
 // ── Active order card ─────────────────────────────────────────────────────────

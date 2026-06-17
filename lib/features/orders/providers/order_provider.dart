@@ -165,6 +165,8 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
           customerName: fallback.customerName, customerPhone: fallback.customerPhone,
           pickupLat: fallback.pickupLat, pickupLng: fallback.pickupLng,
           deliveryLat: fallback.deliveryLat, deliveryLng: fallback.deliveryLng,
+          storeName: fallback.storeName,
+          pickupPlaceName: fallback.pickupPlaceName,
         );
       }
 

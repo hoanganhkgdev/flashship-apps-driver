@@ -35,13 +35,19 @@ class AppVersionNotifier extends StateNotifier<AppVersionState> {
       );
       final data = res.data as Map<String, dynamic>;
 
-      final minVersion    = data['min_version']    as String? ?? '1.0.0';
-      final latestVersion = data['latest_version'] as String? ?? '1.0.0';
-      final forceUpdate   = data['force_update']   as bool?   ?? false;
-      final forceMessage  = data['force_message']  as String? ?? '';
-      final androidUrl    = data['android_url']    as String?;
-      final iosUrl        = data['ios_url']        as String?;
-      final storeUrl      = Platform.isIOS ? iosUrl : androidUrl;
+      final forceUpdate  = data['force_update']  as bool?   ?? false;
+      final forceMessage = data['force_message'] as String? ?? '';
+      final androidUrl   = data['android_url']   as String?;
+      final iosUrl       = data['ios_url']        as String?;
+      final storeUrl     = Platform.isIOS ? iosUrl : androidUrl;
+
+      // Dùng version theo OS nếu có, fallback về version chung
+      final minVersion = Platform.isIOS
+          ? (data['ios_min_version']    as String? ?? data['min_version']    as String? ?? '1.0.0')
+          : (data['android_min_version'] as String? ?? data['min_version']   as String? ?? '1.0.0');
+      final latestVersion = Platform.isIOS
+          ? (data['ios_latest_version']    as String? ?? data['latest_version']    as String? ?? '1.0.0')
+          : (data['android_latest_version'] as String? ?? data['latest_version']   as String? ?? '1.0.0');
 
       final needsForce = forceUpdate && _isOlderThan(current, minVersion);
       final needsSoft  = !needsForce && _isOlderThan(current, latestVersion);

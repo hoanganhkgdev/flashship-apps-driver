@@ -55,7 +55,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Future<void> _startSessionGuard() async {
     final uid = ref.read(authProvider).user?.id;
-    debugPrint('[HomeScreen] _startSessionGuard uid=$uid');
     if (uid == null) return;
 
     SessionGuardService.instance.onForceLogout = () async {
@@ -103,6 +102,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    SessionGuardService.instance.onForceLogout   = null;
+    SessionGuardService.instance.onAccountLocked = null;
     super.dispose();
   }
 
@@ -349,6 +350,33 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
     return false;
   }
 
+  Future<void> _forceOffline() async {
+    final isOnline = ref.read(authProvider).user?.isOnline ?? false;
+    if (!isOnline || _togglingOnline) return;
+    if (mounted) setState(() => _togglingOnline = true);
+    try {
+      final res             = await ref.read(apiClientProvider).post('/driver/toggle-status');
+      final raw             = res.data['is_online'];
+      final nowOnline       = raw == true || raw == 1;
+      final onlineSince     = res.data['online_since'] != null
+          ? DateTime.tryParse(res.data['online_since'] as String) : null;
+      final dailyOnlineSecs = (res.data['daily_online_seconds'] as num?)?.toInt();
+      await ref.read(authProvider.notifier).updateOnlineStatus(
+        nowOnline,
+        onlineSince: onlineSince,
+        dailyOnlineSeconds: dailyOnlineSecs,
+      );
+      _stopOnlineTimer();
+      LocationService.instance.stop();
+      OfferListenerService.instance.stop();
+      final uid = ref.read(authProvider).user?.id;
+      if (uid != null) {
+        FirebaseDatabase.instance.ref('flashship_main/locations/driver_$uid').remove().ignore();
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _togglingOnline = false);
+  }
+
   Future<void> _toggleOnline() async {
     final currentlyOnline = ref.read(authProvider).user?.isOnline ?? false;
     if (!currentlyOnline) {
@@ -388,10 +416,25 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
       }
     } on DioException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.response?.data?['message'] as String? ?? 'Không thể đổi trạng thái'),
-          backgroundColor: AppColors.danger,
-        ));
+        final code = e.response?.data?['code'] as String?;
+        if (code == 'debt_overdue') {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: const Text('Bạn có công nợ quá hạn. Vui lòng thanh toán trước khi hoạt động.'),
+            backgroundColor: AppColors.danger,
+            action: SnackBarAction(
+              label: 'Xem công nợ',
+              textColor: Colors.white,
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const DebtScreen()),
+              ),
+            ),
+          ));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(e.response?.data?['message'] as String? ?? 'Không thể đổi trạng thái'),
+            backgroundColor: AppColors.danger,
+          ));
+        }
       }
     } catch (_) {}
     if (mounted) setState(() => _togglingOnline = false);
@@ -428,6 +471,14 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
     final scoreState = ref.watch(scoreProvider);
     final isOnline   = user?.isOnline ?? false;
 
+    ref.listen<WalletState>(walletProvider, (prev, next) {
+      final hadOverdue = prev?.debts.any((d) => d.isOverdue) ?? false;
+      final hasOverdue = next.debts.any((d) => d.isOverdue);
+      if (!hadOverdue && hasOverdue) _forceOffline();
+    });
+
+    final hasOverdueDebt = wallet.debts.any((d) => d.isOverdue);
+
     final todayOrders = ((_stats['today_orders'] as num?) ?? 0).toInt();
     final rating      = (_stats['rating']        as num?)?.toDouble() ?? 0.0;
     final ratingCount = ((_stats['rating_count'] as num?) ?? 0).toInt();
@@ -452,9 +503,20 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
                 user:          user,
                 isOnline:      isOnline,
                 toggling:      _togglingOnline,
+                locked:        hasOverdueDebt,
                 onlineTimeStr: _onlineTimeStr,
                 onToggle:      _toggleOnline,
               ),
+
+              // ── Overdue debt banner ───────────────────────────────────
+              if (wallet.debts.any((d) => d.isOverdue)) ...[
+                _OverdueBanner(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const DebtScreen()),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
 
               // ── Content cards ────────────────────────────────────────
               Padding(
@@ -517,6 +579,7 @@ class _GradientHeader extends StatelessWidget {
   final dynamic user;
   final bool isOnline;
   final bool toggling;
+  final bool locked;
   final String onlineTimeStr;
   final VoidCallback onToggle;
 
@@ -524,6 +587,7 @@ class _GradientHeader extends StatelessWidget {
     required this.user,
     required this.isOnline,
     required this.toggling,
+    required this.locked,
     required this.onlineTimeStr,
     required this.onToggle,
   });
@@ -633,7 +697,7 @@ class _GradientHeader extends StatelessWidget {
 
                 // Toggle card (white, floating on gradient)
                 GestureDetector(
-                  onTap: toggling ? null : onToggle,
+                  onTap: (toggling || locked) ? null : onToggle,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
@@ -663,7 +727,9 @@ class _GradientHeader extends StatelessWidget {
                           duration: const Duration(milliseconds: 300),
                           width: 52, height: 30,
                           decoration: BoxDecoration(
-                            color: isOnline ? AppColors.success : const Color(0xFFDDDDDD),
+                            color: locked
+                                ? const Color(0xFFDDDDDD)
+                                : isOnline ? AppColors.success : const Color(0xFFDDDDDD),
                             borderRadius: BorderRadius.circular(15),
                           ),
                           child: AnimatedAlign(
@@ -685,18 +751,24 @@ class _GradientHeader extends StatelessWidget {
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(
-                            isOnline ? 'Đang nhận đơn' : 'Bật để nhận đơn',
+                            locked
+                                ? 'Bị khóa do công nợ'
+                                : isOnline ? 'Đang nhận đơn' : 'Bật để nhận đơn',
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              color: isOnline ? AppColors.success : AppColors.textPrimary,
+                              color: locked
+                                  ? AppColors.danger
+                                  : isOnline ? AppColors.success : AppColors.textPrimary,
                             ),
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            isOnline && onlineTimeStr.isNotEmpty
-                                ? 'Đã online $onlineTimeStr'
-                                : isOnline ? 'Đang hoạt động' : 'Nhấn để bắt đầu',
+                            locked
+                                ? 'Thanh toán công nợ để tiếp tục'
+                                : isOnline && onlineTimeStr.isNotEmpty
+                                    ? 'Đã online $onlineTimeStr'
+                                    : isOnline ? 'Đang hoạt động' : 'Nhấn để bắt đầu',
                             style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                           ),
                         ]),
@@ -1254,6 +1326,49 @@ class _SupportChip extends StatelessWidget {
   }
 }
 
+
+// ── Overdue debt banner ────────────────────────────────────────────────────────
+
+class _OverdueBanner extends StatelessWidget {
+  final VoidCallback onTap;
+  const _OverdueBanner({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        color: const Color(0xFFCC2222),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+        child: Row(children: [
+          const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 18),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Bạn có công nợ quá hạn. Vui lòng thanh toán để tiếp tục nhận đơn.',
+              style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text('Thanh toán',
+                style: TextStyle(
+                  color: Color(0xFFCC2222),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                )),
+          ),
+        ]),
+      ),
+    );
+  }
+}
 
 // ── Shared helper ─────────────────────────────────────────────────────────────
 

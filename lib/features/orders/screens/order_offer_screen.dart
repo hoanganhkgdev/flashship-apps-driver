@@ -27,7 +27,7 @@ class OrderOfferScreen extends ConsumerStatefulWidget {
 }
 
 class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   int _remaining     = 30;
   int _totalDuration = 30;
   Timer? _timer;
@@ -74,20 +74,29 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
       _totalDuration = _remaining;
     }
 
+    WidgetsBinding.instance.addObserver(this);
     _playOfferSound();
     _startTimer();
     _markOfferViewed();
-    Fmt.ensureLabelsLoaded(); // load labels từ backend nếu chưa có
+    Fmt.ensureLabelsLoaded();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _markOfferViewed();
+    }
+  }
+
+  bool _viewedCalled = false;
+
   Future<void> _markOfferViewed() async {
+    if (_viewedCalled) return;
     try {
-      // Màn hình có thể được build khi app đang ở background (RTDB listener
-      // điều hướng route ngay cả khi không hiển thị cho tài xế) → chỉ đánh dấu
-      // "đã xem" khi app thực sự đang ở foreground, tránh bị trừ điểm oan.
       if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
         return;
       }
+      _viewedCalled = true;
       final orderId = widget.orderData['order_id'];
       if (orderId == null) return;
       await ref.read(apiClientProvider).post('/orders/$orderId/view-offer');
@@ -138,6 +147,7 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
   @override
   void dispose() {
     _timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     _pulseCtrl.dispose();
     _player.stop();
     _player.dispose();

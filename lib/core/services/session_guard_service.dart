@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Bảo vệ phiên đăng nhập:
@@ -42,17 +42,15 @@ class SessionGuardService {
     _driverId = driverId;
     _deviceId = await getDeviceId();
 
-    debugPrint('[SessionGuard] started for driver $driverId, device $_deviceId');
-
     _sessionSub = FirebaseDatabase.instance
         .ref('dispatch/driver_$driverId/session_device')
         .onValue
-        .listen(_onSessionEvent, onError: (e) => debugPrint('[SessionGuard] sessionSub error: $e'));
+        .listen(_onSessionEvent, onError: (_) {});
 
     _lockSub = FirebaseDatabase.instance
         .ref('dispatch/driver_$driverId/account_locked')
         .onValue
-        .listen(_onLockEvent, onError: (e) => debugPrint('[SessionGuard] lockSub error: $e'));
+        .listen(_onLockEvent, onError: (_) {});
   }
 
   void stop() {
@@ -77,7 +75,6 @@ class SessionGuardService {
 
   void _onLockEvent(DatabaseEvent event) {
     final value  = event.snapshot.value;
-    debugPrint('[SessionGuard] account_locked event: $value (${value.runtimeType})');
     final locked = value == true || value == 1;
     if (locked) {
       stop();

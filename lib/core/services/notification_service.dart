@@ -4,6 +4,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/orders/providers/order_provider.dart';
+import '../../features/wallet/providers/wallet_provider.dart';
 import 'offer_listener_service.dart';
 
 final _localNotif = FlutterLocalNotificationsPlugin();
@@ -45,6 +46,8 @@ class NotificationService {
         // Wake-up signal — OfferListenerService đã lắng nghe RTDB, không cần làm gì
       } else if (type == 'order_status') {
         try { ref.read(activeOrderProvider.notifier).fetch(); } catch (_) {}
+      } else if (type == 'debt_overdue') {
+        try { ref.read(walletProvider.notifier).fetch(); } catch (_) {}
       }
     });
 

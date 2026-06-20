@@ -203,213 +203,202 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
 
   @override
   Widget build(BuildContext context) {
-    final progress = _totalDuration > 0 ? _remaining / _totalDuration : 1.0;
-    final color    = Fmt.serviceColor(_order.serviceType);
-    final isUrgent = _remaining <= 5;
-    final bottom   = MediaQuery.of(context).padding.bottom;
-    final top      = MediaQuery.of(context).padding.top;
-    final timerColor = isUrgent ? AppColors.danger : color;
-    final earning  = _order.driverEarning;
+    final progress   = _totalDuration > 0 ? _remaining / _totalDuration : 1.0;
+    final isUrgent   = _remaining <= 5;
+    final bottom     = MediaQuery.of(context).padding.bottom;
+    final top        = MediaQuery.of(context).padding.top;
+    final earning    = _order.driverEarning;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       body: Column(children: [
-        SizedBox(height: top),
 
-        // ── Header: service + circular timer ─────────────────────────
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-          child: Row(children: [
-            // Service badge
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Fmt.serviceIcon(_order.serviceType), color: color, size: 16),
-                const SizedBox(width: 6),
-                Text(_order.isShopOrder
-                    ? switch (_order.shopServiceType) {
-                        'shop_batch'  => 'Đơn gộp',
-                        'shop_pickup' => 'Lấy hộ',
-                        _             => 'Giao đơn',
-                      }
-                    : Fmt.serviceLabel(_order.serviceType),
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
-                if (_order.isShopOrder) ...[
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary, borderRadius: BorderRadius.circular(4)),
-                    child: const Text('SHOP',
-                        style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: Colors.white)),
-                  ),
-                ],
-              ]),
+        // ── Gradient header ───────────────────────────────────────────
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isUrgent
+                  ? [const Color(0xFFCC2222), const Color(0xFFE84545)]
+                  : const [Color(0xFFCC5A08), Color(0xFFE8720C), Color(0xFFF59E30)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            const Spacer(),
-            // Circular countdown
-            SizedBox(
-              width: 52, height: 52,
-              child: Stack(alignment: Alignment.center, children: [
-                CircularProgressIndicator(
-                  value: progress,
-                  strokeWidth: 3.5,
-                  backgroundColor: const Color(0xFFF0F0F0),
-                  valueColor: AlwaysStoppedAnimation(timerColor),
-                ),
-                AnimatedBuilder(
-                  animation: _pulseCtrl,
-                  builder: (_, __) => Text('$_remaining',
-                      style: TextStyle(
-                          fontSize: 17, fontWeight: FontWeight.w800,
-                          color: isUrgent
-                              ? AppColors.danger
-                              : AppColors.textPrimary)),
-                ),
-              ]),
-            ),
-          ]),
-        ),
+          ),
+          child: Stack(clipBehavior: Clip.none, children: [
+            Positioned(top: -30, right: -30, child: _Bubble(120, 0.07)),
+            Positioned(bottom: 20, left: -20,  child: _Bubble(70,  0.05)),
 
-        // ── Thu nhập — prominent ──────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Thu nhập của bạn',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w500)),
-            const SizedBox(height: 4),
-            if (_order.shippingFee == 0 && _order.discountAmount > 0) ...[
-              // ── FREESHIP 100%: toàn bộ vào ví ──────────────────────
-              Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                Text(Fmt.currency(_order.discountAmount),
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w500,
-                        color: AppColors.textSecondary,
-                        decoration: TextDecoration.lineThrough,
-                        decorationColor: AppColors.textSecondary)),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
-                  ),
-                  child: const Text('FREESHIP',
-                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800,
-                          color: AppColors.success)),
-                ),
-              ]),
-              const SizedBox(height: 4),
-              Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Text(Fmt.currency(_order.discountAmount),
-                    style: const TextStyle(
-                        fontSize: 32, fontWeight: FontWeight.w800,
-                        color: AppColors.success, letterSpacing: -0.5)),
-                const SizedBox(width: 8),
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 5),
-                  child: Text('vào ví',
-                      style: TextStyle(fontSize: 13, color: AppColors.success,
-                          fontWeight: FontWeight.w600)),
-                ),
-              ]),
-              const SizedBox(height: 4),
-              const Text('Không thu tiền ship từ khách',
-                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-            ] else ...[
-              // ── Bình thường hoặc giảm một phần ─────────────────────
-              // Phí gốc gạch ngang khi có voucher
-              if (_order.hasDiscount && _order.discountAmount > 0) ...[
-                Text(
-                  Fmt.currency(earning + _order.discountAmount),
-                  style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w500,
-                      color: AppColors.textSecondary,
-                      decoration: TextDecoration.lineThrough,
-                      decorationColor: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 2),
-              ],
-              Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Text(Fmt.currency(earning),
-                    style: const TextStyle(
-                        fontSize: 32, fontWeight: FontWeight.w800,
-                        color: AppColors.success, letterSpacing: -0.5)),
-                if (_order.bonusFee > 0) ...[
-                  const SizedBox(width: 6),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppColors.warning.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text('+${Fmt.currency(_order.bonusFee)} thưởng',
-                          style: const TextStyle(
-                              fontSize: 11, fontWeight: FontWeight.w700,
-                              color: AppColors.warning)),
-                    ),
-                  ),
-                ],
-                if (_order.nightSurcharge > 0) ...[
-                  const SizedBox(width: 6),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text('+${Fmt.currency(_order.nightSurcharge)} đêm',
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.warning,
-                            fontWeight: FontWeight.w600)),
-                  ),
-                ],
-              ]),
-              // Phần giảm giá được cộng thêm vào ví
-              if (_order.hasDiscount && _order.discountAmount > 0) ...[
-                const SizedBox(height: 6),
-                Row(children: [
+            Column(children: [
+              SizedBox(height: top),
+
+              // Topbar: service badge + code + timer
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Row(children: [
+                  // Service badge
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: AppColors.success.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                      color: Colors.white.withValues(alpha: 0.20),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.account_balance_wallet_rounded,
-                          size: 12, color: AppColors.success),
+                      Icon(Fmt.serviceIcon(_order.serviceType), color: Colors.white, size: 15),
                       const SizedBox(width: 5),
                       Text(
-                        '+ ${Fmt.currency(_order.discountAmount)} vào ví'
-                        '${_order.voucherCode != null ? ' (${_order.voucherCode})' : ''}',
-                        style: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w700,
-                            color: AppColors.success),
+                        _order.isShopOrder
+                            ? switch (_order.shopServiceType) {
+                                'shop_batch'  => 'Đơn gộp',
+                                'shop_pickup' => 'Lấy hộ',
+                                _             => 'Giao đơn',
+                              }
+                            : Fmt.serviceLabel(_order.serviceType),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+                      ),
+                      if (_order.isShopOrder) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.25),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text('SHOP',
+                              style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: Colors.white)),
+                        ),
+                      ],
+                    ]),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(_order.code,
+                      style: TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.w600,
+                          color: Colors.white.withValues(alpha: 0.7))),
+                  const Spacer(),
+                  // Circular countdown
+                  SizedBox(
+                    width: 52, height: 52,
+                    child: Stack(alignment: Alignment.center, children: [
+                      CircularProgressIndicator(
+                        value: progress,
+                        strokeWidth: 3.5,
+                        backgroundColor: Colors.white.withValues(alpha: 0.25),
+                        valueColor: const AlwaysStoppedAnimation(Colors.white),
+                      ),
+                      AnimatedBuilder(
+                        animation: _pulseCtrl,
+                        builder: (_, __) => Text('$_remaining',
+                            style: const TextStyle(
+                                fontSize: 17, fontWeight: FontWeight.w800,
+                                color: Colors.white)),
                       ),
                     ]),
                   ),
                 ]),
-              ],
-            ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // Earning
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Thu nhập của bạn',
+                      style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.75),
+                          fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 4),
+
+                  if (_order.shippingFee == 0 && _order.discountAmount > 0) ...[
+                    Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                      Text(Fmt.currency(_order.discountAmount),
+                          style: const TextStyle(
+                              fontSize: 34, fontWeight: FontWeight.w900,
+                              color: Colors.white, letterSpacing: -1)),
+                      const SizedBox(width: 8),
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 5),
+                        child: Text('vào ví', style: TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.w600)),
+                      ),
+                    ]),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text('FREESHIP 100%',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white)),
+                    ),
+                  ] else ...[
+                    if (_order.hasDiscount && _order.discountAmount > 0)
+                      Text(Fmt.currency(earning + _order.discountAmount),
+                          style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w500,
+                              color: Colors.white.withValues(alpha: 0.6),
+                              decoration: TextDecoration.lineThrough,
+                              decorationColor: Colors.white.withValues(alpha: 0.6))),
+                    Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                      Text(Fmt.currency(earning),
+                          style: const TextStyle(
+                              fontSize: 34, fontWeight: FontWeight.w900,
+                              color: Colors.white, letterSpacing: -1)),
+                      if (_order.bonusFee > 0) ...[
+                        const SizedBox(width: 8),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 5),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text('+${Fmt.currency(_order.bonusFee)} thưởng',
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
+                          ),
+                        ),
+                      ],
+                      if (_order.nightSurcharge > 0) ...[
+                        const SizedBox(width: 6),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 5),
+                          child: Text('+${Fmt.currency(_order.nightSurcharge)} đêm',
+                              style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.8), fontWeight: FontWeight.w600)),
+                        ),
+                      ],
+                    ]),
+                    if (_order.hasDiscount && _order.discountAmount > 0) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '+ ${Fmt.currency(_order.discountAmount)} vào ví'
+                          '${_order.voucherCode != null ? ' (${_order.voucherCode})' : ''}',
+                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ],
+                ]),
+              ),
+
+              const SizedBox(height: 20),
+              Container(height: 20, color: AppColors.background),
+            ]),
           ]),
         ),
 
-        const SizedBox(height: 16),
-        const Divider(height: 1, color: Color(0xFFF0F0F0)),
-        const SizedBox(height: 16),
-
-        // ── Route ─────────────────────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: _ServiceContent(order: _order, color: color),
+        // ── Scrollable body ───────────────────────────────────────────
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: _ServiceContent(order: _order),
+          ),
         ),
-
-        const Spacer(),
 
         // ── Actions ───────────────────────────────────────────────────
         Container(
@@ -419,15 +408,13 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
             border: Border(top: BorderSide(color: Color(0xFFF0F0F0))),
           ),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            // Accept button — large
             SizedBox(
               width: double.infinity,
               height: 56,
               child: FilledButton(
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.success,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
                 onPressed: _accept,
                 child: const Row(
@@ -436,30 +423,40 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
                     Icon(Icons.check_rounded, size: 22, color: Colors.white),
                     SizedBox(width: 8),
                     Text('Nhận đơn ngay',
-                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800,
-                            color: Colors.white)),
+                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 10),
-            // Skip — small text link
             GestureDetector(
               onTap: _decline,
               behavior: HitTestBehavior.opaque,
               child: const Padding(
                 padding: EdgeInsets.symmetric(vertical: 4),
                 child: Text('Bỏ qua',
-                    style: TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w500,
-                        color: AppColors.textSecondary)),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
               ),
             ),
           ]),
         ),
+
       ]),
     );
   }
+}
+
+class _Bubble extends StatelessWidget {
+  final double size, opacity;
+  const _Bubble(this.size, this.opacity);
+  @override
+  Widget build(BuildContext context) => Container(
+        width: size, height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: opacity),
+        ),
+      );
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -468,8 +465,9 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
 
 class _ServiceContent extends StatelessWidget {
   final OrderModel order;
-  final Color color;
-  const _ServiceContent({required this.order, required this.color});
+  const _ServiceContent({required this.order});
+
+  Color get color => Fmt.serviceColor(order.serviceType);
 
   @override
   Widget build(BuildContext context) => Column(

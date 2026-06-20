@@ -256,14 +256,6 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final top = MediaQuery.of(context).padding.top;
 
-    final statusLabel = switch (order.serviceType) {
-      'shopping' => order.isLastStep ? 'Đang giao hàng' : 'Đang mua hàng',
-      'topup'    => order.status == 'assigned' ? 'Đi nạp tiền' : 'Đang nạp tiền',
-      'bike'     => order.status == 'assigned' ? 'Đến đón khách' : 'Đang chở khách',
-      'motor' || 'car' => order.status == 'assigned' ? 'Đến lấy xe' : 'Đang lái xe',
-      _          => order.status == 'assigned' ? 'Đến lấy hàng' : 'Đang giao hàng',
-    };
-
     final stepLabel = order.status == 'assigned' ? 'Bước 1/2' : 'Bước 2/2';
     final isLastStep = order.isLastStep;
 
@@ -300,59 +292,41 @@ class _Header extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(width: 4),
+            const SizedBox(width: 12),
 
-            // Status info
+            // Service name
             Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              child: Row(children: [
                 Text(
-                  statusLabel,
+                  () {
+                    if (order.isShopOrder) {
+                      return switch (order.shopServiceType) {
+                        'shop_batch'  => 'Đơn gộp',
+                        'shop_pickup' => 'Lấy hộ',
+                        _             => 'Giao đơn',
+                      };
+                    }
+                    return Fmt.serviceLabel(order.serviceType);
+                  }(),
                   style: const TextStyle(
                     fontSize: 17, fontWeight: FontWeight.w800,
                     color: Colors.white, letterSpacing: -0.3,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Row(children: [
-                  Text(
-                    () {
-                      final svc = order.isShopOrder
-                          ? switch (order.shopServiceType) {
-                              'shop_batch'  => 'Đơn gộp',
-                              'shop_pickup' => 'Lấy hộ',
-                              _             => 'Giao đơn',
-                            }
-                          : Fmt.serviceLabel(order.serviceType);
-                      final cargo = switch (order.cargoType) {
-                        'food'    => 'Đồ ăn',
-                        'flowers' => 'Hoa / Trái cây',
-                        'parcel'  => 'Bưu kiện',
-                        _         => null,
-                      };
-                      return cargo != null ? '$svc  •  $cargo' : svc;
-                    }(),
-                    style: TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w500,
-                      color: Colors.white.withValues(alpha: 0.85),
+                if (order.isShopOrder) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: Text(
+                      order.isBatch ? 'SHOP•${order.stopsCount}đ' : 'SHOP',
+                      style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.white),
                     ),
                   ),
-                  if (order.isShopOrder) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.25),
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                      child: Text(
-                        order.isBatch ? 'SHOP•${order.stopsCount}đ' : 'SHOP',
-                        style: const TextStyle(
-                            fontSize: 9, fontWeight: FontWeight.w800,
-                            color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ]),
+                ],
               ]),
             ),
 

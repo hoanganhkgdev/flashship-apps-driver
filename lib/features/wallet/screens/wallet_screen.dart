@@ -621,8 +621,11 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
     setState(() { _loading = true; _error = null; });
     final ok = await widget.onSubmit(amount);
     if (mounted) {
-      if (ok) Navigator.of(context).pop();
-      else setState(() { _loading = false; _error = 'Không thể gửi yêu cầu. Thử lại sau.'; });
+      if (ok) {
+        Navigator.of(context).pop();
+      } else {
+        setState(() { _loading = false; _error = 'Không thể gửi yêu cầu. Thử lại sau.'; });
+      }
     }
   }
 

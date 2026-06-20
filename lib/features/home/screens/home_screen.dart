@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/services/offer_listener_service.dart';
+import '../../../core/services/session_guard_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -48,7 +49,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ref.read(activeOrderProvider.notifier).fetch();
       ref.read(walletProvider.notifier).fetch();
       _fetchServiceLabels();
+      _startSessionGuard();
     });
+  }
+
+  Future<void> _startSessionGuard() async {
+    final uid = ref.read(authProvider).user?.id;
+    if (uid == null) return;
+    SessionGuardService.instance.onForceLogout = () async {
+      await ref.read(authProvider.notifier).logout();
+      if (mounted) {
+        context.go('/login');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tài khoản vừa đăng nhập trên thiết bị khác.'),
+            backgroundColor: Color(0xFFE53935),
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+    };
+    await SessionGuardService.instance.start(uid);
   }
 
   @override

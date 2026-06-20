@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/services/session_guard_service.dart';
 import '../models/driver_model.dart';
 
 class AuthState {
@@ -63,8 +64,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<String> login({required String phone, required String password}) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final api = ApiClient(null);
-      final res = await api.post('/auth/login', data: {'login': phone, 'password': password});
+      final api      = ApiClient(null);
+      final deviceId = await SessionGuardService.getDeviceId();
+      final res = await api.post('/auth/login', data: {
+        'login':     phone,
+        'password':  password,
+        'device_id': deviceId,
+      });
       final payload = (res.data['data'] ?? res.data) as Map<String, dynamic>;
       await _saveSession(payload);
       return 'ok';

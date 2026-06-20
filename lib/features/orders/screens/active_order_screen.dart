@@ -303,7 +303,7 @@ class _Header extends StatelessWidget {
                       return switch (order.shopServiceType) {
                         'shop_batch'  => 'Đơn gộp',
                         'shop_pickup' => 'Lấy hộ',
-                        _             => 'Giao đơn',
+                        _             => Fmt.serviceLabel(order.serviceType),
                       };
                     }
                     return Fmt.serviceLabel(order.serviceType);

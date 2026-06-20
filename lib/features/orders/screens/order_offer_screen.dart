@@ -260,7 +260,7 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
                             ? switch (_order.shopServiceType) {
                                 'shop_batch'  => 'Đơn gộp',
                                 'shop_pickup' => 'Lấy hộ',
-                                _             => Fmt.serviceLabel(_order.serviceType),
+                                _             => 'Giao đơn',
                               }
                             : Fmt.serviceLabel(_order.serviceType),
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
@@ -559,7 +559,7 @@ class _ServiceContent extends StatelessWidget {
       return switch (order.shopServiceType) {
         'shop_batch'  => 'Đơn gộp',
         'shop_pickup' => 'Lấy hộ',
-        _             => Fmt.serviceLabel(type),
+        _             => 'Giao đơn',
       };
     }
     // Dùng label từ backend (đã cache) để đồng bộ

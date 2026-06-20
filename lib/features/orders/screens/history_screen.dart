@@ -413,7 +413,7 @@ class _ActiveOrderCard extends StatelessWidget {
       ? switch (order.shopServiceType) {
           'shop_batch'  => 'Đơn gộp',
           'shop_pickup' => 'Lấy hộ',
-          _             => Fmt.serviceLabel(order.serviceType),
+          _             => 'Giao đơn',
         }
       : Fmt.serviceLabel(order.serviceType);
 
@@ -615,7 +615,7 @@ class _CompletedOrderCard extends StatelessWidget {
       ? switch (order.shopServiceType) {
           'shop_batch'  => 'Đơn gộp',
           'shop_pickup' => 'Lấy hộ',
-          _             => Fmt.serviceLabel(order.serviceType),
+          _             => 'Giao đơn',
         }
       : Fmt.serviceLabel(order.serviceType);
 

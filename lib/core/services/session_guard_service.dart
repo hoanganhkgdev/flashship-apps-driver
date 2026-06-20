@@ -42,15 +42,17 @@ class SessionGuardService {
     _driverId = driverId;
     _deviceId = await getDeviceId();
 
+    debugPrint('[SessionGuard] started for driver $driverId, device $_deviceId');
+
     _sessionSub = FirebaseDatabase.instance
         .ref('dispatch/driver_$driverId/session_device')
         .onValue
-        .listen(_onSessionEvent, onError: (_) {});
+        .listen(_onSessionEvent, onError: (e) => debugPrint('[SessionGuard] sessionSub error: $e'));
 
     _lockSub = FirebaseDatabase.instance
         .ref('dispatch/driver_$driverId/account_locked')
         .onValue
-        .listen(_onLockEvent, onError: (_) {});
+        .listen(_onLockEvent, onError: (e) => debugPrint('[SessionGuard] lockSub error: $e'));
   }
 
   void stop() {
@@ -74,7 +76,9 @@ class SessionGuardService {
   }
 
   void _onLockEvent(DatabaseEvent event) {
-    final locked = event.snapshot.value as bool? ?? false;
+    final value  = event.snapshot.value;
+    debugPrint('[SessionGuard] account_locked event: $value (${value.runtimeType})');
+    final locked = value == true || value == 1;
     if (locked) {
       stop();
       onAccountLocked?.call();

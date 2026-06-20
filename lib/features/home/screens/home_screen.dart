@@ -55,6 +55,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Future<void> _startSessionGuard() async {
     final uid = ref.read(authProvider).user?.id;
+    debugPrint('[HomeScreen] _startSessionGuard uid=$uid');
     if (uid == null) return;
 
     SessionGuardService.instance.onForceLogout = () async {

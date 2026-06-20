@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/wallet_model.dart';
@@ -14,22 +15,11 @@ class WalletScreen extends ConsumerStatefulWidget {
   ConsumerState<WalletScreen> createState() => _WalletScreenState();
 }
 
-class _WalletScreenState extends ConsumerState<WalletScreen>
-    with SingleTickerProviderStateMixin {
-  late final TabController _earningsTab;
-
+class _WalletScreenState extends ConsumerState<WalletScreen> {
   @override
   void initState() {
     super.initState();
-    _earningsTab = TabController(length: 3, vsync: this);
-    _earningsTab.addListener(() => setState(() {}));
     Future.microtask(() => ref.read(walletProvider.notifier).fetch());
-  }
-
-  @override
-  void dispose() {
-    _earningsTab.dispose();
-    super.dispose();
   }
 
   @override
@@ -66,24 +56,6 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
                   child: Column(
                     children: [
-
-                      _EarningsCard(
-                        tabController: _earningsTab,
-                        today:   wallet.earningsToday,
-                        weekly:  wallet.earningsWeekly,
-                        monthly: wallet.earningsMonthly,
-                        loading: wallet.loading,
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      _BankCard(
-                        bank:    wallet.bankAccount,
-                        loading: wallet.loading,
-                        onEdit:  () => _showBankEditor(context, wallet.bankAccount, wallet.bankList),
-                      ),
-
-                      const SizedBox(height: 12),
 
                       _TransactionCard(
                         transactions: wallet.transactions,
@@ -189,303 +161,28 @@ class _WalletScreenState extends ConsumerState<WalletScreen>
   }
 
   Future<void> _showWithdraw(BuildContext context) async {
-    final ctrl = TextEditingController();
-    final balance = ref.read(walletProvider).balance;
-    final confirmed = await showModalBottomSheet<bool>(
+    final wallet    = ref.read(walletProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(20, 8, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const SizedBox(height: 8),
-          const Text('Rút tiền',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-          const SizedBox(height: 4),
-          Row(children: [
-            Text('Số dư: ${Fmt.currency(balance)}',
-                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-            const SizedBox(width: 8),
-            const Text('·', style: TextStyle(color: AppColors.textSecondary)),
-            const SizedBox(width: 8),
-            const Text('Xử lý 1–2 ngày làm việc',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-          ]),
-          const SizedBox(height: 20),
-          TextField(
-            controller: ctrl,
-            keyboardType: TextInputType.number,
-            autofocus: true,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
-            decoration: InputDecoration(
-              hintText: 'Số tiền rút (tối thiểu 50,000đ)',
-              hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 15),
-              filled: true,
-              fillColor: const Color(0xFFF5F5F5),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-              focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity, height: 50,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Gửi yêu cầu',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
-            ),
-          ),
-        ]),
+      backgroundColor: Colors.transparent,
+      builder: (_) => _WithdrawSheet(
+        balance:     wallet.balance,
+        bankAccount: wallet.bankAccount,
+        onSubmit:    (amount) async {
+          final ok = await ref.read(walletProvider.notifier).withdraw(amount);
+          if (ok) await ref.read(walletProvider.notifier).fetch();
+          messenger.showSnackBar(SnackBar(
+            content: Text(ok ? 'Yêu cầu rút tiền đã được gửi' : 'Không thể gửi yêu cầu'),
+            backgroundColor: ok ? AppColors.success : AppColors.danger,
+          ));
+          return ok;
+        },
       ),
     );
-
-    if (confirmed != true || !context.mounted) return;
-    final amount = int.tryParse(ctrl.text.replaceAll('.', '').replaceAll(',', '').trim()) ?? 0;
-    if (amount < 50000) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Số tiền tối thiểu là 50,000 đ')),
-      );
-      return;
-    }
-    final ok = await ref.read(walletProvider.notifier).withdraw(amount);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(ok ? 'Yêu cầu rút tiền đã được gửi' : 'Không thể gửi yêu cầu'),
-        backgroundColor: ok ? AppColors.success : AppColors.danger,
-      ));
-    }
   }
 
-  Future<void> _showBankEditor(
-    BuildContext context,
-    BankAccount current,
-    List<BankListItem> bankList,
-  ) async {
-    BankListItem? selectedBank = bankList.isEmpty ? null
-        : bankList.where((b) => b.code == current.bankCode).firstOrNull
-          ?? (current.bankName != null
-              ? bankList.where((b) => b.name.toLowerCase().contains(current.bankName!.toLowerCase())).firstOrNull
-              : null);
-
-    final accountCtrl  = TextEditingController(text: current.accountNumber ?? '');
-    final holderCtrl   = TextEditingController(text: current.accountHolder ?? '');
-    final bankNameCtrl = TextEditingController(text: current.bankName ?? '');
-
-    final confirmed = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSt) => Padding(
-          padding: EdgeInsets.fromLTRB(20, 8, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const SizedBox(height: 8),
-            Text(
-              current.isEmpty ? 'Thêm tài khoản ngân hàng' : 'Cập nhật ngân hàng',
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-            ),
-            const SizedBox(height: 20),
-
-            _SheetLabel('Ngân hàng'),
-            const SizedBox(height: 8),
-            if (bankList.isNotEmpty)
-              GestureDetector(
-                onTap: () async {
-                  final picked = await showDialog<BankListItem>(
-                    context: ctx,
-                    builder: (_) => _BankPickerDialog(banks: bankList, selected: selectedBank),
-                  );
-                  if (picked != null) setSt(() => selectedBank = picked);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(children: [
-                    Expanded(
-                      child: Text(
-                        selectedBank?.name ?? 'Chọn ngân hàng',
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: selectedBank != null ? AppColors.textPrimary : AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                    const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary, size: 20),
-                  ]),
-                ),
-              )
-            else
-              _FlatField(controller: bankNameCtrl, hint: 'Tên ngân hàng', textCapitalization: TextCapitalization.words),
-
-            const SizedBox(height: 16),
-            _SheetLabel('Số tài khoản'),
-            const SizedBox(height: 8),
-            _FlatField(controller: accountCtrl, hint: 'Nhập số tài khoản', keyboardType: TextInputType.number),
-
-            const SizedBox(height: 16),
-            _SheetLabel('Chủ tài khoản'),
-            const SizedBox(height: 8),
-            _FlatField(
-              controller: holderCtrl,
-              hint: 'NGUYEN VAN A',
-              textCapitalization: TextCapitalization.characters,
-              textInputAction: TextInputAction.done,
-            ),
-
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity, height: 50,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Lưu',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
-              ),
-            ),
-          ]),
-        ),
-      ),
-    );
-
-    if (confirmed != true || !context.mounted) return;
-    final bankName = bankList.isNotEmpty
-        ? (selectedBank?.name ?? bankNameCtrl.text.trim())
-        : bankNameCtrl.text.trim();
-    final bankCode = bankList.isNotEmpty
-        ? (selectedBank?.code ?? bankName.toUpperCase().replaceAll(' ', ''))
-        : bankName.toUpperCase().replaceAll(' ', '');
-    final account = accountCtrl.text.trim();
-    final holder  = holderCtrl.text.trim();
-    if (bankName.isEmpty || account.isEmpty || holder.isEmpty) return;
-
-    final ok = await ref.read(walletProvider.notifier).updateBank(
-      bankCode: bankCode,
-      bankName: bankName,
-      accountNumber: account,
-      accountHolder: holder,
-    );
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(ok ? 'Cập nhật thành công' : 'Cập nhật thất bại'),
-        backgroundColor: ok ? AppColors.success : AppColors.danger,
-      ));
-    }
-  }
-}
-
-// ── Bank picker dialog ────────────────────────────────────────────────────────
-
-class _BankPickerDialog extends StatefulWidget {
-  final List<BankListItem> banks;
-  final BankListItem? selected;
-  const _BankPickerDialog({required this.banks, this.selected});
-
-  @override
-  State<_BankPickerDialog> createState() => _BankPickerDialogState();
-}
-
-class _BankPickerDialogState extends State<_BankPickerDialog> {
-  late List<BankListItem> _filtered;
-  final _search = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _filtered = widget.banks;
-    _search.addListener(_onSearch);
-  }
-
-  @override
-  void dispose() {
-    _search.dispose();
-    super.dispose();
-  }
-
-  void _onSearch() {
-    final q = _search.text.toLowerCase();
-    setState(() {
-      _filtered = q.isEmpty
-          ? widget.banks
-          : widget.banks.where((b) => b.name.toLowerCase().contains(q) || b.code.toLowerCase().contains(q)).toList();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) => Dialog(
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    child: SizedBox(
-      height: MediaQuery.of(context).size.height * 0.7,
-      child: Column(children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Column(children: [
-            const Text('Chọn ngân hàng',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _search,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: 'Tìm ngân hàng...',
-                prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                filled: true,
-                fillColor: const Color(0xFFF5F6FA),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-          ]),
-        ),
-        const Divider(height: 1),
-        Expanded(
-          child: ListView.builder(
-            itemCount: _filtered.length,
-            itemBuilder: (_, i) {
-              final b = _filtered[i];
-              final isSelected = b.code == widget.selected?.code;
-              return ListTile(
-                dense: true,
-                title: Text(b.name,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-                      color: isSelected ? AppColors.primary : AppColors.textPrimary,
-                    )),
-                subtitle: Text(b.code,
-                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                trailing: isSelected
-                    ? const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 20)
-                    : null,
-                onTap: () => Navigator.pop(context, b),
-              );
-            },
-          ),
-        ),
-      ]),
-    ),
-  );
 }
 
 // ── Wallet header ─────────────────────────────────────────────────────────────
@@ -503,8 +200,6 @@ class _WalletHeader extends StatelessWidget {
     required this.onWithdraw,
   });
 
-  bool get _isLow => balance < 100000;
-
   @override
   Widget build(BuildContext context) {
     final top = MediaQuery.of(context).padding.top;
@@ -512,132 +207,127 @@ class _WalletHeader extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFFEF7C1A), AppColors.primaryDark],
+          colors: [Color(0xFFCC5A08), Color(0xFFE8720C), Color(0xFFF59E30)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(20, top + 16, 20, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+          // Decorative circles
+          Positioned(top: -40, right: -40, child: _Bubble(150, 0.07)),
+          Positioned(top: 80,  left: -30,  child: _Bubble(80,  0.05)),
+          Positioned(bottom: 50, right: 40, child: _Bubble(50, 0.04)),
 
-                // Title
-                const Text(
-                  'Ví của tôi',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    letterSpacing: -0.2,
-                  ),
-                ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(16, top + 8, 16, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
 
-                const SizedBox(height: 24),
-
-                // Balance label
-                Text(
-                  'Số dư ký quỹ',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white.withValues(alpha: 0.75),
-                  ),
-                ),
-
-                const SizedBox(height: 6),
-
-                // Balance amount
-                loading
-                    ? Container(
-                        height: 42, width: 160,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(8),
+                    // Topbar
+                    SizedBox(
+                      height: 48,
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                        if (GoRouter.of(context).canPop()) ...[
+                          GestureDetector(
+                            onTap: () => GoRouter.of(context).pop(),
+                            child: Container(
+                              width: 34, height: 34,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.arrow_back_ios_new_rounded,
+                                  color: Colors.white, size: 16),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        const Text(
+                          'Ví của tôi',
+                          style: TextStyle(
+                            fontSize: 17, fontWeight: FontWeight.w700,
+                            color: Colors.white, letterSpacing: -0.2,
+                          ),
                         ),
-                      )
-                    : Text(
-                        Fmt.currency(balance),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 36,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -1,
-                        ),
-                      ),
+                      ]),
+                    ),
 
-                const SizedBox(height: 10),
+                    const SizedBox(height: 20),
 
-                // Status badge
-                if (!loading)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: (_isLow ? Colors.amber : Colors.white).withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: (_isLow ? Colors.amber : Colors.white).withValues(alpha: 0.35),
+                    // Balance
+                    Text(
+                      'Số dư ví',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.white.withValues(alpha: 0.75),
                       ),
                     ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(
-                        _isLow ? Icons.warning_amber_rounded : Icons.check_circle_rounded,
-                        size: 13,
-                        color: Colors.white.withValues(alpha: 0.9),
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        _isLow ? 'Cần nạp thêm để nhận đơn' : 'Ví đủ điều kiện nhận đơn',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white.withValues(alpha: 0.9),
-                        ),
-                      ),
+                    const SizedBox(height: 6),
+                    loading
+                        ? Container(
+                            height: 42, width: 180,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          )
+                        : Text(
+                            Fmt.currency(balance),
+                            style: const TextStyle(
+                              color: Colors.white, fontSize: 38,
+                              fontWeight: FontWeight.w900, letterSpacing: -1,
+                            ),
+                          ),
+
+                    const SizedBox(height: 24),
+
+                    // Action buttons
+                    Row(children: [
+                      Expanded(child: _HeaderBtn(
+                        icon: Icons.add_rounded,
+                        label: 'Nạp tiền',
+                        filled: true,
+                        onTap: onTopUp,
+                      )),
+                      const SizedBox(width: 12),
+                      Expanded(child: _HeaderBtn(
+                        icon: Icons.arrow_upward_rounded,
+                        label: 'Rút tiền',
+                        filled: false,
+                        onTap: onWithdraw,
+                      )),
                     ]),
-                  ),
+                  ],
+                ),
+              ),
 
-                const SizedBox(height: 24),
-
-                // Action buttons
-                Row(children: [
-                  Expanded(
-                    child: _HeaderBtn(
-                      icon: Icons.add_rounded,
-                      label: 'Nạp tiền',
-                      filled: true,
-                      onTap: onTopUp,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _HeaderBtn(
-                      icon: Icons.arrow_upward_rounded,
-                      label: 'Rút tiền',
-                      filled: false,
-                      onTap: onWithdraw,
-                    ),
-                  ),
-                ]),
-              ],
-            ),
-          ),
-
-          // Curved bottom
-          Container(
-            height: 20,
-            decoration: const BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
+              Container(height: 20, color: AppColors.background),
+            ],
           ),
         ],
       ),
     );
   }
+}
+
+class _Bubble extends StatelessWidget {
+  final double size;
+  final double opacity;
+  const _Bubble(this.size, this.opacity);
+  @override
+  Widget build(BuildContext context) => Container(
+        width: size, height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: opacity),
+        ),
+      );
 }
 
 class _HeaderBtn extends StatelessWidget {
@@ -663,8 +353,7 @@ class _HeaderBtn extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
+                fontSize: 14, fontWeight: FontWeight.w700,
                 color: filled ? AppColors.primary : Colors.white,
               ),
             ),
@@ -673,313 +362,6 @@ class _HeaderBtn extends StatelessWidget {
       );
 }
 
-// ── Earnings card ─────────────────────────────────────────────────────────────
-
-class _EarningsCard extends StatelessWidget {
-  final TabController tabController;
-  final EarningsSummary today;
-  final EarningsSummary weekly;
-  final EarningsSummary monthly;
-  final bool loading;
-
-  const _EarningsCard({
-    required this.tabController,
-    required this.today,
-    required this.weekly,
-    required this.monthly,
-    required this.loading,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final summaries = [today, weekly, monthly];
-    final labels    = ['Hôm nay', 'Tuần này', 'Tháng này'];
-    final idx       = tabController.index;
-    final current   = summaries[idx];
-
-    return _surfaceCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-
-          // Section header + tab
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-            child: Row(children: [
-              const Icon(Icons.trending_up_rounded, size: 14, color: AppColors.textTertiary),
-              const SizedBox(width: 6),
-              const Text(
-                'THU NHẬP',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textTertiary,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const Spacer(),
-              // Segmented tab
-              SizedBox(
-                width: 195,
-                height: 30,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceAlt,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: TabBar(
-                    controller: tabController,
-                    indicator: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(6),
-                      boxShadow: [BoxShadow(
-                        color: const Color(0x14111827),
-                        blurRadius: 4,
-                        offset: const Offset(0, 1),
-                      )],
-                    ),
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    dividerColor: Colors.transparent,
-                    splashFactory: NoSplash.splashFactory,
-                    overlayColor: WidgetStateProperty.all(Colors.transparent),
-                    padding: const EdgeInsets.all(2),
-                    labelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
-                    unselectedLabelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
-                    labelColor: AppColors.textPrimary,
-                    unselectedLabelColor: AppColors.textSecondary,
-                    tabs: labels.map((l) => Tab(text: l, height: 26)).toList(),
-                  ),
-                ),
-              ),
-            ]),
-          ),
-
-          const SizedBox(height: 14),
-          const Divider(height: 1, color: AppColors.divider),
-
-          // Earnings content
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: loading
-                ? const SizedBox(
-                    height: 72,
-                    child: Center(child: CircularProgressIndicator(color: AppColors.success, strokeWidth: 2)))
-                : Row(children: [
-                    // Primary stat
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            labels[idx],
-                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            Fmt.currency(current.total),
-                            style: const TextStyle(
-                              color: AppColors.success,
-                              fontSize: 28,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: AppColors.successSoft,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                '${current.orders} đơn',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.success,
-                                ),
-                              ),
-                            ),
-                          ]),
-                        ],
-                      ),
-                    ),
-
-                    // Mini comparison
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: List.generate(3, (i) {
-                        final isActive = i == idx;
-                        final s = summaries[i];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            if (isActive)
-                              Container(
-                                width: 4, height: 4,
-                                margin: const EdgeInsets.only(right: 6),
-                                decoration: const BoxDecoration(
-                                  color: AppColors.success,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            Text(
-                              Fmt.currency(s.total),
-                              style: TextStyle(
-                                fontSize: isActive ? 14 : 12,
-                                fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
-                                color: isActive ? AppColors.textPrimary : AppColors.textSecondary,
-                              ),
-                            ),
-                          ]),
-                        );
-                      }),
-                    ),
-                  ]),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Bank card ─────────────────────────────────────────────────────────────────
-
-class _BankCard extends StatelessWidget {
-  final BankAccount bank;
-  final bool loading;
-  final VoidCallback onEdit;
-
-  const _BankCard({required this.bank, required this.loading, required this.onEdit});
-
-  String _maskAccount(String? num) {
-    if (num == null || num.length < 4) return num ?? '—';
-    return '•••• ${num.substring(num.length - 4)}';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _surfaceCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-            child: Row(children: [
-              const Icon(Icons.account_balance_rounded, size: 14, color: AppColors.textTertiary),
-              const SizedBox(width: 6),
-              const Text(
-                'NGÂN HÀNG',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textTertiary,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: onEdit,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primarySoft,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    bank.isEmpty ? 'Thêm' : 'Chỉnh sửa',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-              ),
-            ]),
-          ),
-
-          const SizedBox(height: 12),
-          const Divider(height: 1, color: AppColors.divider),
-
-          if (loading)
-            const SizedBox(
-              height: 64,
-              child: Center(child: SizedBox(
-                  width: 20, height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))),
-            )
-          else if (bank.isEmpty)
-            InkWell(
-              onTap: onEdit,
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(AppRadius.card)),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                child: Row(children: [
-                  Container(
-                    width: 42, height: 42,
-                    decoration: BoxDecoration(
-                      color: AppColors.info.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.add_card_rounded, color: AppColors.info, size: 20),
-                  ),
-                  const SizedBox(width: 14),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Thêm tài khoản ngân hàng',
-                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.textPrimary)),
-                        SizedBox(height: 2),
-                        Text('Để rút tiền thu nhập về tài khoản',
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary, size: 20),
-                ]),
-              ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(children: [
-                Container(
-                  width: 42, height: 42,
-                  decoration: BoxDecoration(
-                    color: AppColors.info.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.account_balance_rounded, color: AppColors.info, size: 20),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(bank.bankName ?? '—',
-                          style: const TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${_maskAccount(bank.accountNumber)}  ·  ${bank.accountHolder ?? '—'}',
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                      ),
-                    ],
-                  ),
-                ),
-              ]),
-            ),
-
-          const SizedBox(height: 4),
-        ],
-      ),
-    );
-  }
-}
 
 // ── Transaction card ──────────────────────────────────────────────────────────
 
@@ -997,7 +379,7 @@ class _TransactionCard extends StatelessWidget {
     final d         = DateTime(local.year, local.month, local.day);
     if (d == today) return 'Hôm nay';
     if (d == yesterday) return 'Hôm qua';
-    return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}';
+    return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')}/${local.year}';
   }
 
   List<Object> _grouped() {
@@ -1019,41 +401,53 @@ class _TransactionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+
           // Header
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 14, 16, 0),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             child: Row(children: [
-              Icon(Icons.receipt_long_rounded, size: 14, color: AppColors.textTertiary),
-              SizedBox(width: 6),
-              Text(
-                'LỊCH SỬ GIAO DỊCH',
+              const Text(
+                'Lịch sử giao dịch',
                 style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textTertiary,
-                  letterSpacing: 0.5,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
                 ),
               ),
             ]),
           ),
 
-          const SizedBox(height: 12),
           const Divider(height: 1, color: AppColors.divider),
 
           if (loading)
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 36),
-              child: Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)),
+              padding: EdgeInsets.symmetric(vertical: 48),
+              child: Center(child: CircularProgressIndicator(
+                  color: AppColors.primary, strokeWidth: 2)),
             )
           else if (transactions.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 36),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 48),
               child: Center(
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.receipt_long_outlined, size: 40, color: AppColors.textTertiary),
-                  SizedBox(height: 10),
-                  Text('Chưa có giao dịch nào',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
+                  Container(
+                    width: 64, height: 64,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F5F5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.receipt_long_outlined,
+                        size: 28, color: AppColors.textTertiary),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('Chưa có giao dịch nào',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary)),
+                  const SizedBox(height: 4),
+                  const Text('Các giao dịch sẽ hiển thị ở đây',
+                      style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
                 ]),
               ),
             )
@@ -1065,14 +459,14 @@ class _TransactionCard extends StatelessWidget {
                 final item = grouped[i];
                 if (item is String) {
                   widgets.add(Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
                     child: Text(
                       item,
                       style: const TextStyle(
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textTertiary,
-                        letterSpacing: 0.3,
+                        letterSpacing: 0.2,
                       ),
                     ),
                   ));
@@ -1081,14 +475,16 @@ class _TransactionCard extends StatelessWidget {
                   final next = i + 1 < grouped.length ? grouped[i + 1] : null;
                   widgets.add(_TxItem(tx: tx));
                   if (next is WalletTransaction) {
-                    widgets.add(const Divider(height: 1, indent: 68, endIndent: 16, color: AppColors.divider));
+                    widgets.add(const Divider(
+                        height: 1, indent: 76, endIndent: 0,
+                        color: AppColors.divider));
                   }
                 }
               }
               return widgets;
             }(),
 
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
         ],
       ),
     );
@@ -1099,47 +495,353 @@ class _TxItem extends StatelessWidget {
   final WalletTransaction tx;
   const _TxItem({required this.tx});
 
-  Color get _color => tx.isCredit ? AppColors.success : AppColors.danger;
-  IconData get _icon => tx.isCredit ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded;
+  Color get _color    => tx.isCredit ? AppColors.success : AppColors.danger;
+  Color get _bgColor  => tx.isCredit
+      ? const Color(0xFFECFDF5)
+      : const Color(0xFFFEF2F2);
+  IconData get _icon  => tx.isCredit
+      ? Icons.south_rounded
+      : Icons.north_rounded;
 
   @override
   Widget build(BuildContext context) {
     final local   = tx.createdAt.toLocal();
     final timeStr = '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+    final sign    = tx.isCredit ? '+' : '-';
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Row(children: [
+
+        // Circle avatar
         Container(
-          width: 40, height: 40,
+          width: 46, height: 46,
           decoration: BoxDecoration(
-            color: _color.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(11),
+            color: _bgColor,
+            shape: BoxShape.circle,
           ),
-          child: Icon(_icon, color: _color, size: 17),
+          child: Icon(_icon, color: _color, size: 20),
         ),
-        const SizedBox(width: 12),
+
+        const SizedBox(width: 14),
+
+        // Description + time
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 tx.description ?? (tx.isCredit ? 'Nhận tiền' : 'Trừ tiền'),
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 2),
-              Row(children: [
-                const Icon(Icons.access_time_rounded, size: 10, color: AppColors.textTertiary),
-                const SizedBox(width: 3),
-                Text(timeStr, style: const TextStyle(fontSize: 10, color: AppColors.textTertiary)),
-              ]),
+              const SizedBox(height: 4),
+              Text(
+                timeStr,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textTertiary,
+                ),
+              ),
             ],
           ),
         ),
-        Text(
-          '${tx.isCredit ? '+' : '-'}${Fmt.currency(tx.amount)}',
-          style: TextStyle(fontWeight: FontWeight.w800, color: _color, fontSize: 14),
+
+        const SizedBox(width: 12),
+
+        // Amount
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              '$sign${Fmt.currency(tx.amount)}',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: _color,
+              ),
+            ),
+          ],
         ),
+
+      ]),
+    );
+  }
+}
+
+// ── Withdraw sheet ────────────────────────────────────────────────────────────
+
+class _WithdrawSheet extends StatefulWidget {
+  final int balance;
+  final BankAccount bankAccount;
+  final Future<bool> Function(int amount) onSubmit;
+
+  const _WithdrawSheet({
+    required this.balance,
+    required this.bankAccount,
+    required this.onSubmit,
+  });
+
+  @override
+  State<_WithdrawSheet> createState() => _WithdrawSheetState();
+}
+
+class _WithdrawSheetState extends State<_WithdrawSheet> {
+  final _ctrl = TextEditingController();
+  bool _loading = false;
+  String? _error;
+
+  static const _quickAmounts = [50000, 100000, 200000, 500000];
+
+  void _setAmount(int amount) {
+    _ctrl.text = Fmt.currency(amount).replaceAll(' ₫', '').replaceAll(',', '.');
+    setState(() => _error = null);
+  }
+
+  int get _parsedAmount {
+    final raw = _ctrl.text.replaceAll('.', '').replaceAll(',', '').trim();
+    return int.tryParse(raw) ?? 0;
+  }
+
+  Future<void> _submit() async {
+    final amount = _parsedAmount;
+    if (amount < 50000) {
+      setState(() => _error = 'Số tiền tối thiểu là 50,000 đ');
+      return;
+    }
+    if (amount > widget.balance) {
+      setState(() => _error = 'Số tiền vượt quá số dư khả dụng');
+      return;
+    }
+    setState(() { _loading = true; _error = null; });
+    final ok = await widget.onSubmit(amount);
+    if (mounted) {
+      if (ok) Navigator.of(context).pop();
+      else setState(() { _loading = false; _error = 'Không thể gửi yêu cầu. Thử lại sau.'; });
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom  = MediaQuery.of(context).viewInsets.bottom;
+    final hasBank = !widget.bankAccount.isEmpty;
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.fromLTRB(20, 0, 20, bottom + 28),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+        // Handle
+        Center(child: Container(
+          margin: const EdgeInsets.only(top: 12, bottom: 20),
+          width: 36, height: 4,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE0E0E0),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        )),
+
+        // Title
+        Row(children: [
+          Container(
+            width: 38, height: 38,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.10),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.arrow_upward_rounded, size: 18, color: AppColors.primary),
+          ),
+          const SizedBox(width: 12),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Rút tiền', style: TextStyle(
+              fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.textPrimary,
+            )),
+            Text('Số dư: ${Fmt.currency(widget.balance)}',
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          ]),
+        ]),
+
+        const SizedBox(height: 20),
+
+        // Bank account info
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: hasBank
+                ? AppColors.success.withValues(alpha: 0.06)
+                : AppColors.warning.withValues(alpha: 0.07),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: hasBank
+                  ? AppColors.success.withValues(alpha: 0.18)
+                  : AppColors.warning.withValues(alpha: 0.25),
+            ),
+          ),
+          child: hasBank
+              ? Row(children: [
+                  Container(
+                    width: 36, height: 36,
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.account_balance_rounded,
+                        size: 18, color: AppColors.success),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(widget.bankAccount.bankName ?? '',
+                        style: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary,
+                        )),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${widget.bankAccount.accountNumber} · ${widget.bankAccount.accountHolder}',
+                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                    ),
+                  ])),
+                  const Icon(Icons.check_circle_rounded, size: 18, color: AppColors.success),
+                ])
+              : Row(children: [
+                  const Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 20),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text('Chưa liên kết tài khoản ngân hàng.\nVào Tài khoản → Ngân hàng để thiết lập.',
+                        style: TextStyle(fontSize: 12, color: AppColors.warning, height: 1.4)),
+                  ),
+                ]),
+        ),
+
+        if (hasBank) ...[
+
+          const SizedBox(height: 20),
+
+          // Amount input
+          const Text('Số tiền rút',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _ctrl,
+            keyboardType: TextInputType.number,
+            autofocus: true,
+            onChanged: (_) => setState(() => _error = null),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+            decoration: InputDecoration(
+              hintText: '0',
+              hintStyle: const TextStyle(fontSize: 18, color: AppColors.textTertiary),
+              suffixText: 'VND',
+              suffixStyle: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+              filled: true,
+              fillColor: const Color(0xFFF7F7F7),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+              ),
+              errorText: _error,
+              errorStyle: const TextStyle(fontSize: 11, color: AppColors.danger),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Quick amount chips
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            ..._quickAmounts
+              .where((a) => a <= widget.balance)
+              .map((a) => GestureDetector(
+                onTap: () => _setAmount(a),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0F0F0),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(Fmt.currency(a).replaceAll(' ₫', ''),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary)),
+                ),
+              )),
+            GestureDetector(
+              onTap: () => _setAmount(widget.balance),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text('Tất cả',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
+              ),
+            ),
+          ]),
+
+          const SizedBox(height: 16),
+
+          // Notice
+          Row(children: [
+            const Icon(Icons.info_outline_rounded, size: 14, color: AppColors.textTertiary),
+            const SizedBox(width: 6),
+            const Expanded(
+              child: Text('Số dư bị trừ ngay · Hoàn lại nếu bị từ chối · Xử lý 1–2 ngày',
+                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+            ),
+          ]),
+
+          const SizedBox(height: 20),
+
+          // Submit
+          SizedBox(
+            width: double.infinity, height: 50,
+            child: FilledButton(
+              onPressed: _loading ? null : _submit,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: _loading
+                  ? const SizedBox(width: 20, height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Gửi yêu cầu rút tiền',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+            ),
+          ),
+
+        ] else ...[
+
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity, height: 48,
+            child: FilledButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Đóng', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+            ),
+          ),
+
+        ],
+
       ]),
     );
   }
@@ -1159,47 +861,3 @@ Widget _surfaceCard({required Widget child}) {
   );
 }
 
-class _SheetLabel extends StatelessWidget {
-  final String text;
-  const _SheetLabel(this.text);
-  @override
-  Widget build(BuildContext context) => Text(text,
-      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary));
-}
-
-class _FlatField extends StatelessWidget {
-  final TextEditingController controller;
-  final String hint;
-  final TextInputType? keyboardType;
-  final TextCapitalization textCapitalization;
-  final TextInputAction? textInputAction;
-
-  const _FlatField({
-    required this.controller,
-    required this.hint,
-    this.keyboardType,
-    this.textCapitalization = TextCapitalization.none,
-    this.textInputAction,
-  });
-
-  @override
-  Widget build(BuildContext context) => TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        textCapitalization: textCapitalization,
-        textInputAction: textInputAction,
-        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 15),
-          filled: true,
-          fillColor: const Color(0xFFF5F5F5),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-          focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
-        ),
-      );
-}

@@ -122,30 +122,42 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       backgroundColor: Colors.white,
       resizeToAvoidBottomInset: false,
       body: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(28, safeT + 24, 28, bottom + safeB + 32),
+        padding: EdgeInsets.fromLTRB(24, safeT + 16, 24, bottom + safeB + 32),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
-            const SizedBox(height: 16),
-            const Center(
-              child: Text(
-                'ĐĂNG KÝ TÀI XẾ',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.3,
+            // Back button
+            GestureDetector(
+              onTap: () => context.go('/login'),
+              child: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(10),
                 ),
+                child: const Icon(Icons.arrow_back_rounded,
+                    size: 20, color: AppColors.textPrimary),
+              ),
+            ),
+
+            const SizedBox(height: 28),
+
+            const Text(
+              'Đăng ký tài xế',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.5,
               ),
             ),
             const SizedBox(height: 6),
-            const Center(
-              child: Text(
-                'Tham gia đội ngũ tài xế FlashShip',
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-              ),
+            const Text(
+              'Tham gia đội ngũ tài xế FlashShip',
+              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
             ),
+
             const SizedBox(height: 28),
 
             Form(
@@ -154,24 +166,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
 
-                  _Field(
+                  _AuthField(
                     controller: _nameCtrl,
-                    label: 'Họ và tên',
-                    hint: 'Nhập họ và tên',
-                    icon: Icons.person_outline_rounded,
+                    hint: 'Họ và tên',
+                    prefixIcon: const Icon(Icons.person_outline_rounded,
+                        size: 20, color: AppColors.textSecondary),
                     textCapitalization: TextCapitalization.words,
                     textInputAction: TextInputAction.next,
                     validator: (v) => (v == null || v.trim().isEmpty)
                         ? 'Vui lòng nhập họ và tên' : null,
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
-                  _Field(
+                  _AuthField(
                     controller: _phoneCtrl,
-                    label: 'Số điện thoại',
-                    hint: '09xx xxx xxx',
-                    icon: Icons.phone_outlined,
+                    hint: 'Số điện thoại',
+                    prefixIcon: const Icon(Icons.phone_outlined,
+                        size: 20, color: AppColors.textSecondary),
                     keyboardType: TextInputType.phone,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     textInputAction: TextInputAction.next,
@@ -182,19 +194,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     },
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
-                  _Field(
+                  _AuthField(
                     controller: _passwordCtrl,
-                    label: 'Mật khẩu',
-                    hint: '••••••••',
-                    icon: Icons.lock_outline_rounded,
+                    hint: 'Mật khẩu',
+                    prefixIcon: const Icon(Icons.lock_outline_rounded,
+                        size: 20, color: AppColors.textSecondary),
                     obscureText: _obscure,
                     textInputAction: TextInputAction.next,
                     suffixIcon: GestureDetector(
                       onTap: () => setState(() => _obscure = !_obscure),
                       child: Icon(
-                        _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                        _obscure
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
                         size: 20, color: AppColors.textSecondary,
                       ),
                     ),
@@ -205,19 +219,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     },
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
-                  _Field(
+                  _AuthField(
                     controller: _confirmCtrl,
-                    label: 'Xác nhận mật khẩu',
-                    hint: '••••••••',
-                    icon: Icons.lock_outline_rounded,
+                    hint: 'Xác nhận mật khẩu',
+                    prefixIcon: const Icon(Icons.lock_outline_rounded,
+                        size: 20, color: AppColors.textSecondary),
                     obscureText: _obscureConfirm,
                     textInputAction: TextInputAction.next,
                     suffixIcon: GestureDetector(
-                      onTap: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                      onTap: () =>
+                          setState(() => _obscureConfirm = !_obscureConfirm),
                       child: Icon(
-                        _obscureConfirm ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                        _obscureConfirm
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
                         size: 20, color: AppColors.textSecondary,
                       ),
                     ),
@@ -228,12 +245,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     },
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
-                  const Text('Khu vực',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary)),
-                  const SizedBox(height: 8),
                   _CityPickerField(
                     selected: _selectedCity,
                     loading: _loadingCities,
@@ -242,8 +255,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
 
                   if (_error != null) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     Container(
+                      width: double.infinity,
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 11),
                       decoration: BoxDecoration(
@@ -272,7 +286,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
             SizedBox(
               width: double.infinity,
-              height: 54,
+              height: 50,
               child: FilledButton(
                 onPressed: _submitting ? null : _submit,
                 style: FilledButton.styleFrom(
@@ -280,20 +294,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   disabledBackgroundColor:
                       AppColors.primary.withValues(alpha: 0.5),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                      borderRadius: BorderRadius.circular(10)),
+                  elevation: 0,
+                  textStyle: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w700),
                 ),
                 child: _submitting
                     ? const SizedBox(
                         width: 22, height: 22,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
-                    : const Text(
-                        'Tiếp theo',
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white),
-                      ),
+                    : const Text('Tiếp theo'),
               ),
             ),
 
@@ -305,11 +316,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       fontSize: 14, color: AppColors.textSecondary)),
               GestureDetector(
                 onTap: () => context.go('/login'),
-                child: const Text('Đăng nhập',
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary)),
+                child: const Text(
+                  'Đăng nhập',
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary),
+                ),
               ),
             ]),
           ],
@@ -319,98 +332,98 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 }
 
-// ── Input field ───────────────────────────────────────────────────────────────
+// ── Input field ────────────────────────────────────────────────────────────────
 
-class _Field extends StatelessWidget {
+class _AuthField extends StatelessWidget {
   final TextEditingController controller;
-  final String label, hint;
-  final IconData icon;
+  final String hint;
   final bool obscureText;
   final TextInputType? keyboardType;
   final TextCapitalization textCapitalization;
   final TextInputAction? textInputAction;
+  final Widget? prefixIcon;
   final Widget? suffixIcon;
   final List<TextInputFormatter>? inputFormatters;
   final String? Function(String?)? validator;
 
-  const _Field({
+  const _AuthField({
     required this.controller,
-    required this.label,
     required this.hint,
-    required this.icon,
     this.obscureText = false,
     this.keyboardType,
     this.textCapitalization = TextCapitalization.none,
     this.textInputAction,
+    this.prefixIcon,
     this.suffixIcon,
     this.inputFormatters,
     this.validator,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label,
-          style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary)),
-      const SizedBox(height: 8),
-      TextFormField(
+  Widget build(BuildContext context) => TextFormField(
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
         textCapitalization: textCapitalization,
         textInputAction: textInputAction,
         inputFormatters: inputFormatters,
-        validator: validator,
-        style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
+        style: const TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textPrimary,
+        ),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: const TextStyle(
-              color: AppColors.textSecondary, fontSize: 15),
-          prefixIcon: Padding(
-            padding: const EdgeInsets.only(left: 14, right: 10),
-            child: Icon(icon, size: 20, color: AppColors.textSecondary),
+            color: AppColors.textSecondary,
+            fontSize: 15,
+            fontWeight: FontWeight.w400,
           ),
+          errorStyle: const TextStyle(fontSize: 12),
+          prefixIcon: prefixIcon != null
+              ? Padding(
+                  padding: const EdgeInsets.only(left: 14, right: 10),
+                  child: prefixIcon,
+                )
+              : null,
           prefixIconConstraints:
-              const BoxConstraints(minWidth: 0, minHeight: 0),
+              const BoxConstraints(minWidth: 44, minHeight: 44),
           suffixIcon: suffixIcon != null
               ? Padding(
                   padding: const EdgeInsets.only(right: 12),
-                  child: suffixIcon)
+                  child: suffixIcon,
+                )
               : null,
           suffixIconConstraints:
-              const BoxConstraints(minWidth: 0, minHeight: 0),
+              const BoxConstraints(minWidth: 40, minHeight: 40),
           filled: true,
-          fillColor: const Color(0xFFF8F8F8),
-          contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16, vertical: 16),
+          fillColor: Colors.white,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
           ),
           errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             borderSide: const BorderSide(color: AppColors.danger),
           ),
           focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             borderSide:
                 const BorderSide(color: AppColors.danger, width: 1.5),
           ),
         ),
-      ),
-    ]);
-  }
+        validator: validator,
+      );
 }
 
 // ── City picker field ─────────────────────────────────────────────────────────
@@ -435,16 +448,16 @@ class _CityPickerField extends StatelessWidget {
           GestureDetector(
             onTap: loading ? null : onTap,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8F8F8),
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: hasError && selected == null
                       ? AppColors.danger
                       : selected != null
                           ? AppColors.primary
-                          : const Color(0xFFE8E8E8),
+                          : const Color(0xFFE0E0E0),
                   width: selected != null ? 1.5 : 1,
                 ),
               ),
@@ -533,7 +546,9 @@ class _CitySheetState extends State<_CitySheet> {
     setState(() {
       _filtered = q.isEmpty
           ? widget.cities
-          : widget.cities.where((c) => c.name.toLowerCase().contains(q)).toList();
+          : widget.cities
+              .where((c) => c.name.toLowerCase().contains(q))
+              .toList();
     });
   }
 
@@ -541,12 +556,11 @@ class _CitySheetState extends State<_CitySheet> {
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).padding.bottom;
 
-    return Container(
+    return Material(
+      color: Colors.white,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      child: SizedBox(
       height: MediaQuery.of(context).size.height * 0.75,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
       child: Column(
         children: [
           const SizedBox(height: 12),
@@ -570,7 +584,6 @@ class _CitySheetState extends State<_CitySheet> {
             ),
           ),
           const SizedBox(height: 14),
-
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: TextField(
@@ -590,18 +603,18 @@ class _CitySheetState extends State<_CitySheet> {
                       )
                     : null,
                 filled: true,
-                fillColor: const Color(0xFFF8F8F8),
+                fillColor: const Color(0xFFF5F5F5),
                 contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                   borderSide: const BorderSide(
                       color: AppColors.primary, width: 1.5),
                 ),
@@ -610,7 +623,6 @@ class _CitySheetState extends State<_CitySheet> {
           ),
           const SizedBox(height: 12),
           const Divider(height: 1),
-
           Expanded(
             child: _filtered.isEmpty
                 ? const Center(
@@ -649,6 +661,7 @@ class _CitySheetState extends State<_CitySheet> {
                   ),
           ),
         ],
+      ),
       ),
     );
   }

@@ -38,65 +38,93 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final auth   = ref.watch(authProvider);
-    final safeT  = MediaQuery.of(context).padding.top;
-    final safeB  = MediaQuery.of(context).padding.bottom;
     final bottom = MediaQuery.of(context).viewInsets.bottom;
 
     return Scaffold(
       backgroundColor: Colors.white,
       resizeToAvoidBottomInset: false,
-      body: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(28, safeT + 48, 28, bottom + safeB + 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(24, 0, 24, bottom + 16),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
 
-            const SizedBox(height: 16),
-            const Center(
-              child: Text(
-                'ĐĂNG NHẬP',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.5,
+                const SizedBox(height: 52),
+
+                // Logo
+                Container(
+                  width: 76, height: 76,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.28),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(15),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    color: Colors.white,
+                    fit: BoxFit.contain,
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Center(
-              child: Text(
-                'Giao hàng nhanh — Thu nhập ổn định',
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-              ),
-            ),
-            const SizedBox(height: 32),
 
-            Form(
-              key: _formKey,
-              child: Column(children: [
-                _Field(
+                const SizedBox(height: 20),
+
+                const Text(
+                  'Flash Ship Tài xế',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Giao hàng nhanh — Thu nhập ổn định',
+                  style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                ),
+
+                const SizedBox(height: 36),
+
+                _AuthField(
                   controller: _phoneCtrl,
-                  label: 'Số điện thoại',
-                  hint: 'Nhập số điện thoại',
-                  icon: Icons.phone_outlined,
+                  hint: 'Số điện thoại',
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.next,
+                  prefixIcon: const Icon(
+                    Icons.phone_outlined,
+                    size: 20,
+                    color: AppColors.textSecondary,
+                  ),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return 'Vui lòng nhập số điện thoại';
                     if (v.trim().length < 9) return 'Số điện thoại không hợp lệ';
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
-                _Field(
+
+                const SizedBox(height: 12),
+
+                _AuthField(
                   controller: _passwordCtrl,
-                  label: 'Mật khẩu',
-                  hint: '••••••••',
-                  icon: Icons.lock_outline_rounded,
+                  hint: 'Mật khẩu',
                   obscureText: _obscure,
                   textInputAction: TextInputAction.done,
                   onFieldSubmitted: (_) => _submit(),
+                  prefixIcon: const Icon(
+                    Icons.lock_outline_rounded,
+                    size: 20,
+                    color: AppColors.textSecondary,
+                  ),
                   suffixIcon: GestureDetector(
                     onTap: () => setState(() => _obscure = !_obscure),
                     child: Icon(
@@ -113,9 +141,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     return null;
                   },
                 ),
+
+                const SizedBox(height: 10),
+
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: GestureDetector(
+                    onTap: () => context.push('/forgot-password'),
+                    child: const Text(
+                      'Quên mật khẩu?',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ),
+
                 if (auth.error != null) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Container(
+                    width: double.infinity,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 11),
                     decoration: BoxDecoration(
@@ -124,175 +171,169 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     child: Row(children: [
                       const Icon(Icons.error_outline_rounded,
-                          color: Color(0xFFEF4444), size: 17),
+                          color: AppColors.danger, size: 17),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Text(auth.error!,
-                            style: const TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFFEF4444),
-                                fontWeight: FontWeight.w500)),
+                        child: Text(
+                          auth.error!,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.danger,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
                     ]),
                   ),
                 ],
-              ]),
-            ),
 
-            const SizedBox(height: 12),
+                const SizedBox(height: 24),
 
-            Align(
-              alignment: Alignment.centerRight,
-              child: GestureDetector(
-                onTap: () => context.push('/forgot-password'),
-                child: const Text('Quên mật khẩu?',
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary)),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            SizedBox(
-              width: double.infinity,
-              height: 54,
-              child: FilledButton(
-                onPressed: auth.isLoading ? null : _submit,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  disabledBackgroundColor:
-                      AppColors.primary.withValues(alpha: 0.5),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: FilledButton(
+                    onPressed: auth.isLoading ? null : _submit,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      disabledBackgroundColor:
+                          AppColors.primary.withValues(alpha: 0.5),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                      elevation: 0,
+                      textStyle: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
+                    child: auth.isLoading
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2.5, color: Colors.white),
+                          )
+                        : const Text('Đăng nhập'),
+                  ),
                 ),
-                child: auth.isLoading
-                    ? const SizedBox(
-                        width: 22, height: 22,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Text(
-                        'Đăng nhập',
+
+                const SizedBox(height: 20),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Chưa có tài khoản? ',
+                      style: TextStyle(
+                          fontSize: 14, color: AppColors.textSecondary),
+                    ),
+                    GestureDetector(
+                      onTap: () => context.go('/register'),
+                      child: const Text(
+                        'Đăng ký ngay',
                         style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
                       ),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              const Text('Chưa có tài khoản? ',
-                  style: TextStyle(
-                      fontSize: 14, color: AppColors.textSecondary)),
-              GestureDetector(
-                onTap: () => context.go('/register'),
-                child: const Text(
-                  'Đăng ký ngay',
-                  style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary),
+                    ),
+                  ],
                 ),
-              ),
-            ]),
-          ],
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-// ── Input field ───────────────────────────────────────────────────────────────
+// ── Input field ────────────────────────────────────────────────────────────────
 
-class _Field extends StatelessWidget {
+class _AuthField extends StatelessWidget {
   final TextEditingController controller;
-  final String label, hint;
-  final IconData icon;
+  final String hint;
   final bool obscureText;
   final TextInputType? keyboardType;
   final TextInputAction? textInputAction;
+  final void Function(String)? onFieldSubmitted;
+  final Widget? prefixIcon;
   final Widget? suffixIcon;
   final String? Function(String?)? validator;
-  final void Function(String)? onFieldSubmitted;
 
-  const _Field({
+  const _AuthField({
     required this.controller,
-    required this.label,
     required this.hint,
-    required this.icon,
     this.obscureText = false,
     this.keyboardType,
     this.textInputAction,
+    this.onFieldSubmitted,
+    this.prefixIcon,
     this.suffixIcon,
     this.validator,
-    this.onFieldSubmitted,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label,
-          style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary)),
-      const SizedBox(height: 8),
-      TextFormField(
+  Widget build(BuildContext context) => TextFormField(
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
         textInputAction: textInputAction,
         onFieldSubmitted: onFieldSubmitted,
-        validator: validator,
-        style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
+        style: const TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textPrimary,
+        ),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: const TextStyle(
-              color: AppColors.textSecondary, fontSize: 15),
-          prefixIcon: Padding(
-            padding: const EdgeInsets.only(left: 14, right: 10),
-            child: Icon(icon, size: 20, color: AppColors.textSecondary),
+            color: AppColors.textSecondary,
+            fontSize: 15,
+            fontWeight: FontWeight.w400,
           ),
+          errorStyle: const TextStyle(fontSize: 12),
+          prefixIcon: prefixIcon != null
+              ? Padding(
+                  padding: const EdgeInsets.only(left: 14, right: 10),
+                  child: prefixIcon,
+                )
+              : null,
           prefixIconConstraints:
-              const BoxConstraints(minWidth: 0, minHeight: 0),
+              const BoxConstraints(minWidth: 44, minHeight: 44),
           suffixIcon: suffixIcon != null
               ? Padding(
                   padding: const EdgeInsets.only(right: 12),
-                  child: suffixIcon)
+                  child: suffixIcon,
+                )
               : null,
           suffixIconConstraints:
-              const BoxConstraints(minWidth: 0, minHeight: 0),
+              const BoxConstraints(minWidth: 40, minHeight: 40),
           filled: true,
-          fillColor: const Color(0xFFF8F8F8),
-          contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16, vertical: 16),
+          fillColor: Colors.white,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
           ),
           errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFEF4444)),
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: AppColors.danger),
           ),
           focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             borderSide:
-                const BorderSide(color: Color(0xFFEF4444), width: 1.5),
+                const BorderSide(color: AppColors.danger, width: 1.5),
           ),
         ),
-      ),
-    ]);
-  }
+        validator: validator,
+      );
 }

@@ -91,6 +91,15 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
       final orderId = widget.orderData['order_id'];
       if (orderId == null) return;
       await ref.read(apiClientProvider).post('/orders/$orderId/view-offer');
+      // Server đã reset expires_at lên 30s từ lúc này — cập nhật lại countdown
+      if (mounted) {
+        _timer?.cancel();
+        setState(() {
+          _remaining     = 30;
+          _totalDuration = 30;
+        });
+        _startTimer();
+      }
     } catch (_) {}
   }
 

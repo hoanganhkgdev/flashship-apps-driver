@@ -37,64 +37,60 @@ class _ScoreScreenState extends ConsumerState<ScoreScreen> {
       child: Scaffold(
         backgroundColor: AppColors.background,
         body: score == null && state.loading
-            ? _buildLoading()
+            ? const Center(
+                child: CircularProgressIndicator(
+                    color: AppColors.primary, strokeWidth: 2))
             : RefreshIndicator(
                 color: AppColors.primary,
                 onRefresh: () async {
                   await ref.read(scoreProvider.notifier).fetch();
                   await ref.read(scoreProvider.notifier).fetchHistory();
                 },
-                child: SingleChildScrollView(
+                child: ListView(
+                  padding: EdgeInsets.zero,
                   physics: const AlwaysScrollableScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
+                  children: [
 
-                      // ── Gradient header ─────────────────────────────────
-                      _Header(score: score),
+                    _Header(score: score),
 
-                      // ── Content cards ────────────────────────────────────
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                        child: Column(
-                          children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                      child: Column(children: [
 
-                            if (score?.week != null) ...[
-                              _WeekCard(score: score!),
-                              const SizedBox(height: 12),
-                            ],
+                        if (score != null) ...[
+                          _StatsCard(score: score),
+                          const SizedBox(height: 12),
+                        ],
 
-                            _RulesCard(),
-                            const SizedBox(height: 12),
+                        if (score?.week != null) ...[
+                          _WeekCard(score: score!),
+                          const SizedBox(height: 12),
+                        ],
 
-                            _HistoryCard(
-                              history:     state.history,
-                              loading:     state.historyLoading,
-                              loadingMore: state.historyLoadingMore,
-                              hasMore:     state.historyHasMore,
-                              onLoadMore:  () =>
-                                  ref.read(scoreProvider.notifier).loadMoreHistory(),
-                            ),
+                        _RulesCard(),
+                        const SizedBox(height: 12),
 
-                          ],
+                        _HistoryCard(
+                          history:     state.history,
+                          loading:     state.historyLoading,
+                          loadingMore: state.historyLoadingMore,
+                          hasMore:     state.historyHasMore,
+                          onLoadMore:  () =>
+                              ref.read(scoreProvider.notifier).loadMoreHistory(),
                         ),
-                      ),
-                    ],
-                  ),
+
+                      ]),
+                    ),
+
+                  ],
                 ),
               ),
       ),
     );
   }
-
-  Widget _buildLoading() {
-    return const Center(
-      child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2),
-    );
-  }
 }
 
-// ── Gradient header ───────────────────────────────────────────────────────────
+// ── Header ────────────────────────────────────────────────────────────────────
 
 class _Header extends StatelessWidget {
   final DriverScoreModel? score;
@@ -102,251 +98,433 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final top     = MediaQuery.of(context).padding.top;
-    final s       = score;
-    final progress = s != null ? s.score / s.maxScore : 0.0;
-    final tip     = s?.tips.isNotEmpty == true ? s!.tips.first : null;
+    final top      = MediaQuery.of(context).padding.top;
+    final s        = score;
+    final prog     = s != null ? (s.score / s.maxScore).clamp(0.0, 1.0) : 0.0;
+    final hasWeek  = s?.week != null;
 
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFFEF7C1A), AppColors.primaryDark],
+          colors: [Color(0xFFCC5A08), Color(0xFFE8720C), Color(0xFFF59E30)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
       ),
-      child: Column(
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
+          // Decorative circles
+          Positioned(top: -50, right: -50, child: _Bubble(160, 0.07)),
+          Positioned(top: 90,  left: -30,  child: _Bubble(90,  0.05)),
+          Positioned(bottom: 60, right: 20, child: _Bubble(55, 0.04)),
 
-          // ── Top bar: back + title ─────────────────────────────────────
-          Padding(
-            padding: EdgeInsets.only(top: top + 4),
-            child: Row(
-              children: [
-                // Back button
+          Column(children: [
+            SizedBox(height: top),
+
+            // Topbar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(children: [
                 GestureDetector(
                   onTap: () => context.pop(),
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    alignment: Alignment.center,
-                    child: Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: Colors.white,
-                        size: 16,
+                  child: SizedBox(
+                    width: 48, height: 48,
+                    child: Center(
+                      child: Container(
+                        width: 34, height: 34,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.arrow_back_ios_new_rounded,
+                            color: Colors.white, size: 16),
                       ),
                     ),
                   ),
                 ),
-
-                // Title
                 const Expanded(
-                  child: Text(
-                    'Điểm tích lũy',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
+                  child: Text('Điểm tích lũy',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 17, fontWeight: FontWeight.w700,
+                        color: Colors.white, letterSpacing: -0.2,
+                      )),
                 ),
-
-                // Spacer (mirrors back button width)
                 const SizedBox(width: 48),
-              ],
+              ]),
             ),
-          ),
 
-          const SizedBox(height: 28),
+            const SizedBox(height: 20),
 
-          // ── Score ring ────────────────────────────────────────────────
-          SizedBox(
-            width: 136,
-            height: 136,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // Background ring
+            // Score ring
+            SizedBox(
+              width: 152, height: 152,
+              child: Stack(alignment: Alignment.center, children: [
                 SizedBox.expand(
                   child: CircularProgressIndicator(
-                    value: 1,
-                    strokeWidth: 9,
+                    value: 1, strokeWidth: 10,
                     color: Colors.white.withValues(alpha: 0.15),
                   ),
                 ),
-                // Progress ring
                 SizedBox.expand(
                   child: CircularProgressIndicator(
-                    value: progress,
-                    strokeWidth: 9,
+                    value: prog, strokeWidth: 10,
                     strokeCap: StrokeCap.round,
                     color: Colors.white,
                   ),
                 ),
-                // Score text
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (s != null) ...[
-                      Text(
-                        '${s.score}',
+                Column(mainAxisSize: MainAxisSize.min, children: [
+                  if (s != null) ...[
+                    Text('${s.score}',
                         style: const TextStyle(
-                          fontSize: 42,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          height: 1,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '/ ${s.maxScore}',
+                          fontSize: 50, fontWeight: FontWeight.w900,
+                          color: Colors.white, height: 1,
+                        )),
+                    const SizedBox(height: 3),
+                    Text('/ ${s.maxScore} điểm',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11, fontWeight: FontWeight.w500,
                           color: Colors.white.withValues(alpha: 0.7),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ] else ...[
-                      SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
+                        )),
+                  ] else
+                    SizedBox(
+                      width: 22, height: 22,
+                      child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white.withValues(alpha: 0.7),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── Label pill ────────────────────────────────────────────────
-          if (s != null)
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.3),
-                  width: 1,
-                ),
-              ),
-              child: Text(
-                s.label,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                  letterSpacing: 0.2,
-                ),
-              ),
+                          color: Colors.white.withValues(alpha: 0.7)),
+                    ),
+                ]),
+              ]),
             ),
 
-          // ── Streak badge ──────────────────────────────────────────────
-          if (s?.streak != null && s!.streak!.count > 0) ...[
-            const SizedBox(height: 10),
-            _StreakBadge(streak: s.streak!),
-          ],
+            const SizedBox(height: 14),
 
-          // ── Tip text ──────────────────────────────────────────────────
-          if (tip != null) ...[
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                tip,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  color: Colors.white.withValues(alpha: 0.82),
-                  height: 1.45,
+            // Level chip
+            if (s != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.star_rounded, color: Colors.white, size: 14),
+                  const SizedBox(width: 5),
+                  Text(s.label,
+                      style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w700,
+                        color: Colors.white, letterSpacing: 0.2,
+                      )),
+                ]),
+              ),
+
+            // Week progress bar (inside gradient)
+            if (s != null && hasWeek) ...[
+              const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: _HeaderProgressBar(
+                  score:     s.score,
+                  maxScore:  s.maxScore,
+                  penaltyAt: s.week!.penaltyAt,
+                  bonusAt:   s.week!.bonusAt,
                 ),
               ),
-            ),
-          ],
+            ],
 
-          const SizedBox(height: 28),
+            SizedBox(height: hasWeek && s != null ? 24 : 28),
 
-          // ── Bottom curve ──────────────────────────────────────────────
-          Container(
-            height: 20,
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
-              ),
-            ),
-          ),
+            // White curve
+            Container(height: 20, color: AppColors.background),
+          ]),
         ],
       ),
     );
   }
 }
 
-// ── Streak badge ──────────────────────────────────────────────────────────────
+class _Bubble extends StatelessWidget {
+  final double size;
+  final double opacity;
+  const _Bubble(this.size, this.opacity);
 
-class _StreakBadge extends StatelessWidget {
-  final StreakInfo streak;
-  const _StreakBadge({required this.streak});
+  @override
+  Widget build(BuildContext context) => Container(
+        width: size, height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: opacity),
+        ),
+      );
+}
+
+// ── Progress bar in header (white style on gradient bg) ───────────────────────
+
+class _HeaderProgressBar extends StatelessWidget {
+  final int score, maxScore, penaltyAt, bonusAt;
+  const _HeaderProgressBar({
+    required this.score, required this.maxScore,
+    required this.penaltyAt, required this.bonusAt,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final nm = streak.nextMilestone;
+    return LayoutBuilder(builder: (_, box) {
+      final w       = box.maxWidth;
+      final dotFrac = (score / maxScore).clamp(0.0, 1.0);
+      final penFrac = (penaltyAt / maxScore).clamp(0.0, 1.0);
+      final bonFrac = (bonusAt   / maxScore).clamp(0.0, 1.0);
+      const trackH  = 8.0;
+      const dotR    = 7.0;
+      const trackTop = 18.0;
+      const bubbleW  = 46.0;
+      final dotX    = dotFrac * w;
+      final penX    = penFrac * w;
+      final bonX    = bonFrac * w;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text('🔥', style: TextStyle(fontSize: 14)),
-          const SizedBox(width: 6),
-          Text(
-            '${streak.count} đơn liên tiếp',
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
+      return SizedBox(
+        height: 62,
+        child: Stack(clipBehavior: Clip.none, children: [
+
+          // Score bubble above dot
+          Positioned(
+            left: (dotX - bubbleW / 2).clamp(0, w - bubbleW),
+            top: 0,
+            child: Container(
+              width: bubbleW,
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 6,
+                  ),
+                ],
+              ),
+              child: Text('$score đ',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 9, fontWeight: FontWeight.w800,
+                    color: Color(0xFFE8720C),
+                  )),
             ),
           ),
-          if (nm != null) ...[
-            Container(
-              width: 1,
-              height: 14,
-              margin: const EdgeInsets.symmetric(horizontal: 8),
-              color: Colors.white.withValues(alpha: 0.35),
-            ),
-            Text(
-              'Còn ${nm.remaining} đơn → +${nm.bonus}đ',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.white.withValues(alpha: 0.85),
+
+          // Track — three zones
+          Positioned(
+            top: trackTop, left: 0, right: 0,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: SizedBox(
+                height: trackH,
+                child: Row(children: [
+                  // Red zone: 0 → penaltyAt
+                  SizedBox(
+                    width: penFrac * w,
+                    child: Container(
+                        color: const Color(0xFFFF6B6B).withValues(alpha: 0.55)),
+                  ),
+                  // Neutral zone: penaltyAt → bonusAt
+                  SizedBox(
+                    width: ((bonFrac - penFrac) * w).clamp(0, w),
+                    child: Container(
+                        color: Colors.white.withValues(alpha: 0.22)),
+                  ),
+                  // Green zone: bonusAt → max
+                  Expanded(
+                    child: Container(
+                        color: const Color(0xFF4ADE80).withValues(alpha: 0.5)),
+                  ),
+                ]),
               ),
             ),
-          ],
-        ],
-      ),
+          ),
+
+          // Filled portion (0 → current score, white overlay)
+          Positioned(
+            top: trackTop, left: 0,
+            child: Container(
+              width: dotX.clamp(0, w),
+              height: trackH,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+
+          // Threshold tick marks
+          Positioned(
+            left: penX - 1, top: trackTop - 2,
+            child: Container(
+              width: 2, height: trackH + 4,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(1),
+              ),
+            ),
+          ),
+          Positioned(
+            left: bonX - 1, top: trackTop - 2,
+            child: Container(
+              width: 2, height: trackH + 4,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(1),
+              ),
+            ),
+          ),
+
+          // Dot
+          Positioned(
+            left: dotX - dotR,
+            top: trackTop + trackH / 2 - dotR,
+            child: Container(
+              width: dotR * 2, height: dotR * 2,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 6,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Penalty label (below track)
+          Positioned(
+            left: (penX - 20).clamp(0, w - 40),
+            top: trackTop + trackH + 7,
+            child: SizedBox(
+              width: 40,
+              child: Column(children: [
+                Text('$penaltyAt',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 9, fontWeight: FontWeight.w700,
+                      color: Colors.white.withValues(alpha: 0.95),
+                    )),
+                Text('phạt',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 8,
+                      color: Colors.white.withValues(alpha: 0.7),
+                    )),
+              ]),
+            ),
+          ),
+
+          // Bonus label (below track)
+          Positioned(
+            left: (bonX - 20).clamp(0, w - 40),
+            top: trackTop + trackH + 7,
+            child: SizedBox(
+              width: 40,
+              child: Column(children: [
+                Text('$bonusAt',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 9, fontWeight: FontWeight.w700,
+                      color: Colors.white.withValues(alpha: 0.95),
+                    )),
+                Text('thưởng',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 8,
+                      color: Colors.white.withValues(alpha: 0.7),
+                    )),
+              ]),
+            ),
+          ),
+
+        ]),
+      );
+    });
+  }
+}
+
+// ── Stats card ────────────────────────────────────────────────────────────────
+
+class _StatsCard extends StatelessWidget {
+  final DriverScoreModel score;
+  const _StatsCard({required this.score});
+
+  @override
+  Widget build(BuildContext context) {
+    final w = score.week;
+    return _Card(
+      child: Row(children: [
+        _StatCol(
+          icon: Icons.stars_rounded,
+          label: 'Điểm hiện tại',
+          value: '${score.score}',
+          color: AppColors.primary,
+        ),
+        _vr(),
+        _StatCol(
+          icon: Icons.emoji_events_rounded,
+          label: 'Ngưỡng thưởng',
+          value: w != null ? '${w.bonusAt}' : '—',
+          color: AppColors.success,
+        ),
+        _vr(),
+        _StatCol(
+          icon: Icons.warning_amber_rounded,
+          label: 'Ngưỡng phạt',
+          value: w != null ? '${w.penaltyAt}' : '—',
+          color: AppColors.danger,
+        ),
+      ]),
     );
   }
+
+  Widget _vr() => Container(
+        width: 1, height: 44,
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        color: const Color(0xFFEEEEEE),
+      );
+}
+
+class _StatCol extends StatelessWidget {
+  final IconData icon;
+  final String label, value;
+  final Color color;
+  const _StatCol({
+    required this.icon, required this.label,
+    required this.value, required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: Column(children: [
+          Container(
+            width: 38, height: 38,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Icon(icon, color: color, size: 19),
+          ),
+          const SizedBox(height: 8),
+          Text(value,
+              style: TextStyle(
+                fontSize: 22, fontWeight: FontWeight.w900, color: color,
+              )),
+          const SizedBox(height: 3),
+          Text(label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 10, color: AppColors.textSecondary,
+              )),
+        ]),
+      );
 }
 
 // ── Week card ─────────────────────────────────────────────────────────────────
@@ -354,6 +532,9 @@ class _StreakBadge extends StatelessWidget {
 class _WeekCard extends StatelessWidget {
   final DriverScoreModel score;
   const _WeekCard({required this.score});
+
+  String _fmt(int n) =>
+      n >= 1000 ? '${(n / 1000).toStringAsFixed(0)}.000' : '$n';
 
   @override
   Widget build(BuildContext context) {
@@ -394,172 +575,307 @@ class _WeekCard extends StatelessWidget {
       subtitle = 'Cần vượt ${week.penaltyAt} điểm để tránh phạt ${_fmt(week.penaltyAmount)}đ.';
     } else {
       color    = AppColors.primary;
-      icon     = Icons.star_rounded;
+      icon     = Icons.trending_up_rounded;
       title    = 'Cần +${week.bonusAt - s} điểm để nhận thưởng';
       subtitle = 'Thưởng ${_fmt(week.bonusAmount)}đ nếu đạt ≥ ${week.bonusAt} điểm cuối tuần.';
     }
 
-    final softColor   = color.withValues(alpha: 0.08);
-    final borderColor = color.withValues(alpha: 0.2);
-
-    return _card(
+    return _Card(
+      border: Border.all(color: color.withValues(alpha: 0.2)),
       child: Row(children: [
         Container(
-          width: 44, height: 44,
+          width: 46, height: 46,
           decoration: BoxDecoration(
-            color: softColor,
-            borderRadius: BorderRadius.circular(AppRadius.md),
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(13),
           ),
-          child: Icon(icon, color: color, size: 22),
+          child: Icon(icon, color: color, size: 23),
         ),
         const SizedBox(width: 14),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title,
                 style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: color,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                subtitle,
+                    fontSize: 14, fontWeight: FontWeight.w700, color: color)),
+            const SizedBox(height: 3),
+            Text(subtitle,
                 style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                  height: 1.4,
-                ),
-              ),
-            ],
-          ),
+                    fontSize: 12, color: AppColors.textSecondary, height: 1.4)),
+          ]),
         ),
       ]),
-      border: Border.all(color: borderColor),
     );
   }
-
-  String _fmt(int n) =>
-      n >= 1000 ? '${(n / 1000).toStringAsFixed(0)}.000' : '$n';
 }
 
 // ── Rules card ────────────────────────────────────────────────────────────────
 
-class _RulesCard extends StatelessWidget {
+class _RulesCard extends StatefulWidget {
   const _RulesCard();
 
   @override
+  State<_RulesCard> createState() => _RulesCardState();
+}
+
+class _RulesCardState extends State<_RulesCard> {
+  bool _showPlus  = true;
+  bool _showMinus = false;
+  bool _showReset = false;
+
+  @override
   Widget build(BuildContext context) {
-    return _card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle(Icons.info_outline_rounded, 'CÁCH TÍNH ĐIỂM'),
-          const SizedBox(height: 14),
+    return _Card(
+      padding: EdgeInsets.zero,
+      child: Column(children: [
 
-          _ruleRow('+1', 'Khách đánh giá 5★', AppColors.success),
-          const SizedBox(height: 8),
-          _ruleRow('+1', '3 đơn liên tiếp (streak)', AppColors.success),
-          const SizedBox(height: 8),
-          _ruleRow('+2', '6 đơn liên tiếp (streak)', AppColors.success),
-          const SizedBox(height: 8),
-          _ruleRow('+4', '10 đơn liên tiếp (streak)', AppColors.success),
-          const SizedBox(height: 16),
-
-          Divider(height: 1, color: AppColors.divider),
-          const SizedBox(height: 16),
-
-          _ruleRow('-1', 'Khách đánh giá 3★', AppColors.danger),
-          const SizedBox(height: 8),
-          _ruleRow('-2', 'Từ chối đơn hàng', AppColors.danger),
-          const SizedBox(height: 8),
-          _ruleRow('-2', 'Để đơn trôi qua (timeout)', AppColors.danger),
-          const SizedBox(height: 8),
-          _ruleRow('-3', 'Khách đánh giá 2★', AppColors.danger),
-          const SizedBox(height: 8),
-          _ruleRow('-5', 'Khách đánh giá 1★', AppColors.danger),
-          const SizedBox(height: 8),
-          _ruleRow('-5', 'Không giao đơn 1 ngày', AppColors.danger),
-          const SizedBox(height: 8),
-          _ruleRow('-5', 'Online dưới 8 giờ/ngày', AppColors.danger),
-          const SizedBox(height: 8),
-          _ruleRow('-10', 'Không giao đơn 2+ ngày', AppColors.danger),
-          const SizedBox(height: 16),
-
-          Divider(height: 1, color: AppColors.divider),
-          const SizedBox(height: 14),
-
-          _weekRule(Icons.add_circle_outline_rounded, 'Giới hạn cộng điểm', 'Tối đa +10 điểm/ngày', AppColors.primary),
-          const SizedBox(height: 10),
-          _weekRule(Icons.emoji_events_rounded, 'Điểm ≥ 150 cuối tuần', 'Thưởng 50.000đ vào ví', AppColors.success),
-          const SizedBox(height: 10),
-          _weekRule(Icons.warning_amber_rounded, 'Điểm ≤ 70 cuối tuần', 'Phạt 50.000đ từ ví', AppColors.danger),
-          const SizedBox(height: 10),
-          _weekRule(Icons.refresh_rounded, 'Đầu tuần mới', 'Reset về 100 điểm', AppColors.textSecondary),
-        ],
-      ),
-    );
-  }
-
-  Widget _ruleRow(String badge, String label, Color color) {
-    return Row(children: [
-      Container(
-        width: 36, height: 28,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(6),
+        // Header
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          child: Row(children: [
+            const Text('Cách tính điểm',
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary)),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F5F5),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text('+10 điểm/ngày tối đa',
+                  style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary)),
+            ),
+          ]),
         ),
-        alignment: Alignment.center,
-        child: Text(
-          badge,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            color: color,
+
+        // Tab chips
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Row(children: [
+            Expanded(child: _TabChip(
+              label: '+ Cộng điểm',
+              active: _showPlus,
+              activeColor: AppColors.success,
+              onTap: () => setState(() {
+                _showPlus  = !_showPlus;
+                _showMinus = false;
+                _showReset = false;
+              }),
+            )),
+            const SizedBox(width: 8),
+            Expanded(child: _TabChip(
+              label: '− Trừ điểm',
+              active: _showMinus,
+              activeColor: AppColors.danger,
+              onTap: () => setState(() {
+                _showMinus = !_showMinus;
+                _showPlus  = false;
+                _showReset = false;
+              }),
+            )),
+            const SizedBox(width: 8),
+            Expanded(child: _TabChip(
+              label: 'Reset',
+              active: _showReset,
+              activeColor: AppColors.textSecondary,
+              onTap: () => setState(() {
+                _showReset = !_showReset;
+                _showPlus  = false;
+                _showMinus = false;
+              }),
+            )),
+          ]),
+        ),
+
+        const Divider(height: 1, color: Color(0xFFF5F5F5)),
+
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          child: _showPlus
+              ? _RulesList(
+                  key: const ValueKey('plus'),
+                  color: AppColors.success,
+                  items: const [
+                    ('+1', 'Khách đánh giá 5★'),
+                    ('+1', '3 đơn liên tiếp (streak)'),
+                    ('+2', '6 đơn liên tiếp (streak)'),
+                    ('+4', '10 đơn liên tiếp (streak)'),
+                  ],
+                )
+              : _showMinus
+                  ? _RulesList(
+                      key: const ValueKey('minus'),
+                      color: AppColors.danger,
+                      items: const [
+                        ('-1',  'Khách đánh giá 3★'),
+                        ('-2',  'Từ chối đơn hàng'),
+                        ('-2',  'Để đơn trôi qua (timeout)'),
+                        ('-3',  'Khách đánh giá 2★'),
+                        ('-5',  'Khách đánh giá 1★'),
+                        ('-5',  'Không giao đơn 1 ngày'),
+                        ('-5',  'Online dưới 8 giờ/ngày'),
+                        ('-10', 'Không giao đơn 2+ ngày'),
+                      ],
+                    )
+                  : _showReset
+                      ? _RulesList(
+                          key: const ValueKey('reset'),
+                          color: AppColors.textSecondary,
+                          items: const [
+                            ('↺', 'Reset về 100 điểm mỗi đầu tuần mới'),
+                          ],
+                        )
+                      : const SizedBox.shrink(key: ValueKey('none')),
+        ),
+
+        // Weekly reward summary
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF9F9F9),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(children: [
+              Expanded(
+                child: Row(children: [
+                  Container(
+                    width: 34, height: 34,
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: const Icon(Icons.emoji_events_rounded,
+                        size: 17, color: AppColors.success),
+                  ),
+                  const SizedBox(width: 8),
+                  const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('≥ 150 điểm',
+                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                    Text('+50.000đ',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w800,
+                            color: AppColors.success)),
+                  ]),
+                ]),
+              ),
+              Container(width: 1, height: 34, color: const Color(0xFFEEEEEE)),
+              Expanded(
+                child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                  const SizedBox(width: 12),
+                  Container(
+                    width: 34, height: 34,
+                    decoration: BoxDecoration(
+                      color: AppColors.danger.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: const Icon(Icons.warning_amber_rounded,
+                        size: 17, color: AppColors.danger),
+                  ),
+                  const SizedBox(width: 8),
+                  const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('≤ 70 điểm',
+                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                    Text('-50.000đ',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w800,
+                            color: AppColors.danger)),
+                  ]),
+                ]),
+              ),
+            ]),
           ),
         ),
-      ),
-      const SizedBox(width: 12),
-      Text(
-        label,
-        style: const TextStyle(
-          fontSize: 14,
-          color: AppColors.textPrimary,
-        ),
-      ),
-    ]);
-  }
 
-  Widget _weekRule(IconData icon, String label, String value, Color color) {
-    return Row(children: [
-      Container(
-        width: 36, height: 36,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(9),
+      ]),
+    );
+  }
+}
+
+class _TabChip extends StatelessWidget {
+  final String label;
+  final bool active;
+  final Color activeColor;
+  final VoidCallback onTap;
+  const _TabChip({
+    required this.label, required this.active,
+    required this.activeColor, required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: active
+                ? activeColor.withValues(alpha: 0.1)
+                : const Color(0xFFF5F5F5),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: active
+                  ? activeColor.withValues(alpha: 0.35)
+                  : Colors.transparent,
+            ),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w600,
+              color: active ? activeColor : AppColors.textSecondary,
+            ),
+          ),
         ),
-        child: Icon(icon, size: 18, color: color),
-      ),
-      const SizedBox(width: 12),
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 13, color: AppColors.textSecondary)),
-            Text(value,
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: color)),
-          ],
-        ),
-      ),
-    ]);
+      );
+}
+
+class _RulesList extends StatelessWidget {
+  final Color color;
+  final List<(String, String)> items;
+  const _RulesList({super.key, required this.color, required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: List.generate(items.length, (i) {
+        final (badge, label) = items[i];
+        return Column(children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Row(children: [
+              Container(
+                width: 42, height: 30,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                alignment: Alignment.center,
+                child: Text(badge,
+                    style: TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w800, color: color)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(label,
+                    style: const TextStyle(
+                        fontSize: 14, color: AppColors.textPrimary)),
+              ),
+            ]),
+          ),
+          if (i < items.length - 1)
+            const Divider(height: 1, color: Color(0xFFF5F5F5), indent: 70),
+        ]);
+      }),
+    );
   }
 }
 
@@ -573,97 +889,138 @@ class _HistoryCard extends StatelessWidget {
   final VoidCallback onLoadMore;
 
   const _HistoryCard({
-    required this.history,
-    required this.loading,
-    required this.loadingMore,
-    required this.hasMore,
+    required this.history, required this.loading,
+    required this.loadingMore, required this.hasMore,
     required this.onLoadMore,
   });
 
   @override
   Widget build(BuildContext context) {
-    return _card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle(Icons.history_rounded, 'LỊCH SỬ ĐIỂM'),
+    return _Card(
+      padding: EdgeInsets.zero,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-          if (loading)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 32),
-              child: Center(
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: AppColors.primary),
-              ),
-            )
-          else if (history.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 32),
-              child: Center(
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Container(
-                    width: 56, height: 56,
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceAlt,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Icon(Icons.history_rounded,
-                        size: 26, color: AppColors.textTertiary),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
+          child: Text('Lịch sử điểm',
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary)),
+        ),
+
+        const Divider(height: 1, color: Color(0xFFF5F5F5)),
+
+        if (loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 32),
+            child: Center(child: CircularProgressIndicator(
+                strokeWidth: 2, color: AppColors.primary)),
+          )
+        else if (history.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 32),
+            child: Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Container(
+                  width: 54, height: 54,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5F5F5),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  const SizedBox(height: 10),
-                  const Text('Chưa có lịch sử điểm',
-                      style: TextStyle(
-                          color: AppColors.textSecondary, fontSize: 13)),
-                ]),
-              ),
-            )
-          else ...[
-            ListView.separated(
-              shrinkWrap: true,
-              padding: EdgeInsets.zero,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: history.length,
-              separatorBuilder: (_, __) => Divider(
-                height: 1,
-                color: AppColors.divider,
-                indent: 56,
-              ),
-              itemBuilder: (_, i) => _HistoryItem(entry: history[i]),
+                  child: const Icon(Icons.history_rounded,
+                      size: 24, color: AppColors.textTertiary),
+                ),
+                const SizedBox(height: 10),
+                const Text('Chưa có lịch sử điểm',
+                    style: TextStyle(
+                        color: AppColors.textSecondary, fontSize: 13)),
+              ]),
             ),
+          )
+        else ...[
+          ..._buildGrouped(),
 
-            if (hasMore || loadingMore) ...[
-              const SizedBox(height: 12),
-              Divider(height: 1, color: AppColors.divider),
-              const SizedBox(height: 12),
-              loadingMore
-                  ? const Center(
-                      child: SizedBox(
-                        width: 22, height: 22,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.primary),
-                      ),
-                    )
-                  : GestureDetector(
-                      onTap: onLoadMore,
-                      child: const Center(
-                        child: Text(
-                          'Xem thêm',
+          if (hasMore || loadingMore) ...[
+            const Divider(height: 1, color: Color(0xFFF5F5F5)),
+            loadingMore
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    child: Center(child: SizedBox(
+                      width: 20, height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppColors.primary),
+                    )),
+                  )
+                : InkWell(
+                    onTap: onLoadMore,
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 14),
+                      child: Center(child: Text('Xem thêm',
                           style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary))),
                     ),
-              const SizedBox(height: 4),
-            ],
+                  ),
           ],
         ],
-      ),
+
+      ]),
     );
   }
+
+  List<Widget> _buildGrouped() {
+    final now       = DateTime.now();
+    final today     = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final widgets   = <Widget>[];
+    String? lastGroup;
+
+    for (var i = 0; i < history.length; i++) {
+      final entry = history[i];
+      final d     = DateTime(entry.createdAt.year, entry.createdAt.month, entry.createdAt.day);
+      final String group;
+      if (d == today)          { group = 'Hôm nay'; }
+      else if (d == yesterday) { group = 'Hôm qua'; }
+      else                     { group = '${d.day}/${d.month}/${d.year}'; }
+
+      if (group != lastGroup) {
+        lastGroup = group;
+        widgets.add(_DateHeader(label: group));
+      }
+
+      widgets.add(_HistoryItem(entry: entry));
+      if (i < history.length - 1) {
+        final nextD = DateTime(history[i + 1].createdAt.year,
+            history[i + 1].createdAt.month, history[i + 1].createdAt.day);
+        final nextGroup = nextD == today ? 'Hôm nay'
+            : nextD == yesterday ? 'Hôm qua'
+            : '${nextD.day}/${nextD.month}/${nextD.year}';
+        if (nextGroup == group) {
+          widgets.add(const Divider(
+              height: 1, color: Color(0xFFF5F5F5), indent: 70));
+        }
+      }
+    }
+    return widgets;
+  }
+}
+
+class _DateHeader extends StatelessWidget {
+  final String label;
+  const _DateHeader({required this.label});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        color: const Color(0xFFF9F9F9),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        child: Text(label,
+            style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary)),
+      );
 }
 
 class _HistoryItem extends StatelessWidget {
@@ -672,95 +1029,94 @@ class _HistoryItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = entry.isPositive ? AppColors.success : AppColors.danger;
-    final sign  = entry.isPositive ? '+' : '';
-    final now   = DateTime.now();
-    final diff  = now.difference(entry.createdAt);
+    final isPos = entry.isPositive;
+    final color = isPos ? AppColors.success : AppColors.danger;
+    final sign  = isPos ? '+' : '';
+    final diff  = DateTime.now().difference(entry.createdAt);
     final time  = diff.inMinutes < 60
         ? '${diff.inMinutes} phút trước'
         : diff.inHours < 24
             ? '${diff.inHours} giờ trước'
-            : '${diff.inDays} ngày trước';
+            : '${entry.createdAt.hour.toString().padLeft(2, '0')}:${entry.createdAt.minute.toString().padLeft(2, '0')}';
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
       child: Row(children: [
         Container(
-          width: 38, height: 38,
+          width: 40, height: 40,
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(11),
           ),
           child: Icon(
-            entry.isPositive
-                ? Icons.arrow_upward_rounded
-                : Icons.arrow_downward_rounded,
+            isPos ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
             color: color, size: 17,
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                entry.label,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(entry.label,
                 style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 3),
+            Row(children: [
+              Text('${entry.scoreBefore} → ${entry.scoreAfter}',
+                  style: const TextStyle(
+                      fontSize: 11.5, color: AppColors.textSecondary)),
+              Container(
+                width: 3, height: 3,
+                margin: const EdgeInsets.symmetric(horizontal: 6),
+                decoration: const BoxDecoration(
+                    color: AppColors.textTertiary, shape: BoxShape.circle),
               ),
-              const SizedBox(height: 2),
-              Text(
-                '${entry.scoreBefore} → ${entry.scoreAfter} điểm  ·  $time',
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.textSecondary),
-              ),
-            ],
-          ),
+              Text(time,
+                  style: const TextStyle(
+                      fontSize: 11.5, color: AppColors.textSecondary)),
+            ]),
+          ]),
         ),
-        Text(
-          '$sign${entry.delta}',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: color,
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
           ),
+          child: Text('$sign${entry.delta}',
+              style: TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.w800, color: color)),
         ),
       ]),
     );
   }
 }
 
-// ── Shared helpers ────────────────────────────────────────────────────────────
+// ── Shared ────────────────────────────────────────────────────────────────────
 
-Widget _card({required Widget child, Border? border}) {
-  return Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(AppRadius.card),
-      border: border,
-      boxShadow: AppColors.cardShadow,
-    ),
-    child: child,
-  );
-}
+class _Card extends StatelessWidget {
+  final Widget child;
+  final Border? border;
+  final EdgeInsetsGeometry? padding;
+  const _Card({required this.child, this.border, this.padding});
 
-Widget _sectionTitle(IconData icon, String label) {
-  return Row(children: [
-    Icon(icon, size: 15, color: AppColors.textTertiary),
-    const SizedBox(width: 6),
-    Text(
-      label,
-      style: const TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        color: AppColors.textTertiary,
-        letterSpacing: 0.5,
-      ),
-    ),
-  ]);
+  @override
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        padding: padding ?? const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: border,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: child,
+      );
 }

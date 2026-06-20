@@ -72,8 +72,8 @@ class _PaymentQrSheetState extends ConsumerState<PaymentQrSheet> {
   Future<void> _createPayment() async {
     try {
       final body = <String, dynamic>{
-        'type': widget.type,
-        if (widget.type == 'topup') 'amount': widget.amount,
+        'type':   widget.type,
+        'amount': widget.amount,
         if (widget.debtId != null) 'debt_id': widget.debtId,
       };
 
@@ -90,7 +90,13 @@ class _PaymentQrSheetState extends ConsumerState<PaymentQrSheet> {
 
       _startPolling();
     } catch (e) {
-      if (mounted) setState(() { _loading = false; _error = 'Không tạo được QR thanh toán. Vui lòng thử lại.'; });
+      String msg = 'Không tạo được QR thanh toán. Vui lòng thử lại.';
+      final resp = (e as dynamic)?.response;
+      if (resp != null) {
+        final serverMsg = resp.data?['message'] as String?;
+        if (serverMsg != null && serverMsg.isNotEmpty) msg = serverMsg;
+      }
+      if (mounted) setState(() { _loading = false; _error = msg; });
     }
   }
 

@@ -24,15 +24,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   String? _cityName;
   String? _photoUrl;
   double? _rating;
-  bool _uploadingAvatar = false;
-  bool _nameLocked      = false;
-  bool _avatarLocked    = false;
+  bool      _uploadingAvatar   = false;
+  bool      _nameLocked        = false;
+  bool      _avatarLocked      = false;
+  DateTime? _avatarNextUpdate;
 
   String? _licenseStatus;
-  String? _licenseImageUrl;
   String? _cccdImageStatus;
-  String? _cccdImageUrl;
+  String? _vehicleType;
+  String? _licensePlate;
   bool _deleteRequested = false;
+
+  int?    _balance;
+  String? _bankName;
+  String? _bankAccount;
   String _appVersion = '';
 
   int? _acceptanceRate;
@@ -41,7 +46,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   int?    _score;
   int?    _maxScore;
   String? _scoreLabel;
-  String? _scoreTip;
+  int?    _scoreBonusAt;
+  int?    _scorePenaltyAt;
+  int?    _scoreBonusAmt;
+  int?    _scorePenaltyAmt;
+  int?    _scoreStreak;
 
   @override
   void initState() {
@@ -78,23 +87,33 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ? null
                 : double.tryParse(profileData['rating'].toString());
             _licenseStatus   = profileData['license_status'] as String?;
-            _licenseImageUrl = profileData['license_image_url'] as String?;
             _cccdImageStatus = profileData['cccd_image_status'] as String?;
-            _cccdImageUrl    = profileData['cccd_image_url'] as String?;
+            _vehicleType     = profileData['vehicle_type'] as String?;
+            _licensePlate    = profileData['license_plate'] as String?;
+            _balance         = (profileData['balance'] as num?)?.toInt();
+            _bankName        = profileData['bank_name'] as String?;
+            _bankAccount     = profileData['bank_account'] as String?;
             _deleteRequested = profileData['delete_requested_at'] != null;
             _nameLocked      = profileData['name_locked'] as bool? ?? false;
             _avatarLocked    = profileData['avatar_locked'] as bool? ?? false;
+            final nextRaw    = profileData['avatar_next_update_at'] as String?;
+            _avatarNextUpdate = nextRaw != null ? DateTime.tryParse(nextRaw) : null;
           }
           if (statsData != null) {
             _acceptanceRate = statsData['acceptance_rate'] as int?;
             _completionRate = statsData['completion_rate'] as int?;
           }
           if (scoreData != null) {
-            _score      = scoreData['score'] as int?;
-            _maxScore   = scoreData['max_score'] as int?;
-            _scoreLabel = scoreData['label'] as String?;
-            final tips  = scoreData['tips'] as List?;
-            _scoreTip   = tips?.isNotEmpty == true ? tips!.first as String? : null;
+            _score        = scoreData['score']     as int?;
+            _maxScore     = scoreData['max_score'] as int?;
+            _scoreLabel   = scoreData['label']     as String?;
+            final week    = scoreData['week']      as Map<String, dynamic>?;
+            _scoreBonusAt   = (week?['bonus_at']   as num?)?.toInt();
+            _scorePenaltyAt = (week?['penalty_at'] as num?)?.toInt();
+            _scoreBonusAmt  = (week?['bonus_amount']   as num?)?.toInt();
+            _scorePenaltyAmt= (week?['penalty_amount'] as num?)?.toInt();
+            final streak  = scoreData['streak']    as Map<String, dynamic>?;
+            _scoreStreak  = (streak?['count']      as num?)?.toInt();
           }
         });
       }
@@ -104,6 +123,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
+    final hasStats = _acceptanceRate != null || _completionRate != null || _rating != null;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -116,183 +136,395 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         body: RefreshIndicator(
           color: AppColors.primary,
           onRefresh: _loadData,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
 
-                // ── Gradient header ──────────────────────────────────
-                _ProfileHeader(
-                  user:              user,
-                  cityName:          _cityName,
-                  photoUrl:          _photoUrl,
-                  rating:            _rating,
-                  isUploadingAvatar: _uploadingAvatar,
-                  nameLocked:        _nameLocked,
-                  avatarLocked:      _avatarLocked,
-                  acceptanceRate:    _acceptanceRate,
-                  completionRate:    _completionRate,
-                  onAvatarTap: _avatarLocked ? null : _onAvatarTap,
-                  onEditName:  _nameLocked   ? null : () => _showEditName(context, user?.name ?? ''),
-                ),
-
-                // ── Cards ────────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-
-                      // Score
-                      if (_score != null) ...[
-                        _ScoreCard(
-                          score:    _score!,
-                          maxScore: _maxScore ?? 150,
-                          label:    _scoreLabel ?? '',
-                          tip:      _scoreTip,
-                          onTap:    () => context.push('/score'),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-
-                      // Hồ sơ tài xế
-                      _SectionCard(
-                        icon:  Icons.badge_outlined,
-                        title: 'HỒ SƠ TÀI XẾ',
-                        children: [
-                          _DocTile(
-                            icon:     Icons.badge_rounded,
-                            label:    'Hình CCCD / CMND',
-                            status:   _cccdImageStatus,
-                            imageUrl: _cccdImageUrl,
-                            onUpload: () => _showUploadCccd(context),
-                          ),
-                          const _CardDivider(),
-                          _DocTile(
-                            icon:     Icons.drive_eta_rounded,
-                            label:    'Bằng lái xe',
-                            status:   _licenseStatus,
-                            imageUrl: _licenseImageUrl,
-                            onUpload: () => _showUploadLicense(context),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // Tài chính
-                      _SectionCard(
-                        icon:  Icons.account_balance_wallet_outlined,
-                        title: 'TÀI CHÍNH',
-                        children: [
-                          _MenuTile(
-                            icon:      Icons.account_balance_wallet_outlined,
-                            iconColor: AppColors.danger,
-                            label:     'Công nợ',
-                            onTap:     () => Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const DebtScreen())),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // Bảo mật
-                      _SectionCard(
-                        icon:  Icons.security_rounded,
-                        title: 'BẢO MẬT',
-                        children: [
-                          _MenuTile(
-                            icon:      Icons.lock_outline_rounded,
-                            iconColor: AppColors.warning,
-                            label:     'Đổi mật khẩu',
-                            onTap:     () => Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const ChangePasswordScreen())),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // Pháp lý
-                      _SectionCard(
-                        icon:  Icons.gavel_rounded,
-                        title: 'PHÁP LÝ',
-                        children: [
-                          _MenuTile(
-                            icon:      Icons.privacy_tip_outlined,
-                            iconColor: AppColors.info,
-                            label:     'Chính sách bảo mật',
-                            onTap:     () => _showPage(context, 'privacy-policy', 'Chính sách bảo mật'),
-                          ),
-                          const _CardDivider(),
-                          _MenuTile(
-                            icon:      Icons.description_outlined,
-                            iconColor: const Color(0xFF8B5CF6),
-                            label:     'Điều khoản sử dụng',
-                            onTap:     () => _showPage(context, 'terms-of-service', 'Điều khoản sử dụng'),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // Tài khoản
-                      _SectionCard(
-                        icon:  Icons.manage_accounts_rounded,
-                        title: 'TÀI KHOẢN',
-                        children: [
-                          _MenuTile(
-                            icon:       Icons.logout_rounded,
-                            iconColor:  AppColors.danger,
-                            label:      'Đăng xuất',
-                            labelColor: AppColors.danger,
-                            onTap:      () => _confirmLogout(context),
-                          ),
-                          const _CardDivider(),
-                          _MenuTile(
-                            icon: _deleteRequested
-                                ? Icons.restore_rounded
-                                : Icons.delete_forever_rounded,
-                            iconColor: _deleteRequested
-                                ? AppColors.textSecondary
-                                : AppColors.danger,
-                            label: _deleteRequested
-                                ? 'Hủy yêu cầu xóa tài khoản'
-                                : 'Yêu cầu xóa tài khoản',
-                            labelColor: _deleteRequested
-                                ? AppColors.textSecondary
-                                : AppColors.danger,
-                            onTap: () => _deleteRequested
-                                ? _confirmCancelDelete(context)
-                                : _confirmDeleteAccount(context),
-                          ),
-                        ],
-                      ),
-
-                    ],
-                  ),
-                ),
-
-                // ── Version ──────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 32),
-                  child: Center(
-                    child: Text(
-                      _appVersion.isNotEmpty
-                          ? 'FlashShip Driver v$_appVersion'
-                          : 'FlashShip Driver',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textTertiary,
-                        fontWeight: FontWeight.w500,
+              // ── Header + floating stats card ──────────────────────────
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // Gradient bg
+                  Container(
+                    width: double.infinity,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFFCC5A08), Color(0xFFE8720C), Color(0xFFF59E30)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
                     ),
+                    padding: EdgeInsets.fromLTRB(
+                      20,
+                      MediaQuery.of(context).padding.top + 20,
+                      20,
+                      hasStats ? 80 : 28,
+                    ),
+                    child: Column(
+                      children: [
+                        // Avatar
+                        GestureDetector(
+                          onTap: _onAvatarTap,
+                          child: Stack(children: [
+                            Container(
+                              width: 86, height: 86,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 3),
+                              ),
+                              child: ClipOval(
+                                child: _uploadingAvatar
+                                    ? Container(
+                                        color: Colors.white.withValues(alpha: 0.2),
+                                        child: const Center(
+                                          child: SizedBox(
+                                            width: 22, height: 22,
+                                            child: CircularProgressIndicator(
+                                                color: Colors.white, strokeWidth: 2),
+                                          ),
+                                        ),
+                                      )
+                                    : (_photoUrl != null
+                                        ? Image.network(_photoUrl!, fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) =>
+                                                _AvatarInitials(user: user))
+                                        : _AvatarInitials(user: user)),
+                              ),
+                            ),
+                            // Online dot
+                            Positioned(
+                              bottom: 4, right: 4,
+                              child: Container(
+                                width: 14, height: 14,
+                                decoration: BoxDecoration(
+                                  color: user?.isOnline == true
+                                      ? AppColors.success
+                                      : Colors.grey.shade400,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                ),
+                              ),
+                            ),
+                            // Camera badge
+                            if (!_uploadingAvatar)
+                              Positioned(
+                                bottom: 0, right: 0,
+                                child: Container(
+                                  width: 24, height: 24,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                        color: AppColors.primary.withValues(alpha: 0.3),
+                                        width: 1.5),
+                                  ),
+                                  child: const Icon(Icons.camera_alt_rounded,
+                                      size: 13, color: AppColors.primary),
+                                ),
+                              ),
+                          ]),
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // Name
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              user?.name ?? 'Tài xế',
+                              style: const TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                            if (!_nameLocked) ...[
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () => _showEditName(context, user?.name ?? ''),
+                                child: Container(
+                                  width: 26, height: 26,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(7),
+                                  ),
+                                  child: const Icon(Icons.edit_rounded,
+                                      size: 13, color: Colors.white),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+
+                        const SizedBox(height: 4),
+                        Text(
+                          user?.phone ?? '',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.white.withValues(alpha: 0.82),
+                          ),
+                        ),
+
+                        if (_cityName != null) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.location_on_rounded,
+                                  size: 12, color: Colors.white.withValues(alpha: 0.75)),
+                              const SizedBox(width: 3),
+                              Text(_cityName!,
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.white.withValues(alpha: 0.75))),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  // Floating stats card
+                  if (hasStats)
+                    Positioned(
+                      left: 16, right: 16, bottom: -44,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.07),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            if (_acceptanceRate != null) ...[
+                              _StatItem(
+                                value: '$_acceptanceRate%',
+                                label: 'Nhận đơn',
+                                icon: Icons.check_circle_outline_rounded,
+                                color: AppColors.primary,
+                              ),
+                              _StatDivider(),
+                            ],
+                            if (_completionRate != null) ...[
+                              _StatItem(
+                                value: '$_completionRate%',
+                                label: 'Hoàn thành',
+                                icon: Icons.done_all_rounded,
+                                color: AppColors.success,
+                              ),
+                              _StatDivider(),
+                            ],
+                            _StatItem(
+                              value: _rating != null
+                                  ? _rating!.toStringAsFixed(1)
+                                  : '—',
+                              label: 'Đánh giá',
+                              icon: Icons.star_rounded,
+                              color: const Color(0xFFF59E0B),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+
+              SizedBox(height: hasStats ? 56 : 0),
+
+              const SizedBox(height: 12),
+
+              // ── Score card ────────────────────────────────────────────
+              if (_score != null) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _ScoreCard(
+                    score:      _score!,
+                    maxScore:   _maxScore ?? 150,
+                    label:      _scoreLabel ?? '',
+                    bonusAt:    _scoreBonusAt,
+                    penaltyAt:  _scorePenaltyAt,
+                    bonusAmt:   _scoreBonusAmt,
+                    penaltyAmt: _scorePenaltyAmt,
+                    streak:     _scoreStreak,
+                    onTap:      () => context.push('/score'),
                   ),
                 ),
+                const SizedBox(height: 12),
               ],
-            ),
+
+              // ── Hồ sơ tài xế ─────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _KycSummaryCard(
+                  cccdStatus:    _cccdImageStatus,
+                  licenseStatus: _licenseStatus,
+                  vehicleType:   _vehicleType,
+                  licensePlate:  _licensePlate,
+                  onTap: () async {
+                    await context.push('/kyc');
+                    _loadData();
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // ── Tài chính ────────────────────────────────────────────
+              _SettingsSection(
+                header: 'Tài chính',
+                children: [
+                  // Balance row
+                  _BalanceRow(
+                    balance: _balance,
+                    onTap:   () => context.push('/wallet'),
+                  ),
+                  const Divider(height: 1, indent: 56, color: Color(0xFFF5F5F5)),
+                  // Công nợ
+                  _SettingsRow(
+                    icon:      Icons.warning_amber_rounded,
+                    iconBg:    AppColors.danger.withValues(alpha: 0.12),
+                    iconColor: AppColors.danger,
+                    label:     'Công nợ',
+                    onTap:     () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const DebtScreen())),
+                  ),
+                  const Divider(height: 1, indent: 56, color: Color(0xFFF5F5F5)),
+                  // Ngân hàng liên kết
+                  _SettingsRow(
+                    icon:      Icons.account_balance_rounded,
+                    iconBg:    const Color(0xFF0EA5E9).withValues(alpha: 0.12),
+                    iconColor: const Color(0xFF0EA5E9),
+                    label:     'Tài khoản ngân hàng',
+                    trailing: _bankName != null
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(_bankName!,
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.textSecondary)),
+                              if (_bankAccount != null)
+                                Text(
+                                  '••••${_bankAccount!.length > 4 ? _bankAccount!.substring(_bankAccount!.length - 4) : _bankAccount!}',
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary),
+                                ),
+                            ],
+                          )
+                        : Text('Chưa liên kết',
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.danger.withValues(alpha: 0.8))),
+                    onTap: () => context.push('/wallet'),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              // ── Bảo mật ──────────────────────────────────────────────
+              _SettingsSection(
+                header: 'Bảo mật',
+                children: [
+                  _SettingsRow(
+                    icon:      Icons.lock_outline_rounded,
+                    iconBg:    const Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                    iconColor: const Color(0xFF8B5CF6),
+                    label:     'Đổi mật khẩu',
+                    onTap:     () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const ChangePasswordScreen())),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              // ── Pháp lý ──────────────────────────────────────────────
+              _SettingsSection(
+                header: 'Pháp lý',
+                children: [
+                  _SettingsRow(
+                    icon:      Icons.shield_outlined,
+                    iconBg:    const Color(0xFF6366F1).withValues(alpha: 0.12),
+                    iconColor: const Color(0xFF6366F1),
+                    label:     'Chính sách bảo mật',
+                    onTap:     () => _showPage(context, 'privacy-policy', 'Chính sách bảo mật'),
+                  ),
+                  const Divider(height: 1, indent: 56, color: Color(0xFFF5F5F5)),
+                  _SettingsRow(
+                    icon:      Icons.description_outlined,
+                    iconBg:    const Color(0xFF64748B).withValues(alpha: 0.12),
+                    iconColor: const Color(0xFF64748B),
+                    label:     'Điều khoản sử dụng',
+                    onTap:     () => _showPage(context, 'terms-of-service', 'Điều khoản sử dụng'),
+                  ),
+                  const Divider(height: 1, indent: 56, color: Color(0xFFF5F5F5)),
+                  _SettingsRow(
+                    icon:      Icons.info_outline_rounded,
+                    iconBg:    const Color(0xFF94A3B8).withValues(alpha: 0.12),
+                    iconColor: const Color(0xFF94A3B8),
+                    label:     'Phiên bản',
+                    trailing:  Text(
+                      _appVersion.isEmpty ? '...' : _appVersion,
+                      style: const TextStyle(
+                          color: AppColors.textSecondary, fontSize: 13),
+                    ),
+                    onTap: null,
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              // ── Tài khoản ────────────────────────────────────────────
+              _SettingsSection(
+                children: [
+                  _SettingsRow(
+                    icon:       Icons.logout_rounded,
+                    iconBg:     AppColors.danger.withValues(alpha: 0.12),
+                    iconColor:  AppColors.danger,
+                    label:      'Đăng xuất',
+                    labelColor: AppColors.danger,
+                    showChevron: false,
+                    onTap:      () => _confirmLogout(context),
+                  ),
+                  const Divider(height: 1, indent: 56, color: Color(0xFFF5F5F5)),
+                  _SettingsRow(
+                    icon: _deleteRequested
+                        ? Icons.restore_rounded
+                        : Icons.delete_forever_rounded,
+                    iconBg:    AppColors.danger.withValues(alpha: 0.12),
+                    iconColor: _deleteRequested
+                        ? AppColors.textSecondary
+                        : AppColors.danger,
+                    label: _deleteRequested
+                        ? 'Hủy yêu cầu xóa tài khoản'
+                        : 'Yêu cầu xóa tài khoản',
+                    labelColor: _deleteRequested
+                        ? AppColors.textSecondary
+                        : AppColors.danger,
+                    showChevron: false,
+                    onTap: () => _deleteRequested
+                        ? _confirmCancelDelete(context)
+                        : _confirmDeleteAccount(context),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 48),
+            ],
           ),
         ),
       ),
@@ -302,43 +534,171 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   // ── Avatar ─────────────────────────────────────────────────────────────────
 
   void _onAvatarTap() {
+    final user = ref.read(authProvider).user;
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const SizedBox(height: 4),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text('Cập nhật ảnh đại diện',
-                  style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary)),
-            ),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+
+              // Drag handle
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 20),
+                  width: 36, height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDDDDDD),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+
+              // Avatar preview
+              Stack(alignment: Alignment.center, children: [
+                Container(
+                  width: 100, height: 100,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.25),
+                      width: 3,
+                    ),
+                  ),
+                  child: ClipOval(
+                    child: _photoUrl != null
+                        ? Image.network(_photoUrl!, fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                _AvatarInitials(user: user))
+                        : _AvatarInitials(user: user),
+                  ),
+                ),
+                Positioned(
+                  bottom: 0, right: 0,
+                  child: Container(
+                    width: 30, height: 30,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2.5),
+                    ),
+                    child: const Icon(Icons.camera_alt_rounded,
+                        size: 14, color: Colors.white),
+                  ),
+                ),
+              ]),
+
+              const SizedBox(height: 12),
+
+              Text(
+                user?.name ?? 'Tài xế',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Chọn ảnh đại diện mới',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+
+              const SizedBox(height: 24),
+
+              if (_avatarLocked) ...[
+                // Locked notice
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF8F0),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.lock_rounded, size: 18, color: AppColors.primary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _avatarNextUpdate != null
+                            ? 'Còn ${_avatarNextUpdate!.difference(DateTime.now()).inDays + 1} ngày nữa có thể đổi ảnh.'
+                            : 'Ảnh đại diện chỉ được thay đổi 1 tháng 1 lần.',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w500,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ]),
+                ),
+              ] else ...[
+                // Camera & Gallery buttons side by side
+                Row(children: [
+                  Expanded(
+                    child: _AvatarOptionCard(
+                      icon: Icons.camera_alt_rounded,
+                      color: AppColors.primary,
+                      label: 'Máy ảnh',
+                      subtitle: 'Chụp ngay',
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _pickAndUpload(ImageSource.camera);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _AvatarOptionCard(
+                      icon: Icons.photo_library_rounded,
+                      color: AppColors.info,
+                      label: 'Thư viện',
+                      subtitle: 'Chọn ảnh',
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _pickAndUpload(ImageSource.gallery);
+                      },
+                    ),
+                  ),
+                ]),
+              ],
+
+              const SizedBox(height: 8),
+
+              // Cancel
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      side: const BorderSide(color: Color(0xFFEEEEEE)),
+                    ),
+                  ),
+                  child: const Text('Hủy',
+                      style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500)),
+                ),
+              ),
+
+            ]),
           ),
-          const SizedBox(height: 8),
-          const Divider(height: 1),
-          _SheetOption(
-            icon: Icons.camera_alt_rounded,
-            iconColor: AppColors.primary,
-            label: 'Chụp ảnh',
-            onTap: () { Navigator.pop(ctx); _pickAndUpload(ImageSource.camera); },
-          ),
-          const Divider(height: 1, indent: 56),
-          _SheetOption(
-            icon: Icons.photo_library_rounded,
-            iconColor: AppColors.info,
-            label: 'Chọn từ thư viện',
-            onTap: () { Navigator.pop(ctx); _pickAndUpload(ImageSource.gallery); },
-          ),
-          const SizedBox(height: 8),
-        ]),
+        ),
       ),
     );
   }
@@ -393,10 +753,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         });
         _toast(context, 'Cập nhật ảnh thành công', success: true);
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         setState(() => _uploadingAvatar = false);
-        _toast(context, 'Cập nhật ảnh thất bại');
+        String msg = 'Cập nhật ảnh thất bại';
+        if (e is DioException) {
+          final data = e.response?.data;
+          if (data is Map && data['message'] is String) {
+            msg = data['message'] as String;
+          }
+        }
+        _toast(context, msg);
       }
     }
   }
@@ -418,117 +785,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ],
       ),
     );
-  }
-
-  // ── Upload docs ────────────────────────────────────────────────────────────
-
-  void _showUploadSheet({
-    required BuildContext context,
-    required String title,
-    required VoidCallback onCamera,
-    required VoidCallback onGallery,
-  }) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const SizedBox(height: 4),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(title,
-                  style: const TextStyle(
-                      fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text('Ảnh rõ nét, đủ ánh sáng, không bị mờ',
-                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Divider(height: 1),
-          _SheetOption(
-            icon: Icons.camera_alt_rounded, iconColor: AppColors.primary,
-            label: 'Chụp ảnh',
-            onTap: () { Navigator.pop(ctx); onCamera(); },
-          ),
-          const Divider(height: 1, indent: 56),
-          _SheetOption(
-            icon: Icons.photo_library_rounded, iconColor: AppColors.info,
-            label: 'Chọn từ thư viện',
-            onTap: () { Navigator.pop(ctx); onGallery(); },
-          ),
-          const SizedBox(height: 8),
-        ]),
-      ),
-    );
-  }
-
-  void _showUploadLicense(BuildContext context) {
-    _showUploadSheet(
-      context: context, title: 'Tải lên bằng lái xe',
-      onCamera: () => _pickAndUploadLicense(ImageSource.camera),
-      onGallery: () => _pickAndUploadLicense(ImageSource.gallery),
-    );
-  }
-
-  Future<void> _pickAndUploadLicense(ImageSource source) async {
-    XFile? file;
-    try {
-      file = await ImagePicker().pickImage(
-          source: source, maxWidth: 1600, maxHeight: 1200, imageQuality: 90);
-    } catch (_) { return; }
-    if (file == null) return;
-    try {
-      final formData = FormData.fromMap(
-          {'image': await MultipartFile.fromFile(file.path, filename: file.name)});
-      final res = await ref.read(apiClientProvider).postMultipart('/driver/profile/license', formData);
-      final imageUrl = res.data['image_url'] as String?;
-      if (mounted) {
-        setState(() { _licenseStatus = 'pending'; _licenseImageUrl = imageUrl; });
-        _toast(context, 'Tải lên thành công, đang chờ xét duyệt', success: true);
-      }
-    } catch (_) {
-      if (mounted) _toast(context, 'Tải lên thất bại');
-    }
-  }
-
-  void _showUploadCccd(BuildContext context) {
-    _showUploadSheet(
-      context: context, title: 'Tải lên hình CCCD / CMND',
-      onCamera: () => _pickAndUploadCccd(ImageSource.camera),
-      onGallery: () => _pickAndUploadCccd(ImageSource.gallery),
-    );
-  }
-
-  Future<void> _pickAndUploadCccd(ImageSource source) async {
-    XFile? file;
-    try {
-      file = await ImagePicker().pickImage(
-          source: source, maxWidth: 1600, maxHeight: 1200, imageQuality: 90);
-    } catch (_) { return; }
-    if (file == null) return;
-    try {
-      final formData = FormData.fromMap(
-          {'image': await MultipartFile.fromFile(file.path, filename: file.name)});
-      await ref.read(apiClientProvider).postMultipart('/driver/profile/cccd-image', formData);
-      if (mounted) {
-        setState(() => _cccdImageStatus = 'pending');
-        _toast(context, 'Tải lên thành công, đang chờ xét duyệt', success: true);
-      }
-    } catch (_) {
-      if (mounted) _toast(context, 'Tải lên thất bại');
-    }
   }
 
   // ── Edit name ──────────────────────────────────────────────────────────────
@@ -604,7 +860,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
                 child: saving
                     ? const SizedBox(width: 20, height: 20,
@@ -727,278 +983,106 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 }
 
-// ── Profile header ────────────────────────────────────────────────────────────
+// ── Settings section ──────────────────────────────────────────────────────────
 
-class _ProfileHeader extends StatelessWidget {
-  final dynamic user;
-  final String? cityName;
-  final String? photoUrl;
-  final double? rating;
-  final bool isUploadingAvatar;
-  final bool nameLocked;
-  final bool avatarLocked;
-  final int? acceptanceRate;
-  final int? completionRate;
-  final VoidCallback? onAvatarTap;
-  final VoidCallback? onEditName;
-
-  const _ProfileHeader({
-    required this.user,
-    required this.cityName,
-    required this.photoUrl,
-    required this.rating,
-    this.isUploadingAvatar = false,
-    this.nameLocked = false,
-    this.avatarLocked = false,
-    this.acceptanceRate,
-    this.completionRate,
-    this.onAvatarTap,
-    this.onEditName,
-  });
+class _SettingsSection extends StatelessWidget {
+  final String? header;
+  final List<Widget> children;
+  const _SettingsSection({this.header, required this.children});
 
   @override
   Widget build(BuildContext context) {
-    final top = MediaQuery.of(context).padding.top;
-    final hasStats = acceptanceRate != null || completionRate != null;
-
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFEF7C1A), AppColors.primaryDark],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      if (header != null)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+          child: Text(
+            header!,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ),
+      Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8, offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Column(children: children),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-
-          // ── Avatar + Info ──────────────────────────────────────────
-          Padding(
-            padding: EdgeInsets.fromLTRB(20, top + 16, 20, hasStats ? 16 : 24),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-
-                // Avatar
-                GestureDetector(
-                  onTap: onAvatarTap,
-                  child: Stack(children: [
-                    Container(
-                      width: 76, height: 76,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2.5),
-                      ),
-                      child: ClipOval(
-                        child: isUploadingAvatar
-                            ? Container(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                child: Center(
-                                  child: SizedBox(
-                                    width: 22, height: 22,
-                                    child: CircularProgressIndicator(
-                                        color: Colors.white, strokeWidth: 2),
-                                  ),
-                                ),
-                              )
-                            : (photoUrl != null
-                                ? Image.network(photoUrl!, fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => _AvatarInitials(user: user))
-                                : _AvatarInitials(user: user)),
-                      ),
-                    ),
-                    // Online dot
-                    Positioned(
-                      bottom: 3, right: 3,
-                      child: Container(
-                        width: 14, height: 14,
-                        decoration: BoxDecoration(
-                          color: user?.isOnline == true
-                              ? AppColors.success
-                              : Colors.grey.shade400,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                      ),
-                    ),
-                    // Camera badge
-                    if (!isUploadingAvatar && !avatarLocked)
-                      Positioned(
-                        bottom: 0, left: 0,
-                        child: Container(
-                          width: 22, height: 22,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.5), width: 1.5),
-                          ),
-                          child: const Icon(Icons.camera_alt_rounded,
-                              size: 12, color: AppColors.primary),
-                        ),
-                      ),
-                  ]),
-                ),
-
-                const SizedBox(width: 16),
-
-                // Info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-
-                      // Name row
-                      Row(children: [
-                        Expanded(
-                          child: Text(
-                            user?.name ?? 'Tài xế',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                        ),
-                        if (!nameLocked)
-                          GestureDetector(
-                            onTap: onEditName,
-                            child: Container(
-                              width: 30, height: 30,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(Icons.edit_rounded,
-                                  size: 14, color: Colors.white),
-                            ),
-                          ),
-                      ]),
-
-                      const SizedBox(height: 4),
-
-                      // Phone
-                      Text(
-                        user?.phone ?? '',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.white.withValues(alpha: 0.82),
-                        ),
-                      ),
-
-                      // City
-                      if (cityName != null) ...[
-                        const SizedBox(height: 3),
-                        Row(children: [
-                          Icon(Icons.location_on_rounded,
-                              size: 12, color: Colors.white.withValues(alpha: 0.75)),
-                          const SizedBox(width: 3),
-                          Text(cityName!,
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.white.withValues(alpha: 0.75))),
-                        ]),
-                      ],
-
-                      // Rating
-                      if (rating != null) ...[
-                        const SizedBox(height: 6),
-                        Row(children: [
-                          const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
-                          const SizedBox(width: 4),
-                          Text(
-                            rating!.toStringAsFixed(1),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ]),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // ── Stats row ──────────────────────────────────────────────
-          if (hasStats)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-              child: Row(
-                children: [
-                  if (acceptanceRate != null) ...[
-                    _StatChip(
-                      icon: Icons.check_circle_outline_rounded,
-                      value: '$acceptanceRate%',
-                      label: 'Nhận đơn',
-                    ),
-                    const SizedBox(width: 10),
-                  ],
-                  if (completionRate != null)
-                    _StatChip(
-                      icon: Icons.done_all_rounded,
-                      value: '$completionRate%',
-                      label: 'Hoàn thành',
-                    ),
-                ],
-              ),
-            ),
-
-          // ── Curved bottom ──────────────────────────────────────────
-          Container(
-            height: 20,
-            decoration: const BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-          ),
-        ],
-      ),
-    );
+    ]);
   }
 }
 
-class _StatChip extends StatelessWidget {
+// ── Settings row ──────────────────────────────────────────────────────────────
+
+class _SettingsRow extends StatelessWidget {
   final IconData icon;
-  final String value;
+  final Color? iconBg;
+  final Color? iconColor;
   final String label;
-  const _StatChip({required this.icon, required this.value, required this.label});
+  final Color? labelColor;
+  final Widget? trailing;
+  final bool showChevron;
+  final VoidCallback? onTap;
+
+  const _SettingsRow({
+    required this.icon,
+    this.iconBg,
+    this.iconColor,
+    required this.label,
+    this.labelColor,
+    this.trailing,
+    this.showChevron = true,
+    required this.onTap,
+  });
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: Colors.white.withValues(alpha: 0.9)),
-          const SizedBox(width: 7),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(value,
-                  style: const TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
-              Text(label,
-                  style: TextStyle(
-                      fontSize: 10, color: Colors.white.withValues(alpha: 0.78))),
-            ],
+  Widget build(BuildContext context) => Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+            child: Row(children: [
+              Container(
+                width: 34, height: 34,
+                decoration: BoxDecoration(
+                  color: iconBg ?? const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(icon, size: 18, color: iconColor ?? AppColors.textSecondary),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Text(label,
+                    style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w500,
+                        color: labelColor ?? AppColors.textPrimary)),
+              ),
+              if (trailing != null)
+                trailing!
+              else if (showChevron)
+                const Icon(Icons.chevron_right_rounded,
+                    color: Color(0xFFD0D0D5), size: 20),
+            ]),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      );
 }
 
 // ── Score card ────────────────────────────────────────────────────────────────
@@ -1007,311 +1091,490 @@ class _ScoreCard extends StatelessWidget {
   final int score;
   final int maxScore;
   final String label;
-  final String? tip;
+  final int? bonusAt;
+  final int? penaltyAt;
+  final int? bonusAmt;
+  final int? penaltyAmt;
+  final int? streak;
   final VoidCallback onTap;
 
   const _ScoreCard({
     required this.score,
     required this.maxScore,
     required this.label,
-    this.tip,
+    this.bonusAt,
+    this.penaltyAt,
+    this.bonusAmt,
+    this.penaltyAmt,
+    this.streak,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final progress = (score / maxScore).clamp(0.0, 1.0);
+    // Week status
+    final Color statusColor;
+    final String statusText;
+    if (bonusAt != null && score >= bonusAt!) {
+      statusColor = AppColors.success;
+      statusText  = bonusAmt != null
+          ? 'Đạt thưởng +${_fmt(bonusAmt!)}đ cuối tuần 🎉'
+          : 'Đạt mức thưởng!';
+    } else if (penaltyAt != null && score <= penaltyAt!) {
+      statusColor = AppColors.danger;
+      statusText  = penaltyAmt != null
+          ? 'Nguy hiểm — có thể bị phạt ${_fmt(penaltyAmt!)}đ'
+          : 'Dưới ngưỡng an toàn';
+    } else if (bonusAt != null) {
+      statusColor = AppColors.primary;
+      statusText  = 'Cần +${bonusAt! - score} điểm để nhận thưởng';
+    } else {
+      statusColor = AppColors.textSecondary;
+      statusText  = label;
+    }
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadius.card),
-          boxShadow: AppColors.cardShadow,
-        ),
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-
-            // Mini ring
-            SizedBox(
-              width: 64, height: 64,
-              child: Stack(alignment: Alignment.center, children: [
-                SizedBox.expand(
-                  child: CircularProgressIndicator(
-                    value: 1,
-                    strokeWidth: 6,
-                    color: AppColors.primary.withValues(alpha: 0.12),
-                  ),
-                ),
-                SizedBox.expand(
-                  child: CircularProgressIndicator(
-                    value: progress,
-                    strokeWidth: 6,
-                    strokeCap: StrokeCap.round,
-                    color: AppColors.primary,
-                  ),
-                ),
-                Text(
-                  '$score',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ]),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
             ),
-
-            const SizedBox(width: 14),
-
-            // Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    const Text(
-                      'ĐIỂM TÍCH LŨY',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textTertiary,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '$score / $maxScore',
-                      style: const TextStyle(
-                          fontSize: 10, color: AppColors.textTertiary),
-                    ),
-                  ]),
-                  const SizedBox(height: 5),
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  if (tip != null) ...[
-                    const SizedBox(height: 3),
-                    Text(
-                      tip!,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                        height: 1.35,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-
-            const SizedBox(width: 4),
-            const Icon(Icons.chevron_right_rounded,
-                size: 20, color: AppColors.textTertiary),
           ],
         ),
-      ),
-    );
-  }
-}
+        child: Column(children: [
 
-// ── Section card ──────────────────────────────────────────────────────────────
-
-class _SectionCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final List<Widget> children;
-  const _SectionCard({required this.icon, required this.title, required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        boxShadow: AppColors.cardShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+          // ── Top: ring + info ────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 2),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: Row(children: [
-              Icon(icon, size: 14, color: AppColors.textTertiary),
+
+              // Ring
+              SizedBox(
+                width: 60, height: 60,
+                child: Stack(alignment: Alignment.center, children: [
+                  SizedBox.expand(
+                    child: CircularProgressIndicator(
+                      value: 1, strokeWidth: 5,
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                    ),
+                  ),
+                  SizedBox.expand(
+                    child: CircularProgressIndicator(
+                      value: (score / maxScore).clamp(0.0, 1.0),
+                      strokeWidth: 5,
+                      strokeCap: StrokeCap.round,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  Text(
+                    '$score',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ]),
+              ),
+
+              const SizedBox(width: 14),
+
+              // Text info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Điểm tích lũy',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textTertiary,
+                            letterSpacing: 0.1,
+                          ),
+                        ),
+                        Text(
+                          '$score / $maxScore',
+                          style: const TextStyle(
+                              fontSize: 11, color: AppColors.textTertiary),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    // Label pill
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                    if ((streak ?? 0) > 0) ...[
+                      const SizedBox(height: 6),
+                      Row(children: [
+                        const Text('🔥', style: TextStyle(fontSize: 12)),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$streak đơn liên tiếp',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ]),
+                    ],
+                  ],
+                ),
+              ),
+
+              const Icon(Icons.chevron_right_rounded,
+                  size: 18, color: Color(0xFFD0D0D5)),
+            ]),
+          ),
+
+          // ── Progress bar ─────────────────────────────────────────────
+          if (bonusAt != null || penaltyAt != null) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _ScoreBar(
+                score:      score,
+                maxScore:   maxScore,
+                bonusAt:    bonusAt,
+                penaltyAt:  penaltyAt,
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+
+          // ── Status banner ─────────────────────────────────────────────
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.07),
+              borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(16)),
+            ),
+            child: Row(children: [
+              Icon(
+                score >= (bonusAt ?? maxScore + 1)
+                    ? Icons.emoji_events_rounded
+                    : score <= (penaltyAt ?? -1)
+                        ? Icons.warning_amber_rounded
+                        : Icons.trending_up_rounded,
+                size: 14,
+                color: statusColor,
+              ),
               const SizedBox(width: 6),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textTertiary,
-                  letterSpacing: 0.5,
+              Expanded(
+                child: Text(
+                  statusText,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: statusColor,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ]),
           ),
-          ...children,
-          const SizedBox(height: 4),
-        ],
-      ),
-    );
-  }
-}
 
-class _CardDivider extends StatelessWidget {
-  const _CardDivider();
-
-  @override
-  Widget build(BuildContext context) => const Divider(
-        height: 1,
-        indent: 54,
-        endIndent: 16,
-        color: AppColors.divider,
-      );
-}
-
-// ── Menu tile ─────────────────────────────────────────────────────────────────
-
-class _MenuTile extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String label;
-  final Color? labelColor;
-  final VoidCallback onTap;
-
-  const _MenuTile({
-    required this.icon,
-    required this.iconColor,
-    required this.label,
-    this.labelColor,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(AppRadius.card)),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-          child: Row(children: [
-            Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, size: 18, color: iconColor),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: labelColor ?? AppColors.textPrimary,
-                ),
-              ),
-            ),
-            Icon(
-              Icons.chevron_right_rounded,
-              size: 20,
-              color: labelColor?.withValues(alpha: 0.6) ?? AppColors.textTertiary,
-            ),
-          ]),
-        ),
-      );
-}
-
-// ── Document tile ─────────────────────────────────────────────────────────────
-
-class _DocTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String? status;
-  final String? imageUrl;
-  final VoidCallback? onUpload;
-
-  const _DocTile({
-    required this.icon,
-    required this.label,
-    this.status,
-    this.imageUrl,
-    this.onUpload,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final (statusLabel, color, statusIcon) = switch (status) {
-      'approved' => ('Đã xác minh', AppColors.success, Icons.verified_rounded),
-      'rejected' => ('Bị từ chối',  AppColors.danger,  Icons.cancel_rounded),
-      'pending'  => ('Đang xét duyệt', AppColors.warning, Icons.hourglass_top_rounded),
-      _          => ('Chưa tải lên', AppColors.textSecondary, Icons.upload_rounded),
-    };
-
-    return InkWell(
-      onTap: status != 'approved' ? onUpload : null,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-        child: Row(children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: imageUrl != null
-                ? Image.network(imageUrl!,
-                    width: 42, height: 36, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _docIconBox(icon, color))
-                : _docIconBox(icon, color),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                const SizedBox(height: 3),
-                Row(children: [
-                  Icon(statusIcon, size: 11, color: color),
-                  const SizedBox(width: 4),
-                  Text(statusLabel,
-                      style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500)),
-                ]),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              status == 'approved' ? 'Xem' : 'Cập nhật',
-              style: TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w600,
-                  color: status == 'approved' ? AppColors.success : color),
-            ),
-          ),
         ]),
       ),
     );
   }
 
-  Widget _docIconBox(IconData icon, Color color) => Container(
-        width: 42, height: 36,
-        color: color.withValues(alpha: 0.10),
-        child: Icon(icon, size: 18, color: color),
+  String _fmt(int n) =>
+      n >= 1000 ? '${(n / 1000).toStringAsFixed(0)}.000' : '$n';
+}
+
+class _ScoreBar extends StatelessWidget {
+  final int score;
+  final int maxScore;
+  final int? bonusAt;
+  final int? penaltyAt;
+
+  const _ScoreBar({
+    required this.score,
+    required this.maxScore,
+    this.bonusAt,
+    this.penaltyAt,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scoreFrac   = (score / maxScore).clamp(0.0, 1.0);
+    final penaltyFrac = penaltyAt != null ? penaltyAt! / maxScore : 0.0;
+    final bonusFrac   = bonusAt   != null ? bonusAt!   / maxScore : 1.0;
+
+    return LayoutBuilder(builder: (_, box) {
+      final w       = box.maxWidth;
+      const h       = 6.0;
+      final dotX    = (scoreFrac * w).clamp(3.0, w - 3.0);
+
+      return SizedBox(
+        height: h + 8,
+        child: Stack(children: [
+          // Track
+          Positioned(
+            left: 0, right: 0, top: 4,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: SizedBox(
+                height: h,
+                child: Row(children: [
+                  if (penaltyAt != null)
+                    Expanded(
+                      flex: (penaltyFrac * 100).round(),
+                      child: Container(
+                          color: AppColors.danger.withValues(alpha: 0.2)),
+                    ),
+                  Expanded(
+                    flex: ((bonusFrac - penaltyFrac) * 100).round().clamp(0, 100),
+                    child: Container(color: const Color(0xFFE5E7EB)),
+                  ),
+                  if (bonusAt != null)
+                    Expanded(
+                      flex: ((1 - bonusFrac) * 100).round(),
+                      child: Container(
+                          color: AppColors.success.withValues(alpha: 0.25)),
+                    ),
+                ]),
+              ),
+            ),
+          ),
+          // Score dot
+          Positioned(
+            left: dotX - 5, top: 1,
+            child: Container(
+              width: 10, height: 10,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.primary, width: 2.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ]),
       );
+    });
+  }
+}
+
+// ── Stat item ─────────────────────────────────────────────────────────────────
+
+class _StatItem extends StatelessWidget {
+  final String value;
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  const _StatItem({
+    required this.value,
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36, height: 36,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 18, color: color),
+            ),
+            const SizedBox(height: 6),
+            Text(value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 2),
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 11, color: AppColors.textSecondary)),
+          ],
+        ),
+      );
+}
+
+class _StatDivider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) =>
+      Container(width: 1, height: 36, color: const Color(0xFFEEEEEE));
+}
+
+// ── KYC summary card ──────────────────────────────────────────────────────────
+
+class _KycSummaryCard extends StatelessWidget {
+  final String? cccdStatus;
+  final String? licenseStatus;
+  final String? vehicleType;
+  final String? licensePlate;
+  final VoidCallback onTap;
+
+  const _KycSummaryCard({
+    required this.cccdStatus,
+    required this.licenseStatus,
+    required this.vehicleType,
+    required this.licensePlate,
+    required this.onTap,
+  });
+
+  int get _steps {
+    int n = 0;
+    if (cccdStatus    == 'approved') n++;
+    if (licenseStatus == 'approved') n++;
+    if (vehicleType   != null) n++;
+    if (licensePlate?.isNotEmpty ?? false) n++;
+    return n;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final steps  = _steps;
+    final isDone = steps == 4;
+    final color  = isDone ? AppColors.success : AppColors.primary;
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8, offset: const Offset(0, 2)),
+            ],
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(
+                  isDone ? Icons.verified_user_rounded : Icons.shield_rounded,
+                  color: color, size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('Hồ sơ tài xế',
+                      style: TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary)),
+                  Text(
+                    isDone ? 'Hồ sơ đã hoàn thiện' : '$steps/4 mục đã hoàn thiện',
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                ]),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text('$steps/4',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: color)),
+              ),
+              const SizedBox(width: 6),
+              const Icon(Icons.chevron_right_rounded, color: Color(0xFFD0D0D5), size: 20),
+            ]),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: LinearProgressIndicator(
+                value: steps / 4,
+                minHeight: 5,
+                backgroundColor: const Color(0xFFF0F0F0),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              _StepChip('CCCD',      cccdStatus    == 'approved'),
+              _StepChip('Bằng lái',  licenseStatus == 'approved'),
+              _StepChip('Loại xe',   vehicleType   != null),
+              _StepChip('Biển số',   licensePlate?.isNotEmpty ?? false),
+            ]),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _StepChip extends StatelessWidget {
+  final String label;
+  final bool done;
+  const _StepChip(this.label, this.done);
+
+  @override
+  Widget build(BuildContext context) {
+    final color = done ? AppColors.success : AppColors.textSecondary;
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(
+        done ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+        size: 13, color: color,
+      ),
+      const SizedBox(width: 4),
+      Text(label,
+          style: TextStyle(
+              fontSize: 11,
+              fontWeight: done ? FontWeight.w600 : FontWeight.w400,
+              color: color)),
+    ]);
+  }
 }
 
 // ── Avatar initials ───────────────────────────────────────────────────────────
@@ -1336,37 +1599,117 @@ class _AvatarInitials extends StatelessWidget {
       );
 }
 
-// ── Sheet option ──────────────────────────────────────────────────────────────
+// ── Avatar option card ────────────────────────────────────────────────────────
 
-class _SheetOption extends StatelessWidget {
+class _AvatarOptionCard extends StatelessWidget {
   final IconData icon;
-  final Color iconColor;
+  final Color color;
   final String label;
+  final String subtitle;
   final VoidCallback onTap;
-  const _SheetOption({
-    required this.icon, required this.iconColor,
-    required this.label, required this.onTap,
+
+  const _AvatarOptionCard({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.subtitle,
+    required this.onTap,
   });
 
   @override
-  Widget build(BuildContext context) => InkWell(
+  Widget build(BuildContext context) => GestureDetector(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          child: Row(children: [
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.07),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: color.withValues(alpha: 0.18)),
+          ),
+          child: Column(children: [
             Container(
-              width: 36, height: 36,
+              width: 48, height: 48,
               decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
+                color: color.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 18, color: iconColor),
+              child: Icon(icon, size: 22, color: color),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(height: 10),
             Text(label,
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: color)),
+            const SizedBox(height: 2),
+            Text(subtitle,
                 style: const TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+                    fontSize: 12, color: AppColors.textSecondary)),
           ]),
         ),
       );
 }
+
+// ── Balance row ───────────────────────────────────────────────────────────────
+
+class _BalanceRow extends StatelessWidget {
+  final int? balance;
+  final VoidCallback onTap;
+  const _BalanceRow({required this.balance, required this.onTap});
+
+  String _fmt(int n) {
+    if (n == 0) return '0đ';
+    final s = n.toString();
+    final buf = StringBuffer();
+    for (int i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+    }
+    buf.write('đ');
+    return buf.toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final amt = balance ?? 0;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          child: Row(children: [
+            Container(
+              width: 34, height: 34,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: const Icon(Icons.account_balance_wallet_rounded,
+                  size: 18, color: AppColors.primary),
+            ),
+            const SizedBox(width: 13),
+            const Expanded(
+              child: Text('Số dư ví',
+                  style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary)),
+            ),
+            Text(
+              _fmt(amt),
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: amt > 0 ? AppColors.primary : AppColors.textSecondary),
+            ),
+            const SizedBox(width: 6),
+            const Icon(Icons.chevron_right_rounded,
+                color: Color(0xFFD0D0D5), size: 20),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+

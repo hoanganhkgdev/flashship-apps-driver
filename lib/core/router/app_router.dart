@@ -14,6 +14,7 @@ import '../../features/orders/screens/order_offer_screen.dart';
 import '../../features/orders/screens/active_order_screen.dart';
 import '../../features/wallet/screens/wallet_screen.dart';
 import '../../features/score/screens/score_screen.dart';
+import '../../features/profile/screens/kyc_screen.dart';
 import '../../features/version/providers/app_version_provider.dart';
 
 // Global router instance — dùng để navigate từ bên ngoài widget tree (polling service).
@@ -105,6 +106,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/score',
         builder: (_, __) => const ScoreScreen(),
+      ),
+      GoRoute(
+        path: '/kyc',
+        builder: (_, __) => const KycScreen(),
       ),
     ],
   );

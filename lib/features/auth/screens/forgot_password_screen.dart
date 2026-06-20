@@ -13,7 +13,8 @@ class ForgotPasswordScreen extends ConsumerStatefulWidget {
       _ForgotPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
+class _ForgotPasswordScreenState
+    extends ConsumerState<ForgotPasswordScreen> {
   final _phoneCtrl = TextEditingController();
   final _otpCtrl   = TextEditingController();
   final _passCtrl  = TextEditingController();
@@ -95,49 +96,81 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final safeT  = MediaQuery.of(context).padding.top;
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
     final safeB  = MediaQuery.of(context).padding.bottom;
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
 
     return Scaffold(
       backgroundColor: Colors.white,
       resizeToAvoidBottomInset: false,
       body: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(28, safeT + 24, 28, bottom + safeB + 32),
+        padding: EdgeInsets.fromLTRB(24, safeT + 16, 24, bottom + safeB + 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
+            // Back button
+            GestureDetector(
+              onTap: () => Navigator.of(context).maybePop(),
+              child: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.arrow_back_rounded,
+                    size: 20, color: AppColors.textPrimary),
+              ),
+            ),
+
+            const SizedBox(height: 28),
+
+            // Icon
+            Container(
+              width: 52, height: 52,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(
+                _step2
+                    ? Icons.mark_chat_read_outlined
+                    : Icons.lock_reset_rounded,
+                color: AppColors.primary,
+                size: 26,
+              ),
+            ),
+
             const SizedBox(height: 16),
-            Center(
-              child: Text(
-                _step2 ? 'NHẬP MÃ OTP' : 'QUÊN MẬT KHẨU',
-                style: const TextStyle(
-                    fontSize: 20, fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary, letterSpacing: -0.3),
+
+            Text(
+              _step2 ? 'Nhập mã OTP' : 'Quên mật khẩu',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.5,
               ),
             ),
             const SizedBox(height: 6),
-            Center(
-              child: Text(
-                _step2
-                    ? 'Nhập mã 6 số vừa gửi tới ${_phoneCtrl.text.trim()}'
-                    : 'Nhập số điện thoại để nhận mã xác nhận',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontSize: 14, color: AppColors.textSecondary, height: 1.5),
-              ),
+            Text(
+              _step2
+                  ? 'Nhập mã 6 số vừa gửi tới ${_phoneCtrl.text.trim()}'
+                  : 'Nhập số điện thoại để nhận mã xác nhận',
+              style: const TextStyle(
+                  fontSize: 14, color: AppColors.textSecondary, height: 1.5),
             ),
-            const SizedBox(height: 32),
+
+            const SizedBox(height: 28),
 
             // ── Step 1: Phone ──────────────────────────────────────────
-            if (!_step2) ...[
+            if (!_step2)
               Form(
                 key: _phoneKey,
-                child: _Field(
+                child: _AuthField(
                   controller: _phoneCtrl,
-                  label: 'Số điện thoại',
-                  hint: 'Nhập số điện thoại đã đăng ký',
-                  icon: Icons.phone_outlined,
+                  hint: 'Số điện thoại đã đăng ký',
+                  prefixIcon: const Icon(Icons.phone_outlined,
+                      size: 20, color: AppColors.textSecondary),
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.done,
                   onFieldSubmitted: (_) => _sendOtp(),
@@ -152,18 +185,17 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   },
                 ),
               ),
-            ],
 
             // ── Step 2: OTP + new password ─────────────────────────────
-            if (_step2) ...[
+            if (_step2)
               Form(
                 key: _resetKey,
                 child: Column(children: [
-                  _Field(
+                  _AuthField(
                     controller: _otpCtrl,
-                    label: 'Mã OTP',
-                    hint: '6 chữ số',
-                    icon: Icons.pin_outlined,
+                    hint: 'Mã OTP (6 chữ số)',
+                    prefixIcon: const Icon(Icons.pin_outlined,
+                        size: 20, color: AppColors.textSecondary),
                     keyboardType: TextInputType.number,
                     textInputAction: TextInputAction.next,
                     validator: (v) {
@@ -173,12 +205,12 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 16),
-                  _Field(
+                  const SizedBox(height: 12),
+                  _AuthField(
                     controller: _passCtrl,
-                    label: 'Mật khẩu mới',
-                    hint: 'Tối thiểu 6 ký tự',
-                    icon: Icons.lock_outline_rounded,
+                    hint: 'Mật khẩu mới',
+                    prefixIcon: const Icon(Icons.lock_outline_rounded,
+                        size: 20, color: AppColors.textSecondary),
                     obscureText: _obscure1,
                     textInputAction: TextInputAction.next,
                     suffixIcon: GestureDetector(
@@ -197,12 +229,12 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 16),
-                  _Field(
+                  const SizedBox(height: 12),
+                  _AuthField(
                     controller: _confCtrl,
-                    label: 'Xác nhận mật khẩu',
-                    hint: 'Nhập lại mật khẩu mới',
-                    icon: Icons.lock_outline_rounded,
+                    hint: 'Xác nhận mật khẩu mới',
+                    prefixIcon: const Icon(Icons.lock_outline_rounded,
+                        size: 20, color: AppColors.textSecondary),
                     obscureText: _obscure2,
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => _resetPassword(),
@@ -216,18 +248,15 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                       ),
                     ),
                     validator: (v) {
-                      if (v != _passCtrl.text) {
-                        return 'Mật khẩu không khớp';
-                      }
+                      if (v != _passCtrl.text) return 'Mật khẩu không khớp';
                       return null;
                     },
                   ),
                 ]),
               ),
-            ],
 
             if (_error != null) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
@@ -250,58 +279,68 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               ),
             ],
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
 
             SizedBox(
               width: double.infinity,
-              height: 54,
+              height: 50,
               child: FilledButton(
                 onPressed: _loading
                     ? null
                     : (_step2 ? _resetPassword : _sendOtp),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
+                  disabledBackgroundColor:
+                      AppColors.primary.withValues(alpha: 0.5),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                      borderRadius: BorderRadius.circular(10)),
+                  elevation: 0,
+                  textStyle: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w700),
                 ),
                 child: _loading
                     ? const SizedBox(
                         width: 22, height: 22,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
-                    : Text(
-                        _step2 ? 'Đặt lại mật khẩu' : 'Gửi mã OTP',
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w700,
-                            color: Colors.white)),
+                    : Text(_step2 ? 'Đặt lại mật khẩu' : 'Gửi mã OTP'),
               ),
             ),
 
             if (_step2) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               Center(
                 child: GestureDetector(
                   onTap: _loading ? null : _sendOtp,
-                  child: Text('Gửi lại mã OTP',
-                      style: TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w600,
-                          color: _loading
-                              ? AppColors.textSecondary
-                              : AppColors.primary)),
+                  child: Text(
+                    'Gửi lại mã OTP',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: _loading
+                          ? AppColors.textSecondary
+                          : AppColors.primary,
+                    ),
+                  ),
                 ),
               ),
             ],
 
             const SizedBox(height: 20),
+
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               const Text('Đã nhớ mật khẩu? ',
-                  style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+                  style: TextStyle(
+                      fontSize: 14, color: AppColors.textSecondary)),
               GestureDetector(
                 onTap: () => context.go('/login'),
-                child: const Text('Đăng nhập',
-                    style: TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w700,
-                        color: AppColors.primary)),
+                child: const Text(
+                  'Đăng nhập',
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary),
+                ),
               ),
             ]),
           ],
@@ -311,93 +350,93 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   }
 }
 
-// ── Input field ───────────────────────────────────────────────────────────────
+// ── Input field ────────────────────────────────────────────────────────────────
 
-class _Field extends StatelessWidget {
+class _AuthField extends StatelessWidget {
   final TextEditingController controller;
-  final String label, hint;
-  final IconData icon;
+  final String hint;
   final bool obscureText;
   final TextInputType? keyboardType;
   final TextInputAction? textInputAction;
+  final void Function(String)? onFieldSubmitted;
+  final Widget? prefixIcon;
   final Widget? suffixIcon;
   final String? Function(String?)? validator;
-  final void Function(String)? onFieldSubmitted;
 
-  const _Field({
+  const _AuthField({
     required this.controller,
-    required this.label,
     required this.hint,
-    required this.icon,
     this.obscureText = false,
     this.keyboardType,
     this.textInputAction,
+    this.onFieldSubmitted,
+    this.prefixIcon,
     this.suffixIcon,
     this.validator,
-    this.onFieldSubmitted,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label,
-          style: const TextStyle(
-              fontSize: 13, fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary)),
-      const SizedBox(height: 8),
-      TextFormField(
+  Widget build(BuildContext context) => TextFormField(
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
         textInputAction: textInputAction,
         onFieldSubmitted: onFieldSubmitted,
-        validator: validator,
-        style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
+        style: const TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textPrimary,
+        ),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: const TextStyle(
-              color: AppColors.textSecondary, fontSize: 15),
-          prefixIcon: Padding(
-            padding: const EdgeInsets.only(left: 14, right: 10),
-            child: Icon(icon, size: 20, color: AppColors.textSecondary),
+            color: AppColors.textSecondary,
+            fontSize: 15,
+            fontWeight: FontWeight.w400,
           ),
+          errorStyle: const TextStyle(fontSize: 12),
+          prefixIcon: prefixIcon != null
+              ? Padding(
+                  padding: const EdgeInsets.only(left: 14, right: 10),
+                  child: prefixIcon,
+                )
+              : null,
           prefixIconConstraints:
-              const BoxConstraints(minWidth: 0, minHeight: 0),
+              const BoxConstraints(minWidth: 44, minHeight: 44),
           suffixIcon: suffixIcon != null
               ? Padding(
                   padding: const EdgeInsets.only(right: 12),
-                  child: suffixIcon)
+                  child: suffixIcon,
+                )
               : null,
           suffixIconConstraints:
-              const BoxConstraints(minWidth: 0, minHeight: 0),
+              const BoxConstraints(minWidth: 40, minHeight: 40),
           filled: true,
-          fillColor: const Color(0xFFF8F8F8),
-          contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16, vertical: 16),
+          fillColor: Colors.white,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
-                color: AppColors.primary, width: 1.5),
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
           ),
           errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             borderSide: const BorderSide(color: AppColors.danger),
           ),
           focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
-                color: AppColors.danger, width: 1.5),
+            borderRadius: BorderRadius.circular(10),
+            borderSide:
+                const BorderSide(color: AppColors.danger, width: 1.5),
           ),
         ),
-      ),
-    ]);
-  }
+        validator: validator,
+      );
 }

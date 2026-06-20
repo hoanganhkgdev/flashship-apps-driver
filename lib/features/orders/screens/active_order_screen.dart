@@ -270,12 +270,16 @@ class _Header extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFFEF7C1A), AppColors.primaryDark],
+          colors: [Color(0xFFCC5A08), Color(0xFFE8720C), Color(0xFFF59E30)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
       ),
-      child: Column(children: [
+      child: Stack(clipBehavior: Clip.none, children: [
+        Positioned(top: -40, right: -40, child: _Bubble(150, 0.07)),
+        Positioned(top: 80,  left: -30,  child: _Bubble(80,  0.05)),
+        Positioned(bottom: 40, right: 30, child: _Bubble(55, 0.04)),
+        Column(children: [
         Padding(
           padding: EdgeInsets.fromLTRB(16, top + 12, 16, 0),
           child: Row(children: [
@@ -284,18 +288,14 @@ class _Header extends StatelessWidget {
             GestureDetector(
               onTap: () => context.go('/home'),
               child: Container(
-                width: 48, height: 48,
-                alignment: Alignment.center,
-                child: Container(
-                  width: 36, height: 36,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.20),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    color: Colors.white, size: 16,
-                  ),
+                width: 34, height: 34,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.20),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: Colors.white, size: 16,
                 ),
               ),
             ),
@@ -385,18 +385,24 @@ class _Header extends StatelessWidget {
         ),
 
         const SizedBox(height: 16),
-
-        // Curved bottom
-        Container(
-          height: 20,
-          decoration: const BoxDecoration(
-            color: AppColors.background,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-        ),
-      ]),
-    );
+        Container(height: 20, color: AppColors.background),
+        ]),   // Column
+      ]),     // Stack
+    );        // Container
   }
+}
+
+class _Bubble extends StatelessWidget {
+  final double size, opacity;
+  const _Bubble(this.size, this.opacity);
+  @override
+  Widget build(BuildContext context) => Container(
+        width: size, height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: opacity),
+        ),
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -442,233 +448,237 @@ class _RouteCard extends StatelessWidget {
     final deliveryPhone = isRide ? null
         : (order.deliveryPhone.isNotEmpty ? order.deliveryPhone : null);
 
-    return _card(
-      child: Column(children: [
+    final pickupPlace = order.isShopOrder
+        ? (order.storeName?.isNotEmpty == true ? order.storeName : order.pickupPlaceName)
+        : order.pickupPlaceName;
+    final deliveryPlace = order.deliveryPlaceName?.isNotEmpty == true
+        ? order.deliveryPlaceName
+        : order.customerName;
 
-        // Section label
-        Row(children: [
-          Icon(Icons.route_rounded, size: 13, color: AppColors.textTertiary),
-          const SizedBox(width: 6),
-          const Text(
-            'TUYẾN ĐƯỜNG',
-            style: TextStyle(
-              fontSize: 10, fontWeight: FontWeight.w700,
-              color: AppColors.textTertiary, letterSpacing: 0.5,
+    return _card(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+        // ── Pickup stop ────────────────────────────────────────────
+        _RouteStop(
+          isOrigin:    true,
+          isActive:    isPickup,
+          isDone:      !isPickup,
+          color:       color,
+          label:       _pickupLabel,
+          placeName:   pickupPlace,
+          address:     order.pickupAddress,
+          phone:       pickupPhone,
+          onCall:      onCallPickup,
+          onNav:       onNavPickup,
+        ),
+
+        // ── Connector ──────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.only(left: 13),
+          child: Container(
+            width: 2, height: 32,
+            decoration: BoxDecoration(
+              color: isPickup
+                  ? const Color(0xFFE0E0E0)
+                  : AppColors.success.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(1),
             ),
           ),
-        ]),
-
-        const SizedBox(height: 14),
-
-        // Pickup stop
-        _RouteStop(
-          dot: _RouteDot(
-            active: isPickup,
-            color: isPickup ? color : AppColors.success,
-            icon: Icons.location_on_rounded,
-          ),
-          label:     _pickupLabel,
-          placeName: order.isShopOrder
-              ? (order.storeName?.isNotEmpty == true ? order.storeName : order.pickupPlaceName)
-              : order.pickupPlaceName,
-          name: null,
-          address:   order.pickupAddress,
-          phone:     pickupPhone,
-          isActive:  isPickup,
-          activeColor: color,
-          onCall:    onCallPickup,
-          onNavigate: onNavPickup,
         ),
 
-        // Connector line
-        Row(children: [
-          const SizedBox(width: 14),
-          Container(
-            width: 2, height: 28,
-            color: isPickup
-                ? AppColors.divider
-                : AppColors.success.withValues(alpha: 0.4),
-          ),
-        ]),
-
-        // Delivery stop
+        // ── Delivery stop ──────────────────────────────────────────
         _RouteStop(
-          dot: _RouteDot(
-            active: !isPickup,
-            color: !isPickup ? color : AppColors.divider,
-            icon: Icons.flag_rounded,
-          ),
-          label:     _deliveryLabel,
-          placeName: order.deliveryPlaceName?.isNotEmpty == true
-              ? order.deliveryPlaceName
-              : order.customerName,
-          name:    null,
-          address: order.deliveryAddress,
-          phone:   deliveryPhone,
+          isOrigin:    false,
           isActive:    !isPickup,
-          activeColor: color,
-          onCall:     onCallDelivery,
-          onNavigate: onNavDelivery,
+          isDone:      false,
+          color:       color,
+          label:       _deliveryLabel,
+          placeName:   deliveryPlace,
+          address:     order.deliveryAddress,
+          phone:       deliveryPhone,
+          onCall:      onCallDelivery,
+          onNav:       onNavDelivery,
         ),
 
-        const SizedBox(height: 4),
       ]),
     );
   }
 }
 
-class _RouteDot extends StatelessWidget {
-  final bool active;
-  final Color color;
-  final IconData icon;
-  const _RouteDot({required this.active, required this.color, required this.icon});
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: 32, height: 32,
-    decoration: BoxDecoration(
-      color: active ? color : color.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(9),
-    ),
-    child: Icon(icon, size: 16, color: active ? Colors.white : color),
-  );
-}
-
 class _RouteStop extends StatelessWidget {
-  final Widget dot;
+  final bool isOrigin;
+  final bool isActive;
+  final bool isDone;
+  final Color color;
   final String label;
   final String? placeName;
-  final String? name;
   final String address;
   final String? phone;
-  final bool isActive;
-  final Color activeColor;
   final VoidCallback? onCall;
-  final VoidCallback onNavigate;
+  final VoidCallback onNav;
 
   const _RouteStop({
-    required this.dot,
+    required this.isOrigin,
+    required this.isActive,
+    required this.isDone,
+    required this.color,
     required this.label,
     this.placeName,
-    this.name,
     required this.address,
     required this.phone,
-    required this.isActive,
-    required this.activeColor,
     required this.onCall,
-    required this.onNavigate,
+    required this.onNav,
   });
+
+  Color get _dotColor {
+    if (isActive) return color;
+    if (isDone)   return AppColors.success;
+    return const Color(0xFFE0E0E0);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      dot,
+
+      // Timeline dot
+      Container(
+        width: 28, height: 28,
+        decoration: BoxDecoration(
+          color: _dotColor.withValues(alpha: isActive ? 1.0 : 0.12),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          isOrigin ? Icons.location_on_rounded : Icons.flag_rounded,
+          size: 14,
+          color: isActive ? Colors.white : _dotColor,
+        ),
+      ),
+
       const SizedBox(width: 12),
+
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+          // Label + active badge
           Row(children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10, fontWeight: FontWeight.w700,
-                color: isActive ? activeColor : AppColors.textTertiary,
-                letterSpacing: 0.3,
-              ),
-            ),
+            Text(label,
+                style: TextStyle(
+                  fontSize: 11, fontWeight: FontWeight.w600,
+                  color: isActive ? color : AppColors.textTertiary,
+                )),
             if (isActive) ...[
               const SizedBox(width: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
-                  color: activeColor.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(5),
+                  color: color.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Text(
-                  'Hiện tại',
-                  style: TextStyle(
-                    fontSize: 9, fontWeight: FontWeight.w700, color: activeColor),
-                ),
+                child: Text('Đang đến',
+                    style: TextStyle(
+                      fontSize: 9, fontWeight: FontWeight.w700, color: color,
+                    )),
               ),
             ],
           ]),
-          const SizedBox(height: 4),
+
+          const SizedBox(height: 5),
+
+          // Place name
           if (placeName != null && placeName!.isNotEmpty) ...[
             Text(placeName!,
                 style: const TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary)),
-            const SizedBox(height: 1),
-          ],
-          if (name != null && name!.isNotEmpty) ...[
-            Text(name!,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: (placeName != null && placeName!.isNotEmpty)
-                      ? AppColors.textSecondary
-                      : AppColors.textPrimary,
+                  fontSize: 15, fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
                 )),
             const SizedBox(height: 2),
           ],
-          Text(
-            address,
-            style: TextStyle(
-              fontSize: 13,
-              color: isActive ? AppColors.textPrimary : AppColors.textSecondary,
-              fontWeight: isActive ? FontWeight.w500 : FontWeight.w400,
-              height: 1.4,
-            ),
-          ),
+
+          // Address
+          Text(address,
+              style: const TextStyle(
+                fontSize: 12.5, color: AppColors.textSecondary, height: 1.4,
+              )),
+
+          // Phone — tappable
           if (phone != null && phone!.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Row(children: [
-              const Icon(Icons.phone_rounded, size: 12, color: AppColors.info),
-              const SizedBox(width: 4),
-              Text(phone!,
-                  style: const TextStyle(
-                    fontSize: 12, color: AppColors.info, fontWeight: FontWeight.w600)),
-            ]),
+            const SizedBox(height: 6),
+            GestureDetector(
+              onTap: onCall,
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: AppColors.info.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.phone_rounded,
+                      size: 11, color: AppColors.info),
+                ),
+                const SizedBox(width: 6),
+                Text(phone!,
+                    style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w700,
+                      color: AppColors.info,
+                    )),
+              ]),
+            ),
           ],
-          const SizedBox(height: 10),
+
+          const SizedBox(height: 12),
+
+          // Action pill buttons
+          Row(children: [
+            _PillBtn(
+              icon:  Icons.near_me_rounded,
+              label: 'Dẫn đường',
+              color: AppColors.primary,
+              onTap: onNav,
+            ),
+            if (onCall != null) ...[
+              const SizedBox(width: 8),
+              _PillBtn(
+                icon:  Icons.call_rounded,
+                label: 'Gọi điện',
+                color: AppColors.success,
+                onTap: onCall,
+              ),
+            ],
+          ]),
+
+          const SizedBox(height: 4),
         ]),
       ),
-
-      // Action buttons
-      Column(children: [
-        _ActionBtn(
-          icon: Icons.near_me_rounded,
-          color: AppColors.info,
-          onTap: onNavigate,
-        ),
-        const SizedBox(height: 8),
-        _ActionBtn(
-          icon: Icons.call_rounded,
-          color: AppColors.success,
-          onTap: onCall,
-        ),
-      ]),
     ]);
   }
 }
 
-class _ActionBtn extends StatelessWidget {
+class _PillBtn extends StatelessWidget {
   final IconData icon;
+  final String label;
   final Color color;
   final VoidCallback? onTap;
-
-  const _ActionBtn({required this.icon, required this.color, required this.onTap});
+  const _PillBtn({required this.icon, required this.label,
+      required this.color, required this.onTap});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
     child: Container(
-      width: 38, height: 38,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       decoration: BoxDecoration(
-        color: onTap != null ? color.withValues(alpha: 0.10) : AppColors.divider,
-        borderRadius: BorderRadius.circular(11),
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
-      child: Icon(icon, size: 18,
-          color: onTap != null ? color : AppColors.textTertiary),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 5),
+        Text(label,
+            style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w700, color: color,
+            )),
+      ]),
     ),
   );
 }
@@ -695,98 +705,135 @@ class _TopupCard extends StatelessWidget {
     return _card(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-        // Section label
-        Row(children: [
-          Icon(Icons.phonelink_rounded, size: 13, color: AppColors.textTertiary),
-          const SizedBox(width: 6),
-          const Text(
-            'THÔNG TIN NẠP TIỀN',
+        // ── Header ──────────────────────────────────────────────────
+        const Text('Thông tin nạp tiền',
             style: TextStyle(
-              fontSize: 10, fontWeight: FontWeight.w700,
-              color: AppColors.textTertiary, letterSpacing: 0.5,
+              fontSize: 14, fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            )),
+
+        // ── Amount hero ───────────────────────────────────────────
+        if ((order.codAmount ?? 0) > 0) ...[
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: AppColors.warning.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.warning.withValues(alpha: 0.2)),
             ),
+            child: Row(children: [
+              Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.13),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.phonelink_rounded,
+                    size: 20, color: AppColors.warning),
+              ),
+              const SizedBox(width: 14),
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Số tiền cần nạp',
+                    style: TextStyle(
+                      fontSize: 11, fontWeight: FontWeight.w600,
+                      color: AppColors.warning,
+                    )),
+                const SizedBox(height: 3),
+                Text(Fmt.currency(order.codAmount!),
+                    style: const TextStyle(
+                      fontSize: 26, fontWeight: FontWeight.w900,
+                      color: AppColors.warning, letterSpacing: -0.5,
+                    )),
+              ]),
+            ]),
           ),
-        ]),
+        ],
 
         const SizedBox(height: 14),
+        const Divider(height: 1, color: Color(0xFFF5F5F5)),
+        const SizedBox(height: 14),
 
-        // Location
+        // ── Phone row ────────────────────────────────────────────
+        Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          Container(
+            width: 34, height: 34,
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.smartphone_rounded,
+                size: 16, color: AppColors.success),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('SĐT cần nạp',
+                style: TextStyle(
+                  fontSize: 11, color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                )),
+            const SizedBox(height: 3),
+            Text(order.deliveryPhone,
+                style: const TextStyle(
+                  fontSize: 20, fontWeight: FontWeight.w900,
+                  color: AppColors.textPrimary, letterSpacing: -0.3,
+                )),
+          ])),
+        ]),
+
+        const SizedBox(height: 12),
+        const Divider(height: 1, color: Color(0xFFF5F5F5)),
+        const SizedBox(height: 12),
+
+        // ── Location row ─────────────────────────────────────────
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
-            width: 32, height: 32,
+            width: 34, height: 34,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(9),
+              color: color.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(Icons.location_on_rounded, size: 16, color: color),
           ),
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('Điểm nạp tiền',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
+                style: TextStyle(
+                  fontSize: 11, fontWeight: FontWeight.w600, color: color,
+                )),
             const SizedBox(height: 3),
             Text(order.pickupAddress,
                 style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary, height: 1.4)),
+                  fontSize: 13, fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary, height: 1.4,
+                )),
           ])),
-          _ActionBtn(icon: Icons.near_me_rounded, color: AppColors.info, onTap: onNavigate),
         ]),
 
-        const SizedBox(height: 14),
-        const Divider(height: 1, color: AppColors.divider),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
 
-        // Phone + amount
-        Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        // ── Action pills ─────────────────────────────────────────
+        Row(children: [
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('SĐT cần nạp',
-                  style: TextStyle(fontSize: 10, color: AppColors.textTertiary,
-                      fontWeight: FontWeight.w600)),
-              const SizedBox(height: 4),
-              Text(order.deliveryPhone,
-                  style: const TextStyle(
-                    fontSize: 24, fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary, letterSpacing: -0.5)),
-            ]),
+            child: _PillBtn(
+              icon: Icons.near_me_rounded,
+              label: 'Dẫn đường',
+              color: AppColors.info,
+              onTap: onNavigate,
+            ),
           ),
-          _ActionBtn(icon: Icons.call_rounded, color: AppColors.success, onTap: onCall),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _PillBtn(
+              icon: Icons.call_rounded,
+              label: 'Gọi điện',
+              color: AppColors.success,
+              onTap: onCall ?? () {},
+            ),
+          ),
         ]),
 
-        if ((order.codAmount ?? 0) > 0) ...[
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppColors.warning.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.warning.withValues(alpha: 0.25)),
-            ),
-            child: Row(children: [
-              Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.account_balance_wallet_rounded,
-                    size: 18, color: AppColors.warning),
-              ),
-              const SizedBox(width: 12),
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Số tiền cần nạp',
-                    style: TextStyle(fontSize: 10, color: AppColors.warning,
-                        fontWeight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text(Fmt.currency(order.codAmount!),
-                    style: const TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.warning)),
-              ]),
-            ]),
-          ),
-        ],
       ]),
     );
   }
@@ -1022,60 +1069,88 @@ class _EarningCard extends StatelessWidget {
     return _card(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-        // Section label
-        Row(children: [
-          Icon(Icons.account_balance_wallet_outlined, size: 13, color: AppColors.textTertiary),
-          const SizedBox(width: 6),
-          const Text(
-            'THU NHẬP ĐƠN NÀY',
+        // ── Header ──────────────────────────────────────────────────
+        const Text('Thu nhập đơn này',
             style: TextStyle(
-              fontSize: 10, fontWeight: FontWeight.w700,
-              color: AppColors.textTertiary, letterSpacing: 0.5,
-            ),
-          ),
-        ]),
+              fontSize: 14, fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            )),
 
         const SizedBox(height: 14),
 
-        // Shopping advance
-        if (order.serviceType == 'shopping' && (order.codAmount ?? 0) > 0) ...[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppColors.warning.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.warning.withValues(alpha: 0.25)),
-            ),
-            child: Row(children: [
-              Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.shopping_cart_checkout_rounded,
-                    size: 18, color: AppColors.warning),
-              ),
-              const SizedBox(width: 12),
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Tiền ứng mua hàng',
-                    style: TextStyle(fontSize: 11, color: AppColors.warning,
-                        fontWeight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text(Fmt.currency(order.codAmount!),
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w800,
-                        color: AppColors.warning)),
-              ]),
-            ]),
+        // ── Earning hero ─────────────────────────────────────────────
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: AppColors.success.withValues(alpha: 0.07),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.success.withValues(alpha: 0.18)),
           ),
-          const SizedBox(height: 14),
-          const Divider(height: 1, color: AppColors.divider),
-          const SizedBox(height: 14),
-        ],
+          child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.success.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.trending_up_rounded,
+                  size: 22, color: AppColors.success),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Tài xế nhận',
+                    style: TextStyle(
+                      fontSize: 11, fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    )),
+                const SizedBox(height: 3),
+                Text(Fmt.currency(order.driverEarning),
+                    style: const TextStyle(
+                      fontSize: 26, fontWeight: FontWeight.w900,
+                      color: AppColors.success, letterSpacing: -0.5,
+                    )),
+                if (order.hasDiscount && order.discountAmount > 0) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    order.driverEarning == 0
+                        ? 'Tiền ship cộng vào ví sau hoàn thành'
+                        : '+ ${Fmt.currency(order.discountAmount)} cộng thêm vào ví',
+                    style: const TextStyle(
+                        fontSize: 11, color: AppColors.success,
+                        fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ]),
+            ),
+            if (order.isCod)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+                ),
+                child: Column(children: [
+                  const Icon(Icons.monetization_on_rounded,
+                      size: 16, color: AppColors.warning),
+                  const SizedBox(height: 2),
+                  const Text('Thu tiền',
+                      style: TextStyle(
+                        fontSize: 9, fontWeight: FontWeight.w800,
+                        color: AppColors.warning,
+                      )),
+                ]),
+              ),
+          ]),
+        ),
 
-        // Fee breakdown
+        // ── Fee breakdown ─────────────────────────────────────────────
+        const SizedBox(height: 14),
+        const Divider(height: 1, color: Color(0xFFF5F5F5)),
+        const SizedBox(height: 12),
+
         _FeeRow(
           label: 'Phí giao hàng',
           value: Fmt.currency(order.shippingFee + order.discountAmount),
@@ -1099,55 +1174,44 @@ class _EarningCard extends StatelessWidget {
           ),
         ],
 
-        const SizedBox(height: 14),
-        const Divider(height: 1, color: AppColors.divider),
-        const SizedBox(height: 14),
-
-        // Earning highlight
-        Row(children: [
+        // ── Shopping advance ──────────────────────────────────────────
+        if (order.serviceType == 'shopping' && (order.codAmount ?? 0) > 0) ...[
+          const SizedBox(height: 12),
+          const Divider(height: 1, color: Color(0xFFF5F5F5)),
+          const SizedBox(height: 12),
           Container(
-            width: 44, height: 44,
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(13),
+              color: AppColors.warning.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.warning.withValues(alpha: 0.2)),
             ),
-            child: Icon(Icons.account_balance_wallet_rounded, size: 22, color: color),
+            child: Row(children: [
+              Container(
+                width: 38, height: 38,
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.shopping_cart_checkout_rounded,
+                    size: 18, color: AppColors.warning),
+              ),
+              const SizedBox(width: 12),
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Tiền ứng mua hàng',
+                    style: TextStyle(fontSize: 11, color: AppColors.warning,
+                        fontWeight: FontWeight.w600)),
+                const SizedBox(height: 3),
+                Text(Fmt.currency(order.codAmount!),
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w900,
+                        color: AppColors.warning)),
+              ]),
+            ]),
           ),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Tài xế nhận',
-                style: TextStyle(fontSize: 11, color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w500)),
-            const SizedBox(height: 2),
-            Text(Fmt.currency(order.driverEarning),
-                style: TextStyle(
-                    fontSize: 24, fontWeight: FontWeight.w900,
-                    color: color, letterSpacing: -0.5)),
-            if (order.hasDiscount) ...[
-              const SizedBox(height: 3),
-              Text(
-                order.driverEarning == 0
-                    ? 'Tiền ship được + vào ví sau khi hoàn thành'
-                    : '+ ${Fmt.currency(order.discountAmount)} được cộng vào ví',
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.success, fontWeight: FontWeight.w500),
-              ),
-            ],
-          ])),
-          if (order.isCod && order.driverEarning > 0)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: AppColors.warning.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.warning.withValues(alpha: 0.30)),
-              ),
-              child: const Text('THU TIỀN',
-                  style: TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.w800,
-                      color: AppColors.warning)),
-            ),
-        ]),
+        ],
+
       ]),
     );
   }
@@ -1375,9 +1439,14 @@ Widget _card({required Widget child}) => Container(
   width: double.infinity,
   padding: const EdgeInsets.all(16),
   decoration: BoxDecoration(
-    color: AppColors.surface,
-    borderRadius: BorderRadius.circular(AppRadius.card),
-    boxShadow: AppColors.cardShadow,
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(16),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.05),
+        blurRadius: 10, offset: const Offset(0, 2),
+      ),
+    ],
   ),
   child: child,
 );

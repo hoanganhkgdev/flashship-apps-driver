@@ -27,20 +27,22 @@ class SupportItem {
 
   Uri get uri => Uri.parse(value);
 
-  // Icon Material cho các type có sẵn; null = dùng asset PNG
-  IconData? get materialIcon => switch (type) {
-    'phone'   => Icons.phone_rounded,
-    'email'   => Icons.email_rounded,
-    'website' => Icons.language_rounded,
-    'other'   => Icons.link_rounded,
-    _         => null, // zalo, facebook → asset PNG
+  IconData get materialIcon => switch (type) {
+    'phone'    => Icons.phone_rounded,
+    'email'    => Icons.email_rounded,
+    'website'  => Icons.language_rounded,
+    'zalo'     => Icons.chat_rounded,
+    'facebook' => Icons.thumb_up_alt_rounded,
+    _          => Icons.link_rounded,
   };
 
-  // Asset path cho brand icons
-  String? get assetIcon => switch (type) {
-    'zalo'     => 'assets/icons/zalo.png',
-    'facebook' => 'assets/icons/facebook.png',
-    _          => null,
+  String get ctaLabel => switch (type) {
+    'phone'    => 'Gọi ngay',
+    'email'    => 'Gửi email',
+    'zalo'     => 'Chat Zalo',
+    'facebook' => 'Nhắn tin',
+    'website'  => 'Xem ngay',
+    _          => 'Liên hệ',
   };
 
   Color get displayColor => switch (type) {

@@ -43,12 +43,12 @@ class SessionGuardService {
     _deviceId = await getDeviceId();
 
     _sessionSub = FirebaseDatabase.instance
-        .ref('drivers/$driverId/session_device')
+        .ref('dispatch/driver_$driverId/session_device')
         .onValue
         .listen(_onSessionEvent, onError: (_) {});
 
     _lockSub = FirebaseDatabase.instance
-        .ref('drivers/$driverId/account_locked')
+        .ref('dispatch/driver_$driverId/account_locked')
         .onValue
         .listen(_onLockEvent, onError: (_) {});
   }

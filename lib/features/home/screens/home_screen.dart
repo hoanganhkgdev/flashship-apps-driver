@@ -56,6 +56,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Future<void> _startSessionGuard() async {
     final uid = ref.read(authProvider).user?.id;
     if (uid == null) return;
+
     SessionGuardService.instance.onForceLogout = () async {
       await ref.read(authProvider.notifier).logout();
       if (mounted) {
@@ -69,6 +70,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         );
       }
     };
+
+    SessionGuardService.instance.onAccountLocked = () async {
+      await ref.read(authProvider.notifier).logout();
+      if (mounted) {
+        context.go('/login');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tài khoản của bạn đã bị khóa. Liên hệ hỗ trợ để biết thêm.'),
+            backgroundColor: Color(0xFFE53935),
+            duration: Duration(seconds: 6),
+          ),
+        );
+      }
+    };
+
     await SessionGuardService.instance.start(uid);
   }
 

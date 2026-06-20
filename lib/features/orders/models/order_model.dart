@@ -128,7 +128,8 @@ class OrderModel {
 
   bool get isCod       => paymentMethod == 'cod';
   bool get isActive    => ['assigned', 'processing'].contains(status);
-  bool get isShopOrder => platform == 'shop_app' || platform == 'call_center';
+  bool get isShopOrder  => platform == 'shop_app';
+  bool get isCallCenter => platform == 'call_center';
   bool get isCompleted => status == 'completed';
   bool get isCancelled => status == 'cancelled';
   bool get hasDiscount => discountAmount > 0;

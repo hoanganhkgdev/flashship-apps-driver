@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
-typedef LocationCallback = void Function(double lat, double lng);
+typedef LocationCallback = void Function(double lat, double lng, double bearing);
 
 class LocationService {
   static final LocationService instance = LocationService._();
@@ -35,7 +35,7 @@ class LocationService {
           );
 
     _sub = Geolocator.getPositionStream(locationSettings: settings).listen(
-      (pos) => _onLocation?.call(pos.latitude, pos.longitude),
+      (pos) => _onLocation?.call(pos.latitude, pos.longitude, pos.heading),
       onError: (e) => debugPrint('[LocationService] Error: $e'),
     );
   }

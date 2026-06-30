@@ -225,6 +225,7 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
   int _codPending        = 0;
   int _debtCount         = 0;
   Timer? _onlineTimer;
+  Timer? _heartbeatTimer;
 
   @override
   void initState() {
@@ -285,6 +286,7 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
   @override
   void dispose() {
     _onlineTimer?.cancel();
+    _heartbeatTimer?.cancel();
     super.dispose();
   }
 
@@ -367,6 +369,7 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
         dailyOnlineSeconds: dailyOnlineSecs,
       );
       _stopOnlineTimer();
+      _heartbeatTimer?.cancel();
       LocationService.instance.stop();
       OfferListenerService.instance.stop();
       final uid = ref.read(authProvider).user?.id;
@@ -407,6 +410,7 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
         if (uid != null) OfferListenerService.instance.start(uid);
       } else {
         _stopOnlineTimer();
+        _heartbeatTimer?.cancel();
         LocationService.instance.stop();
         OfferListenerService.instance.stop();
         final uid = ref.read(authProvider).user?.id;
@@ -441,27 +445,33 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
   }
 
   Future<void> _startLocationUpdates() async {
-    final driverId  = ref.read(authProvider).user?.id;
-    final apiClient = ref.read(apiClientProvider);
+    final driverId = ref.read(authProvider).user?.id;
     try {
       final perm = await Geolocator.checkPermission();
       if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) return;
       final pos = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(accuracy: LocationAccuracy.best));
-      await _pushLocation(driverId, pos.latitude, pos.longitude, apiClient);
+      await _pushLocation(driverId, pos.latitude, pos.longitude, pos.heading);
     } catch (_) {}
-    LocationService.instance.start((lat, lng) => _pushLocation(driverId, lat, lng, apiClient));
+    LocationService.instance.start((lat, lng, bearing) => _pushLocation(driverId, lat, lng, bearing));
+    _startHeartbeat(driverId);
   }
 
-  Future<void> _pushLocation(int? driverId, double lat, double lng, dynamic apiClient) async {
-    if (driverId != null) {
-      try {
-        await FirebaseDatabase.instance.ref('flashship_main/locations/driver_$driverId')
-            .set({'lat': lat, 'lng': lng, 'updated_at': ServerValue.timestamp});
-      } catch (_) {}
-    }
-    try { await apiClient.post('/driver/update-location', data: {'latitude': lat, 'longitude': lng}); }
-    catch (_) {}
+  void _startHeartbeat(int? driverId) {
+    _heartbeatTimer?.cancel();
+    if (driverId == null) return;
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      FirebaseDatabase.instance.ref('flashship_main/locations/driver_$driverId/heartbeat_at')
+          .set(ServerValue.timestamp).ignore();
+    });
+  }
+
+  Future<void> _pushLocation(int? driverId, double lat, double lng, double bearing) async {
+    if (driverId == null) return;
+    try {
+      await FirebaseDatabase.instance.ref('flashship_main/locations/driver_$driverId')
+          .set({'lat': lat, 'lng': lng, 'bearing': bearing, 'updated_at': ServerValue.timestamp, 'heartbeat_at': ServerValue.timestamp});
+    } catch (_) {}
   }
 
   @override

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/services/offer_listener_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
@@ -155,8 +156,6 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
   }
 
   void _handleTimeout() {
-    // Không gọi decline API — để backend job tự xử lý timeout (-1 điểm)
-    // Chỉ dọn offer RTDB local và về home
     if (!mounted) return;
     _timer?.cancel();
     _player.stop();
@@ -178,7 +177,6 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
     } else {
       _showError(error);
     }
-    // Về home và switch sang tab Đơn hàng
     ref.read(homeTabProvider.notifier).state = 1;
     context.go('/home');
   }
@@ -976,6 +974,43 @@ class _NoteRow extends StatelessWidget {
   final String label;
   const _NoteRow({required this.note, this.label = 'Ghi chú'});
 
+  static final _phoneRegex = RegExp(r'(0\d{8,10})');
+
+  Widget _buildNoteWithPhoneLinks(String text) {
+    final matches = _phoneRegex.allMatches(text).toList();
+    if (matches.isEmpty) {
+      return Text(text, style: const TextStyle(fontSize: 13, color: AppColors.textPrimary));
+    }
+
+    final spans = <InlineSpan>[];
+    int lastEnd = 0;
+    for (final m in matches) {
+      if (m.start > lastEnd) {
+        spans.add(TextSpan(text: text.substring(lastEnd, m.start)));
+      }
+      final phone = m.group(0)!;
+      spans.add(WidgetSpan(
+        alignment: PlaceholderAlignment.middle,
+        child: GestureDetector(
+          onTap: () => launchUrl(Uri.parse('tel:$phone')),
+          child: Text(phone, style: const TextStyle(
+            fontSize: 13, color: Colors.blue,
+            decoration: TextDecoration.underline,
+            decorationColor: Colors.blue,
+          )),
+        ),
+      ));
+      lastEnd = m.end;
+    }
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(text: text.substring(lastEnd)));
+    }
+    return RichText(text: TextSpan(
+      style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+      children: spans,
+    ));
+  }
+
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(12),
@@ -990,7 +1025,7 @@ class _NoteRow extends StatelessWidget {
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFFF59E0B), fontWeight: FontWeight.w600)),
         const SizedBox(height: 2),
-        Text(note, style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+        _buildNoteWithPhoneLinks(note),
       ])),
     ]),
   );

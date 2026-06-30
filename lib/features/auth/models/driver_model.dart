@@ -11,7 +11,6 @@ class DriverModel {
   final String? planType;
   final int balance;
   final String? profilePhotoUrl;
-
   const DriverModel({
     required this.id,
     required this.name,

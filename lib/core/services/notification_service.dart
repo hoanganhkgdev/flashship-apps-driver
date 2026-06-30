@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,12 +11,43 @@ import 'offer_listener_service.dart';
 
 final _localNotif = FlutterLocalNotificationsPlugin();
 
-/// Background isolate handler — chỉ cần wake app, không parse order data.
-/// OfferListenerService sẽ đọc offer từ RTDB sau khi app sống lại.
 @pragma('vm:entry-point')
 Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
-  // Không cần làm gì — FCM chỉ là wake-up signal.
-  // Khi app resume, OfferListenerService tự đọc RTDB stream.
+  await Firebase.initializeApp();
+  final data = message.data;
+  if (data['type'] == 'order_offer') {
+    final orderCode = data['order_code'] ?? '';
+    final pickupAddress = data['pickup_address'] ?? 'Nhấn để xem đơn hàng';
+
+    final androidDetails = AndroidNotificationDetails(
+      'order_offer_channel',
+      'Đơn hàng mới',
+      channelDescription: 'Thông báo đơn hàng mới cho tài xế',
+      importance: Importance.max,
+      priority: Priority.high,
+      sound: const RawResourceAndroidNotificationSound('order_offer'),
+      playSound: true,
+      enableVibration: true,
+      vibrationPattern: Int64List.fromList([0, 500, 200, 500, 200, 500, 200, 500, 200, 500]),
+      fullScreenIntent: false,
+      category: AndroidNotificationCategory.call,
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      sound: 'order_offer.aiff',
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      interruptionLevel: InterruptionLevel.timeSensitive,
+    );
+
+    await _localNotif.show(
+      orderCode.hashCode,
+      '🚀 Đơn hàng mới #$orderCode',
+      pickupAddress,
+      NotificationDetails(android: androidDetails, iOS: iosDetails),
+    );
+  }
 }
 
 class NotificationService {
@@ -23,7 +56,6 @@ class NotificationService {
   static Future<void> init(WidgetRef ref) async {
     await _fcm.requestPermission(alert: true, badge: true, sound: true);
 
-    // Local notifications — dùng cho order_status update khi app foreground
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const ios = DarwinInitializationSettings(
       requestAlertPermission: true,
@@ -34,16 +66,47 @@ class NotificationService {
       const InitializationSettings(android: android, iOS: ios),
     );
 
+    // Tạo Android notification channel với custom sound
+    const channel = AndroidNotificationChannel(
+      'order_offer_channel',
+      'Đơn hàng mới',
+      description: 'Thông báo đơn hàng mới cho tài xế',
+      importance: Importance.max,
+      sound: RawResourceAndroidNotificationSound('order_offer'),
+      enableVibration: true,
+    );
+    await _localNotif.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(channel);
+
     FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
 
     await _refreshFcmToken(ref);
     _fcm.onTokenRefresh.listen((_) => _refreshFcmToken(ref));
 
-    // Foreground: FCM chỉ trigger refresh state, không navigate
+    // Foreground: show local notification + refresh state
     FirebaseMessaging.onMessage.listen((msg) {
       final type = msg.data['type'];
       if (type == 'order_offer') {
-        // Wake-up signal — OfferListenerService đã lắng nghe RTDB, không cần làm gì
+        // Foreground: RTDB listener tự navigate, chỉ show notification nhỏ
+        final data = msg.data;
+        _localNotif.show(
+          (data['order_code'] ?? '').hashCode,
+          '🚀 Đơn hàng mới #${data['order_code'] ?? ''}',
+          data['pickup_address'] ?? 'Nhấn để xem đơn hàng',
+          const NotificationDetails(
+            android: AndroidNotificationDetails(
+              'order_offer_channel', 'Đơn hàng mới',
+              importance: Importance.max, priority: Priority.high,
+              sound: RawResourceAndroidNotificationSound('order_offer'),
+              playSound: true,
+            ),
+            iOS: DarwinNotificationDetails(
+              sound: 'order_offer.aiff',
+              presentSound: true,
+              interruptionLevel: InterruptionLevel.timeSensitive,
+            ),
+          ),
+        );
       } else if (type == 'order_status') {
         try { ref.read(activeOrderProvider.notifier).fetch(); } catch (_) {}
       } else if (type == 'debt_overdue') {
@@ -51,17 +114,9 @@ class NotificationService {
       }
     });
 
-    // Khi driver tap notification từ background — OfferListenerService tự xử lý
-    // Không cần parse FCM payload để navigate
-    FirebaseMessaging.onMessageOpenedApp.listen((_) {
-      // App đã ở foreground, RTDB stream sẽ fire nếu có offer
-    });
-
-    // Killed state → app mở → RTDB stream tự fire
-    // Không cần xử lý getInitialMessage cho offer nữa
+    FirebaseMessaging.onMessageOpenedApp.listen((_) {});
   }
 
-  /// Gọi sau khi driver xác nhận online để đảm bảo OfferListenerService đang chạy.
   static void ensureOfferListener(int driverId) {
     OfferListenerService.instance.start(driverId);
   }

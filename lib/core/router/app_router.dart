@@ -13,6 +13,7 @@ import '../../features/orders/providers/order_provider.dart';
 import '../../features/orders/screens/order_offer_screen.dart';
 import '../../features/orders/screens/active_order_screen.dart';
 import '../../features/wallet/screens/wallet_screen.dart';
+import '../../features/wallet/screens/bank_account_screen.dart';
 import '../../features/score/screens/score_screen.dart';
 import '../../features/profile/screens/kyc_screen.dart';
 import '../../features/version/providers/app_version_provider.dart';
@@ -81,7 +82,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(path: '/pending',  builder: (_, __) => const PendingScreen()),
-      GoRoute(path: '/home',     builder: (_, __) => const HomeScreen()),
+      GoRoute(path: '/home',          builder: (_, __) => const HomeScreen()),
       GoRoute(
         path: '/order/offer/:id',
         builder: (_, state) {
@@ -102,6 +103,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/wallet',
         builder: (_, __) => const WalletScreen(),
+      ),
+      GoRoute(
+        path: '/bank-account',
+        builder: (_, __) => const BankAccountScreen(),
       ),
       GoRoute(
         path: '/score',

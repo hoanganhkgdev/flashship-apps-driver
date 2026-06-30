@@ -821,6 +821,43 @@ class _NoteCard extends StatelessWidget {
   final String note;
   const _NoteCard({required this.note});
 
+  static final _phoneRegex = RegExp(r'(0\d{8,10})');
+
+  Widget _buildNoteWithPhoneLinks(String text) {
+    final matches = _phoneRegex.allMatches(text).toList();
+    if (matches.isEmpty) {
+      return Text(text, style: const TextStyle(fontSize: 13, color: AppColors.textPrimary, height: 1.5));
+    }
+
+    final spans = <InlineSpan>[];
+    int lastEnd = 0;
+    for (final m in matches) {
+      if (m.start > lastEnd) {
+        spans.add(TextSpan(text: text.substring(lastEnd, m.start)));
+      }
+      final phone = m.group(0)!;
+      spans.add(WidgetSpan(
+        alignment: PlaceholderAlignment.middle,
+        child: GestureDetector(
+          onTap: () => launchUrl(Uri.parse('tel:$phone')),
+          child: Text(phone, style: const TextStyle(
+            fontSize: 13, color: Colors.blue, height: 1.5,
+            decoration: TextDecoration.underline,
+            decorationColor: Colors.blue,
+          )),
+        ),
+      ));
+      lastEnd = m.end;
+    }
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(text: text.substring(lastEnd)));
+    }
+    return RichText(text: TextSpan(
+      style: const TextStyle(fontSize: 13, color: AppColors.textPrimary, height: 1.5),
+      children: spans,
+    ));
+  }
+
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -840,9 +877,7 @@ class _NoteCard extends StatelessWidget {
               color: AppColors.warning, letterSpacing: 0.5,
             )),
         const SizedBox(height: 4),
-        Text(note,
-            style: const TextStyle(
-                fontSize: 13, color: AppColors.textPrimary, height: 1.5)),
+        _buildNoteWithPhoneLinks(note),
       ])),
     ]),
   );

@@ -718,7 +718,10 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
                       maxLines: 1, overflow: TextOverflow.ellipsis,
                     ),
                   ])),
-                  const Icon(Icons.check_circle_rounded, size: 18, color: AppColors.success),
+                  GestureDetector(
+                    onTap: () { Navigator.pop(context); GoRouter.of(context).push('/bank-account'); },
+                    child: const Icon(Icons.edit_rounded, size: 16, color: AppColors.textTertiary),
+                  ),
                 ])
               : Row(children: [
                   const Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 20),
@@ -834,12 +837,12 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
           SizedBox(
             width: double.infinity, height: 48,
             child: FilledButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () { Navigator.pop(context); GoRouter.of(context).push('/bank-account'); },
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('Đóng', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+              child: const Text('Thêm tài khoản ngân hàng', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
             ),
           ),
 

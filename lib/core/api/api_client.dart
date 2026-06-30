@@ -19,13 +19,30 @@ class ApiClient {
       },
     );
 
-    if (kDebugMode) {
-      (_dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
-        final client = HttpClient();
+    _dio.httpClientAdapter = _buildAdapter();
+  }
+
+  IOHttpClientAdapter _buildAdapter() {
+    final adapter = IOHttpClientAdapter();
+    adapter.createHttpClient = () {
+      final client = HttpClient();
+      client.idleTimeout = const Duration(seconds: 8);
+      if (kDebugMode) {
         client.badCertificateCallback = (cert, host, port) => true;
-        return client;
-      };
-    }
+      }
+      return client;
+    };
+    return adapter;
+  }
+
+  /// Đóng connection cũ rồi gắn adapter mới — gọi khi app resume từ
+  /// background lâu, tránh request bị treo do tái dùng socket mà OS đã
+  /// đóng băng trong lúc app ở nền. Cực kỳ quan trọng cho driver vì cần
+  /// nhận đơn realtime ngay khi mở app lại.
+  void resetConnection() {
+    final old = _dio.httpClientAdapter;
+    _dio.httpClientAdapter = _buildAdapter();
+    old.close(force: true);
   }
 
   Future<Response> get(String path, {Map<String, dynamic>? params}) =>

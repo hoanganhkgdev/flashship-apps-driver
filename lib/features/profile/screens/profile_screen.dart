@@ -427,7 +427,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             style: TextStyle(
                                 fontSize: 12,
                                 color: AppColors.danger.withValues(alpha: 0.8))),
-                    onTap: () => context.push('/wallet'),
+                    onTap: () => context.push('/bank-account'),
                   ),
                 ],
               ),

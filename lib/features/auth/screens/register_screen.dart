@@ -27,14 +27,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _passwordCtrl = TextEditingController();
   final _confirmCtrl  = TextEditingController();
 
-  bool        _obscure        = true;
-  bool        _obscureConfirm = true;
-  bool        _submitting     = false;
+  bool        _obscure           = true;
+  bool        _obscureConfirm    = true;
+  bool        _submitting        = false;
   String?     _error;
-  List<_City> _cities         = [];
+  List<_City> _cities            = [];
   _City?      _selectedCity;
-  bool        _loadingCities  = false;
-  bool        _cityError      = false;
+  bool        _loadingCities     = false;
+  bool        _citiesLoadFailed  = false;
+  bool        _cityError         = false;
 
   @override
   void initState() {
@@ -52,7 +53,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _loadCities() async {
-    setState(() => _loadingCities = true);
+    setState(() { _loadingCities = true; _citiesLoadFailed = false; });
     try {
       final res  = await Dio().get('${AppConstants.baseUrl}/cities');
       final list = res.data['data'] as List? ?? [];
@@ -63,12 +64,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               .toList();
         });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() => _citiesLoadFailed = true);
+    }
     if (mounted) setState(() => _loadingCities = false);
   }
 
   void _openCitySheet() {
-    if (_cities.isEmpty) return;
+    if (_loadingCities) return;
+    if (_citiesLoadFailed || _cities.isEmpty) { _loadCities(); return; }
     showModalBottomSheet<_City>(
       context: context,
       isScrollControlled: true,
@@ -82,11 +86,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _submit() async {
-    if (_selectedCity == null) {
-      setState(() => _cityError = true);
-      return;
-    }
-    if (!_formKey.currentState!.validate()) return;
+    final formValid = _formKey.currentState!.validate();
+    if (_selectedCity == null) setState(() => _cityError = true);
+    if (!formValid || _selectedCity == null) return;
     setState(() { _submitting = true; _error = null; });
 
     final phone = _phoneCtrl.text.trim();
@@ -250,6 +252,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   _CityPickerField(
                     selected: _selectedCity,
                     loading: _loadingCities,
+                    loadFailed: _citiesLoadFailed,
                     hasError: _cityError,
                     onTap: _openCitySheet,
                   ),
@@ -431,12 +434,14 @@ class _AuthField extends StatelessWidget {
 class _CityPickerField extends StatelessWidget {
   final _City?       selected;
   final bool         loading;
+  final bool         loadFailed;
   final bool         hasError;
   final VoidCallback onTap;
 
   const _CityPickerField({
     required this.selected,
     required this.loading,
+    required this.loadFailed,
     required this.hasError,
     required this.onTap,
   });
@@ -453,20 +458,26 @@ class _CityPickerField extends StatelessWidget {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: hasError && selected == null
+                  color: loadFailed
                       ? AppColors.danger
-                      : selected != null
-                          ? AppColors.primary
-                          : const Color(0xFFE0E0E0),
+                      : hasError && selected == null
+                          ? AppColors.danger
+                          : selected != null
+                              ? AppColors.primary
+                              : const Color(0xFFE0E0E0),
                   width: selected != null ? 1.5 : 1,
                 ),
               ),
               child: Row(children: [
-                Icon(Icons.location_city_outlined,
-                    size: 20,
-                    color: selected != null
-                        ? AppColors.primary
-                        : AppColors.textSecondary),
+                Icon(
+                  loadFailed ? Icons.refresh_rounded : Icons.location_city_outlined,
+                  size: 20,
+                  color: loadFailed
+                      ? AppColors.danger
+                      : selected != null
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: loading
@@ -484,24 +495,27 @@ class _CityPickerField extends StatelessWidget {
                                   color: AppColors.textSecondary)),
                         ])
                       : Text(
-                          selected?.name ?? 'Chọn khu vực',
+                          loadFailed
+                              ? 'Không tải được khu vực — Nhấn để thử lại'
+                              : selected?.name ?? 'Chọn khu vực',
                           style: TextStyle(
                             fontSize: 15,
-                            fontWeight: selected != null
-                                ? FontWeight.w500
-                                : FontWeight.w400,
-                            color: selected != null
-                                ? AppColors.textPrimary
-                                : AppColors.textSecondary,
+                            fontWeight: selected != null ? FontWeight.w500 : FontWeight.w400,
+                            color: loadFailed
+                                ? AppColors.danger
+                                : selected != null
+                                    ? AppColors.textPrimary
+                                    : AppColors.textSecondary,
                           ),
                         ),
                 ),
-                const Icon(Icons.keyboard_arrow_down_rounded,
-                    color: AppColors.textSecondary, size: 20),
+                if (!loadFailed)
+                  const Icon(Icons.keyboard_arrow_down_rounded,
+                      color: AppColors.textSecondary, size: 20),
               ]),
             ),
           ),
-          if (hasError && selected == null) ...[
+          if (hasError && selected == null && !loadFailed) ...[
             const SizedBox(height: 6),
             const Padding(
               padding: EdgeInsets.only(left: 4),

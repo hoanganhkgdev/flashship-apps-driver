@@ -62,6 +62,11 @@ class _ScoreScreenState extends ConsumerState<ScoreScreen> {
                           const SizedBox(height: 12),
                         ],
 
+                        if (score?.streak != null) ...[
+                          _StreakCard(streak: score!.streak!),
+                          const SizedBox(height: 12),
+                        ],
+
                         if (score?.week != null) ...[
                           _WeekCard(score: score!),
                           const SizedBox(height: 12),
@@ -100,7 +105,7 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final top      = MediaQuery.of(context).padding.top;
     final s        = score;
-    final prog     = s != null ? (s.score / s.maxScore).clamp(0.0, 1.0) : 0.0;
+    final prog     = (s != null && s.maxScore > 0) ? (s.score / s.maxScore).clamp(0.0, 1.0) : 0.0;
     final hasWeek  = s?.week != null;
 
     return Container(
@@ -273,9 +278,9 @@ class _HeaderProgressBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (_, box) {
       final w       = box.maxWidth;
-      final dotFrac = (score / maxScore).clamp(0.0, 1.0);
-      final penFrac = (penaltyAt / maxScore).clamp(0.0, 1.0);
-      final bonFrac = (bonusAt   / maxScore).clamp(0.0, 1.0);
+      final dotFrac = maxScore > 0 ? (score     / maxScore).clamp(0.0, 1.0) : 0.0;
+      final penFrac = maxScore > 0 ? (penaltyAt / maxScore).clamp(0.0, 1.0) : 0.0;
+      final bonFrac = maxScore > 0 ? (bonusAt   / maxScore).clamp(0.0, 1.0) : 0.0;
       const trackH  = 8.0;
       const dotR    = 7.0;
       const trackTop = 18.0;
@@ -527,6 +532,49 @@ class _StatCol extends StatelessWidget {
       );
 }
 
+// ── Streak card ───────────────────────────────────────────────────────────────
+
+class _StreakCard extends StatelessWidget {
+  final StreakInfo streak;
+  const _StreakCard({required this.streak});
+
+  @override
+  Widget build(BuildContext context) {
+    final next = streak.nextMilestone;
+    final title = 'Chuỗi ${streak.count} đơn liên tiếp';
+    final subtitle = next != null
+        ? 'Giao thêm ${next.remaining} đơn nữa để +${next.bonus} điểm (mốc ${next.at})'
+        : 'Đã đạt mốc thưởng cao nhất — cố lên nhé!';
+
+    return _Card(
+      border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+      child: Row(children: [
+        Container(
+          width: 46, height: 46,
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(13),
+          ),
+          child: const Icon(Icons.local_fire_department_rounded,
+              color: AppColors.primary, size: 23),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title,
+                style: const TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.primary)),
+            const SizedBox(height: 3),
+            Text(subtitle,
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textSecondary, height: 1.4)),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
 // ── Week card ─────────────────────────────────────────────────────────────────
 
 class _WeekCard extends StatelessWidget {
@@ -610,17 +658,20 @@ class _WeekCard extends StatelessWidget {
 
 // ── Rules card ────────────────────────────────────────────────────────────────
 
-class _RulesCard extends StatefulWidget {
+class _RulesCard extends ConsumerStatefulWidget {
   const _RulesCard();
 
   @override
-  State<_RulesCard> createState() => _RulesCardState();
+  ConsumerState<_RulesCard> createState() => _RulesCardState();
 }
 
-class _RulesCardState extends State<_RulesCard> {
+class _RulesCardState extends ConsumerState<_RulesCard> {
   bool _showPlus  = true;
   bool _showMinus = false;
   bool _showReset = false;
+
+  String _fmt(int n) =>
+      n.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]}.');
 
   @override
   Widget build(BuildContext context) {
@@ -755,11 +806,11 @@ class _RulesCardState extends State<_RulesCard> {
                         size: 17, color: AppColors.success),
                   ),
                   const SizedBox(width: 8),
-                  const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('≥ 150 điểm',
-                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                    Text('+50.000đ',
-                        style: TextStyle(
+                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('≥ ${ref.watch(scoreProvider).score?.week?.bonusAt ?? 150} điểm',
+                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                    Text('+${_fmt(ref.watch(scoreProvider).score?.week?.bonusAmount ?? 50000)}đ',
+                        style: const TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w800,
                             color: AppColors.success)),
                   ]),
@@ -779,11 +830,11 @@ class _RulesCardState extends State<_RulesCard> {
                         size: 17, color: AppColors.danger),
                   ),
                   const SizedBox(width: 8),
-                  const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('≤ 70 điểm',
-                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                    Text('-50.000đ',
-                        style: TextStyle(
+                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('≤ ${ref.watch(scoreProvider).score?.week?.penaltyAt ?? 70} điểm',
+                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                    Text('-${_fmt(ref.watch(scoreProvider).score?.week?.penaltyAmount ?? 50000)}đ',
+                        style: const TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w800,
                             color: AppColors.danger)),
                   ]),

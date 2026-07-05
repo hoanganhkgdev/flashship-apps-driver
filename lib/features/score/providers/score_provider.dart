@@ -42,6 +42,10 @@ class ScoreNotifier extends StateNotifier<ScoreState> {
   final Ref _ref;
   int _historyPage = 1;
   StreamSubscription? _rtdbSub;
+  // Tăng mỗi lần gọi fetchHistory/loadMoreHistory — response nào không khớp
+  // request mới nhất bị bỏ qua, tránh 2 hàm race nhau đè state (vd refresh
+  // ngay sau khi bấm "Xem thêm").
+  int _historyRequestId = 0;
 
   ScoreNotifier(this._ref) : super(const ScoreState());
 
@@ -73,9 +77,11 @@ class ScoreNotifier extends StateNotifier<ScoreState> {
   Future<void> fetchHistory() async {
     _historyPage = 1;
     state = state.copyWith(historyLoading: true);
+    final myRequestId = ++_historyRequestId;
     try {
       final res     = await _ref.read(apiClientProvider).get(
           '/driver/score/history', params: {'page': 1});
+      if (myRequestId != _historyRequestId) return;
       final list    = (res.data['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
       final hasMore = res.data['has_more'] as bool? ?? false;
       state = state.copyWith(
@@ -85,6 +91,7 @@ class ScoreNotifier extends StateNotifier<ScoreState> {
         historyLoadingMore: false,
       );
     } catch (_) {
+      if (myRequestId != _historyRequestId) return;
       state = state.copyWith(historyLoading: false);
     }
   }
@@ -92,10 +99,12 @@ class ScoreNotifier extends StateNotifier<ScoreState> {
   Future<void> loadMoreHistory() async {
     if (state.historyLoadingMore || !state.historyHasMore) return;
     state = state.copyWith(historyLoadingMore: true);
+    final myRequestId = ++_historyRequestId;
     try {
       _historyPage++;
       final res     = await _ref.read(apiClientProvider).get(
           '/driver/score/history', params: {'page': _historyPage});
+      if (myRequestId != _historyRequestId) return;
       final list    = (res.data['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
       final hasMore = res.data['has_more'] as bool? ?? false;
       final newItems = list.map(ScoreLogEntry.fromJson).toList();
@@ -106,6 +115,7 @@ class ScoreNotifier extends StateNotifier<ScoreState> {
       );
     } catch (_) {
       _historyPage--;
+      if (myRequestId != _historyRequestId) return;
       state = state.copyWith(historyLoadingMore: false);
     }
   }

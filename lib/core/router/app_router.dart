@@ -18,6 +18,7 @@ import '../../features/score/screens/score_screen.dart';
 import '../../features/profile/screens/kyc_screen.dart';
 import '../../features/version/providers/app_version_provider.dart';
 
+
 // Global router instance — dùng để navigate từ bên ngoài widget tree (polling service).
 GoRouter? appRouter;
 
@@ -51,21 +52,26 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Giữ trên splash khi force update
       if (version.needsForceUpdate) return '/splash';
 
-      final isAuth   = auth.isAuthenticated;
-      final onSplash = location == '/splash';
-      final onAuth   = location == '/login' || location == '/register'
-          || location == '/otp' || location == '/pending'
-          || location == '/forgot-password';
+      final isAuth    = auth.isAuthenticated;
+      final isPending = auth.isPending; // authenticated nhưng status=0
+      final onSplash  = location == '/splash';
+      final onAuth    = location == '/login' || location == '/register'
+          || location == '/otp' || location == '/forgot-password';
+      final onPending = location == '/pending';
 
+      // Chưa đăng nhập (không có token)
       if (!isAuth) {
         if (onAuth) return null;
-        return '/login';
+        return '/login'; // covers splash + bất kỳ route nào khác
       }
 
-      // Authenticated → route from splash/login → luôn về home
-      if (isAuth && (onSplash || onAuth)) {
-        return '/home';
+      // Đã đăng nhập nhưng pending (status=0) → luôn về pending
+      if (isPending) {
+        return onPending ? null : '/pending';
       }
+
+      // Đã duyệt (status=1) → rời khỏi splash/auth/pending về home
+      if (onSplash || onAuth || onPending) return '/home';
 
       return null;
     },
@@ -161,6 +167,25 @@ class _SplashScreenState extends ConsumerState<_SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Backup: nếu _RouterListenable bỏ sót notification trong startup phase,
+    // tự force-refresh router khi cả auth lẫn order đã restore xong.
+    ref.listen<AuthState>(authProvider, (_, auth) {
+      final order = ref.read(activeOrderProvider);
+      if (auth.isInitialized && order.isRestored) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) appRouter?.refresh();
+        });
+      }
+    });
+    ref.listen<ActiveOrderState>(activeOrderProvider, (_, order) {
+      final auth = ref.read(authProvider);
+      if (auth.isInitialized && order.isRestored) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) appRouter?.refresh();
+        });
+      }
+    });
+
     final version = ref.watch(appVersionProvider);
 
     if (version.isChecked && !_dialogShown) {

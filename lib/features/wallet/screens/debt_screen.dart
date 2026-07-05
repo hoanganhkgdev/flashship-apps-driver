@@ -396,7 +396,9 @@ class _DebtCard extends StatelessWidget {
           child: SizedBox(
             width: double.infinity, height: 46,
             child: FilledButton.icon(
-              onPressed: onPay,
+              // Phòng trường hợp amount_paid đã cập nhật nhưng status chưa kịp
+              // đổi thành 'paid' — không cho tạo QR thanh toán 0đ.
+              onPressed: debt.remaining > 0 ? onPay : null,
               icon: const Icon(Icons.qr_code_rounded, size: 18, color: Colors.white),
               label: const Text(
                 'Thanh toán qua PayOS',

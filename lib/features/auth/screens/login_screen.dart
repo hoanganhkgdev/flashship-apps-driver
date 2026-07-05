@@ -32,7 +32,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
     if (!mounted) return;
     if (result == 'ok') context.go('/home');
-    if (result == 'pending') context.go('/pending');
+    if (result == 'pending') {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Tài khoản đang chờ admin duyệt. Liên hệ hỗ trợ để được duyệt nhanh.'),
+        duration: Duration(seconds: 4),
+      ));
+    }
   }
 
   @override

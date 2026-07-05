@@ -27,7 +27,9 @@ class OfferListenerService {
     _sub = FirebaseDatabase.instance
         .ref('dispatch/driver_$driverId/offer')
         .onValue
-        .listen(_onEvent, onError: (_) {});
+        .listen(_onEvent, onError: (e) {
+      debugPrint('[OfferListener] RTDB error: $e');
+    });
   }
 
   void stop() {
@@ -51,7 +53,8 @@ class OfferListenerService {
       return;
     }
 
-    final offer = Map<String, dynamic>.from(data as Map);
+    if (data is! Map) return;
+    final offer = Map<String, dynamic>.from(data);
 
     final expiresAt = (offer['expires_at'] as num?)?.toInt() ?? 0;
     final remaining = expiresAt - DateTime.now().millisecondsSinceEpoch ~/ 1000;
@@ -70,11 +73,13 @@ class OfferListenerService {
     final orderId = (offer['order_id'] as num?)?.toInt();
     if (orderId == null) return;
 
+    var retries = 0;
     void attempt() {
+      if (_driverId == null) return; // đã stop() trong lúc chờ
       final router = appRouter;
       if (router != null) {
         router.go('/order/offer/$orderId', extra: offer);
-      } else {
+      } else if (++retries < 10) {
         WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
       }
     }

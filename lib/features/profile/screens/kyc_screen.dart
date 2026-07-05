@@ -26,8 +26,12 @@ class _KycScreenState extends ConsumerState<KycScreen> {
   // Docs
   String? _cccdStatus;
   String? _cccdImageUrl;
+  String? _cccdRejectionReason;
+  bool    _uploadingCccd = false;
   String? _licenseStatus;
   String? _licenseImageUrl;
+  String? _licenseRejectionReason;
+  bool    _uploadingLicense = false;
 
   @override
   void initState() {
@@ -52,10 +56,12 @@ class _KycScreenState extends ConsumerState<KycScreen> {
         setState(() {
           _vehicleType      = data['vehicle_type'] as String?;
           _plateCtrl.text   = data['license_plate'] as String? ?? '';
-          _cccdStatus       = data['cccd_image_status'] as String?;
-          _cccdImageUrl     = data['cccd_image_url'] as String?;
-          _licenseStatus    = data['license_status'] as String?;
-          _licenseImageUrl  = data['license_image_url'] as String?;
+          _cccdStatus             = data['cccd_image_status'] as String?;
+          _cccdImageUrl           = data['cccd_image_url'] as String?;
+          _cccdRejectionReason    = data['cccd_image_rejection_reason'] as String?;
+          _licenseStatus          = data['license_status'] as String?;
+          _licenseImageUrl        = data['license_image_url'] as String?;
+          _licenseRejectionReason = data['license_rejection_reason'] as String?;
           _loading          = false;
           _vehicleDirty     = false;
         });
@@ -80,7 +86,10 @@ class _KycScreenState extends ConsumerState<KycScreen> {
     try {
       final body = <String, dynamic>{};
       if (_vehicleType != null) body['vehicle_type'] = _vehicleType;
-      if (plate.isNotEmpty)     body['license_plate'] = plate;
+      // Luôn gửi kể cả khi rỗng — nếu không, xoá trắng biển số rồi lưu sẽ báo
+      // thành công nhưng server âm thầm giữ nguyên giá trị cũ (field bị loại
+      // khỏi request khi rỗng).
+      body['license_plate'] = plate;
 
       await ref.read(apiClientProvider).post('/driver/profile/update', data: body);
       if (mounted) {
@@ -150,43 +159,57 @@ class _KycScreenState extends ConsumerState<KycScreen> {
   }
 
   Future<void> _pickAndUploadCccd(ImageSource source) async {
+    if (_uploadingCccd) return;
     XFile? file;
     try {
       file = await ImagePicker().pickImage(
           source: source, maxWidth: 1600, maxHeight: 1200, imageQuality: 90);
     } catch (_) { return; }
     if (file == null || !mounted) return;
+    setState(() => _uploadingCccd = true);
     try {
       final formData = FormData.fromMap(
           {'image': await MultipartFile.fromFile(file.path, filename: file.name)});
       await ref.read(apiClientProvider).postMultipart('/driver/profile/cccd-image', formData);
       if (mounted) {
-        setState(() => _cccdStatus = 'pending');
+        setState(() { _cccdStatus = 'pending'; _uploadingCccd = false; });
         _toast('Tải lên thành công, đang chờ xét duyệt', success: true);
       }
     } catch (_) {
-      if (mounted) _toast('Tải lên thất bại');
+      if (mounted) {
+        setState(() => _uploadingCccd = false);
+        _toast('Tải lên thất bại');
+      }
     }
   }
 
   Future<void> _pickAndUploadLicense(ImageSource source) async {
+    if (_uploadingLicense) return;
     XFile? file;
     try {
       file = await ImagePicker().pickImage(
           source: source, maxWidth: 1600, maxHeight: 1200, imageQuality: 90);
     } catch (_) { return; }
     if (file == null || !mounted) return;
+    setState(() => _uploadingLicense = true);
     try {
       final formData = FormData.fromMap(
           {'image': await MultipartFile.fromFile(file.path, filename: file.name)});
       final res = await ref.read(apiClientProvider).postMultipart('/driver/profile/license', formData);
       final imageUrl = res.data['image_url'] as String?;
       if (mounted) {
-        setState(() { _licenseStatus = 'pending'; _licenseImageUrl = imageUrl; });
+        setState(() {
+          _licenseStatus     = 'pending';
+          _licenseImageUrl   = imageUrl;
+          _uploadingLicense  = false;
+        });
         _toast('Tải lên thành công, đang chờ xét duyệt', success: true);
       }
     } catch (_) {
-      if (mounted) _toast('Tải lên thất bại');
+      if (mounted) {
+        setState(() => _uploadingLicense = false);
+        _toast('Tải lên thất bại');
+      }
     }
   }
 
@@ -525,6 +548,8 @@ class _KycScreenState extends ConsumerState<KycScreen> {
             label: 'CCCD / CMND',
             status: _cccdStatus,
             imageUrl: _cccdImageUrl,
+            rejectionReason: _cccdRejectionReason,
+            isUploading: _uploadingCccd,
             onTap: () => _showUploadSheet(
               title: 'Tải lên hình CCCD / CMND',
               onCamera:  () => _pickAndUploadCccd(ImageSource.camera),
@@ -539,6 +564,8 @@ class _KycScreenState extends ConsumerState<KycScreen> {
             label: 'Bằng lái xe',
             status: _licenseStatus,
             imageUrl: _licenseImageUrl,
+            rejectionReason: _licenseRejectionReason,
+            isUploading: _uploadingLicense,
             onTap: () => _showUploadSheet(
               title: 'Tải lên bằng lái xe',
               onCamera:  () => _pickAndUploadLicense(ImageSource.camera),
@@ -644,6 +671,8 @@ class _DocCard extends StatelessWidget {
   final String label;
   final String? status;
   final String? imageUrl;
+  final String? rejectionReason;
+  final bool isUploading;
   final VoidCallback? onTap;
 
   const _DocCard({
@@ -651,6 +680,8 @@ class _DocCard extends StatelessWidget {
     required this.label,
     this.status,
     this.imageUrl,
+    this.rejectionReason,
+    this.isUploading = false,
     this.onTap,
   });
 
@@ -662,7 +693,8 @@ class _DocCard extends StatelessWidget {
       'pending'  => ('Đang xét duyệt', AppColors.warning, Icons.hourglass_top_rounded),
       _          => ('Chưa tải lên',   AppColors.textSecondary, Icons.upload_rounded),
     };
-    final bool canUpload = status != 'approved';
+    // Chặn bấm lần nữa trong lúc đang upload — tránh gửi nhiều request cùng lúc.
+    final bool canUpload = status != 'approved' && !isUploading;
 
     return GestureDetector(
       onTap: canUpload ? onTap : null,
@@ -710,20 +742,44 @@ class _DocCard extends StatelessWidget {
                   ),
                 ]),
               ),
-              if (canUpload) ...[
+              if (status == 'rejected' && (rejectionReason?.isNotEmpty ?? false)) ...[
+                const SizedBox(height: 6),
+                Text(
+                  rejectionReason!,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    color: AppColors.textSecondary,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+              if (status != 'approved') ...[
                 const SizedBox(height: 8),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 7),
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
+                    color: isUploading
+                        ? AppColors.primary.withValues(alpha: 0.5)
+                        : AppColors.primary,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    const Icon(Icons.upload_rounded, size: 12, color: Colors.white),
+                    if (isUploading)
+                      const SizedBox(
+                        width: 12, height: 12,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 1.5, color: Colors.white),
+                      )
+                    else
+                      const Icon(Icons.upload_rounded, size: 12, color: Colors.white),
                     const SizedBox(width: 4),
                     Text(
-                      status == null ? 'Tải lên' : 'Cập nhật',
+                      isUploading
+                          ? 'Đang tải lên...'
+                          : (status == null ? 'Tải lên' : 'Cập nhật'),
                       style: const TextStyle(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w700,

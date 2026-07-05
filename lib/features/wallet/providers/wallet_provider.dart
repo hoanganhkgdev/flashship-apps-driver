@@ -12,6 +12,9 @@ class WalletState {
   final BankAccount bankAccount;
   final List<BankListItem> bankList;
   final bool loading;
+  // true nếu lần fetch gần nhất không lấy được số dư (lỗi mạng) — để phân
+  // biệt với "số dư thật sự bằng 0", tránh tài xế hiểu nhầm.
+  final bool balanceError;
 
   const WalletState({
     this.balance = 0,
@@ -23,6 +26,7 @@ class WalletState {
     this.bankAccount = const BankAccount(),
     this.bankList = const [],
     this.loading = false,
+    this.balanceError = false,
   });
 
   WalletState copyWith({
@@ -35,6 +39,7 @@ class WalletState {
     BankAccount? bankAccount,
     List<BankListItem>? bankList,
     bool? loading,
+    bool? balanceError,
   }) => WalletState(
     balance:         balance         ?? this.balance,
     transactions:    transactions    ?? this.transactions,
@@ -45,6 +50,7 @@ class WalletState {
     bankAccount:     bankAccount     ?? this.bankAccount,
     bankList:        bankList        ?? this.bankList,
     loading:         loading         ?? this.loading,
+    balanceError:    balanceError    ?? this.balanceError,
   );
 }
 
@@ -55,46 +61,71 @@ class WalletNotifier extends StateNotifier<WalletState> {
 
   Future<void> fetch() async {
     state = state.copyWith(loading: true);
-    try {
-      final results = await Future.wait([
-        _ref.read(apiClientProvider).get('/wallet'),
-        _ref.read(apiClientProvider).get('/wallet/transactions'),
-        _ref.read(apiClientProvider).get('/debts'),
-        _ref.read(apiClientProvider).get('/earnings/summary'),
-        _ref.read(apiClientProvider).get('/driver/profile'),
-        _ref.read(apiClientProvider).get('/driver/bank-lists'),
-      ]);
 
-      final walletData   = (results[0].data['data'] ?? results[0].data) as Map<String, dynamic>;
-      final txData       = (results[1].data['data'] ?? results[1].data);
-      final debtData     = (results[2].data['data'] ?? results[2].data);
-      final earningsData = (results[3].data['data'] ?? results[3].data) as Map<String, dynamic>;
-      final profileData  = ((results[4].data['data'] ?? results[4].data) as Map<String, dynamic>)['user'] as Map<String, dynamic>? ?? {};
-      final bankListData = (results[5].data['data'] ?? results[5].data);
+    // Chạy độc lập — 1 API lỗi không làm trắng toàn bộ ví
+    int?               balance;
+    bool               balanceFailed = false;
+    List<dynamic>?     txList;
+    List<dynamic>?     debtList;
+    Map<String, dynamic>? earningsData;
+    Map<String, dynamic>? profileData;
+    List<dynamic>?     bankListRaw;
 
-      final balance     = (walletData['balance'] as num?)?.toInt() ?? 0;
-      final txList      = txData is List ? txData : <dynamic>[];
-      final debtList    = debtData is List ? debtData : <dynamic>[];
-      final bankListRaw = bankListData is List ? bankListData : <dynamic>[];
+    await Future.wait([
+      _ref.read(apiClientProvider).get('/wallet').then((r) {
+        final d = (r.data['data'] ?? r.data) as Map<String, dynamic>;
+        balance = (d['balance'] as num?)?.toInt() ?? 0;
+      }).catchError((_) { balanceFailed = true; }),
+      _ref.read(apiClientProvider).get('/wallet/transactions').then((r) {
+        final d = r.data['data'] ?? r.data;
+        txList = d is List ? d : <dynamic>[];
+      }).catchError((_) {}),
+      _ref.read(apiClientProvider).get('/debts').then((r) {
+        final d = r.data['data'] ?? r.data;
+        debtList = d is List ? d : <dynamic>[];
+      }).catchError((_) {}),
+      _ref.read(apiClientProvider).get('/earnings/summary').then((r) {
+        earningsData = (r.data['data'] ?? r.data) as Map<String, dynamic>;
+      }).catchError((_) {}),
+      _ref.read(apiClientProvider).get('/driver/profile').then((r) {
+        profileData = ((r.data['data'] ?? r.data) as Map<String, dynamic>)['user']
+            as Map<String, dynamic>? ?? {};
+      }).catchError((_) {}),
+      _ref.read(apiClientProvider).get('/driver/bank-lists').then((r) {
+        final d = r.data['data'] ?? r.data;
+        bankListRaw = d is List ? d : <dynamic>[];
+      }).catchError((_) {}),
+    ]);
 
-      state = WalletState(
-        balance: balance,
-        transactions: txList
-            .map((e) => WalletTransaction.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        debts: debtList
-            .map((e) => DriverDebt.fromJson(e as Map<String, dynamic>))
-            .where((d) => !d.isPaid)
-            .toList(),
-        earningsToday:   EarningsSummary.fromJson(earningsData['today']   as Map<String, dynamic>? ?? {}),
-        earningsWeekly:  EarningsSummary.fromJson(earningsData['weekly']  as Map<String, dynamic>? ?? {}),
-        earningsMonthly: EarningsSummary.fromJson(earningsData['monthly'] as Map<String, dynamic>? ?? {}),
-        bankAccount:     BankAccount.fromJson(profileData),
-        bankList:        bankListRaw.map((e) => BankListItem.fromJson(e as Map<String, dynamic>)).toList(),
-      );
-      _ref.read(authProvider.notifier).updateBalance(balance);
-    } catch (_) {
-      state = state.copyWith(loading: false);
+    state = WalletState(
+      balance:      balance      ?? state.balance,
+      transactions: txList != null
+          ? txList!.map((e) => WalletTransaction.fromJson(e as Map<String, dynamic>)).toList()
+          : state.transactions,
+      debts: debtList != null
+          ? debtList!.map((e) => DriverDebt.fromJson(e as Map<String, dynamic>))
+              .where((d) => !d.isPaid).toList()
+          : state.debts,
+      earningsToday:   earningsData != null
+          ? EarningsSummary.fromJson(earningsData!['today']   as Map<String, dynamic>? ?? {})
+          : state.earningsToday,
+      earningsWeekly:  earningsData != null
+          ? EarningsSummary.fromJson(earningsData!['weekly']  as Map<String, dynamic>? ?? {})
+          : state.earningsWeekly,
+      earningsMonthly: earningsData != null
+          ? EarningsSummary.fromJson(earningsData!['monthly'] as Map<String, dynamic>? ?? {})
+          : state.earningsMonthly,
+      bankAccount: profileData != null
+          ? BankAccount.fromJson(profileData!)
+          : state.bankAccount,
+      bankList: bankListRaw != null
+          ? bankListRaw!.map((e) => BankListItem.fromJson(e as Map<String, dynamic>)).toList()
+          : state.bankList,
+      balanceError: balanceFailed,
+    );
+
+    if (balance != null) {
+      _ref.read(authProvider.notifier).updateBalance(balance!);
     }
   }
 

@@ -90,6 +90,7 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
   }
 
   bool _viewedCalled = false;
+  bool _accepting    = false;
 
   Future<void> _markOfferViewed() async {
     if (_viewedCalled) return;
@@ -97,10 +98,8 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
       if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
         return;
       }
+      await ref.read(apiClientProvider).post('/orders/${widget.orderId}/view-offer');
       _viewedCalled = true;
-      final orderId = widget.orderData['order_id'];
-      if (orderId == null) return;
-      await ref.read(apiClientProvider).post('/orders/$orderId/view-offer');
       // Server đã reset expires_at lên 30s từ lúc này — cập nhật lại countdown
       if (mounted) {
         _timer?.cancel();
@@ -164,6 +163,8 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
   }
 
   Future<void> _accept() async {
+    if (_accepting) return;
+    setState(() => _accepting = true);
     _timer?.cancel();
     OfferListenerService.instance.markOfferHandled();
 
@@ -424,7 +425,7 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
                   backgroundColor: AppColors.success,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
-                onPressed: _accept,
+                onPressed: _accepting ? null : _accept,
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

@@ -23,6 +23,7 @@ class AuthState {
   });
 
   bool get isAuthenticated => token != null && user != null;
+  bool get isPending => isAuthenticated && (user?.status == 0);
 
   AuthState copyWith({
     DriverModel? user,
@@ -129,8 +130,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         if (avatarPath != null)
           'avatar': await MultipartFile.fromFile(avatarPath, filename: 'avatar.jpg'),
       });
-      await api.postMultipart('/auth/verify-otp-register', formData);
-      state = state.copyWith(isLoading: false);
+      final res = await api.postMultipart('/auth/verify-otp-register', formData);
+      final payload = (res.data['data'] ?? res.data) as Map<String, dynamic>;
+      await _saveSession(payload);
       return true;
     } on DioException catch (e) {
       final msg = e.response?.data['message'] as String? ?? 'Xác thực thất bại';
@@ -200,8 +202,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final u = state.user!;
     final updated = DriverModel(
       id: u.id, name: name, phone: u.phone, email: u.email,
-      isOnline: u.isOnline, latitude: u.latitude, longitude: u.longitude,
+      isOnline: u.isOnline, onlineSince: u.onlineSince,
+      dailyOnlineSeconds: u.dailyOnlineSeconds,
+      dailyOnlineDate: u.dailyOnlineDate,
+      latitude: u.latitude, longitude: u.longitude,
       planType: u.planType, balance: u.balance,
+      profilePhotoUrl: u.profilePhotoUrl, status: u.status,
     );
     state = state.copyWith(user: updated);
     await _persistUser(updated);
@@ -214,16 +220,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }) async {
     if (state.user == null) return;
     _toggleInFlight = true;
+    // Giây tích luỹ từ response là của hôm nay → gắn ngày hôm nay
+    final today = _todayStr();
     final updated = isOnline
         ? state.user!.copyWith(
             isOnline: true,
             onlineSince: onlineSince ?? DateTime.now(),
             dailyOnlineSeconds: dailyOnlineSeconds,
+            dailyOnlineDate: today,
           )
         : state.user!.copyWith(
             isOnline: false,
             clearOnlineSince: true,
             dailyOnlineSeconds: dailyOnlineSeconds,
+            dailyOnlineDate: today,
           );
     state = state.copyWith(user: updated);
     await _persistUser(updated);
@@ -245,6 +255,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } catch (_) {}
   }
 
+  // Ngày local dạng 'YYYY-MM-DD' — khớp định dạng daily_online_date của backend
+  static String _todayStr() {
+    final n = DateTime.now();
+    return '${n.year.toString().padLeft(4, '0')}-'
+        '${n.month.toString().padLeft(2, '0')}-'
+        '${n.day.toString().padLeft(2, '0')}';
+  }
+
   Future<void> _persistUser(DriverModel user) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(AppConstants.userKey, jsonEncode({
@@ -252,9 +270,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
       'email': user.email, 'is_online': user.isOnline,
       'online_since': user.onlineSince?.toIso8601String(),
       'daily_online_seconds': user.dailyOnlineSeconds,
+      'daily_online_date': user.dailyOnlineDate,
       'latitude': user.latitude, 'longitude': user.longitude,
       'plan_type': user.planType, 'balance': user.balance,
       'profile_photo_url': user.profilePhotoUrl,
+      'status': user.status,
     }));
   }
 

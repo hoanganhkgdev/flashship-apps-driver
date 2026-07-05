@@ -62,7 +62,10 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       setState(() { _step = 1; _sendingOtp = false; });
       _startCooldown();
     } on DioException catch (e) {
-      final msg = e.response?.data?['message'] as String? ?? 'Không thể gửi OTP';
+      // Body có thể không phải Map (lỗi gateway trả HTML/text) — cast an toàn
+      // để tránh ném lỗi ngay trong catch, khiến nút loading kẹt vĩnh viễn.
+      final data = e.response?.data;
+      final msg = (data is Map ? data['message'] as String? : null) ?? 'Không thể gửi OTP';
       if (mounted) setState(() { _sendingOtp = false; _error = msg; });
     } catch (_) {
       if (mounted) setState(() { _sendingOtp = false; _error = 'Không thể gửi OTP. Thử lại sau.'; });
@@ -103,7 +106,8 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       );
       Navigator.of(context).pop();
     } on DioException catch (e) {
-      final msg = e.response?.data?['message'] as String? ?? 'Đổi mật khẩu thất bại';
+      final data = e.response?.data;
+      final msg = (data is Map ? data['message'] as String? : null) ?? 'Đổi mật khẩu thất bại';
       if (mounted) setState(() { _submitting = false; _error = msg; });
     } catch (_) {
       if (mounted) setState(() { _submitting = false; _error = 'Đã xảy ra lỗi. Thử lại sau.'; });

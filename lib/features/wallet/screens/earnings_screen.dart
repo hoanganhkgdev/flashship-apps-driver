@@ -31,6 +31,30 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
         _ => w.earningsMonthly,
       };
 
+  // Lọc danh sách theo đúng kỳ đang chọn — trước đây danh sách luôn hiện toàn
+  // bộ lịch sử bất kể tab, khiến tổng tiền đổi theo tab nhưng danh sách bên
+  // dưới thì không, gây hiểu nhầm số liệu sai lệch.
+  List<OrderModel> _filterByPeriod(List<OrderModel> orders) {
+    final now = DateTime.now();
+    DateTime start;
+    switch (_period) {
+      case 0:
+        start = DateTime(now.year, now.month, now.day);
+        break;
+      case 1:
+        final weekday = now.weekday; // 1=Mon..7=Sun
+        start = DateTime(now.year, now.month, now.day)
+            .subtract(Duration(days: weekday - 1));
+        break;
+      default:
+        start = DateTime(now.year, now.month, 1);
+    }
+    return orders.where((o) {
+      final dt = o.completedAt ?? o.createdAt;
+      return !dt.isBefore(start);
+    }).toList();
+  }
+
   Future<void> _refresh() async {
     await Future.wait([
       ref.read(walletProvider.notifier).fetch(),
@@ -43,6 +67,7 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
     final wallet   = ref.watch(walletProvider);
     final history  = ref.watch(orderHistoryProvider);
     final summary  = _summary(wallet);
+    final filteredOrders = _filterByPeriod(history.orders);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -77,7 +102,7 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
 
               SliverToBoxAdapter(
                 child: _OrderEarningsSection(
-                  orders:  history.orders,
+                  orders:  filteredOrders,
                   loading: history.loading,
                   hasMore: history.hasMore,
                   onLoadMore: () =>

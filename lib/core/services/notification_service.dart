@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:firebase_core/firebase_core.dart';
@@ -17,7 +18,6 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
   final data = message.data;
   if (data['type'] == 'order_offer') {
     final orderCode = data['order_code'] ?? '';
-    final pickupAddress = data['pickup_address'] ?? 'Nhấn để xem đơn hàng';
 
     final androidDetails = AndroidNotificationDetails(
       'order_offer_channel',
@@ -43,8 +43,8 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
 
     await _localNotif.show(
       orderCode.hashCode,
-      '🚀 Đơn hàng mới #$orderCode',
-      pickupAddress,
+      'Có đơn hàng mới!',
+      'Nhấn để xem và nhận đơn hàng',
       NotificationDetails(android: androidDetails, iOS: iosDetails),
     );
   }
@@ -53,14 +53,32 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
 class NotificationService {
   static final _fcm = FirebaseMessaging.instance;
 
-  static Future<void> init(WidgetRef ref) async {
-    await _fcm.requestPermission(alert: true, badge: true, sound: true);
+  static StreamSubscription? _tokenRefreshSub;
+  static StreamSubscription? _onMessageSub;
+  static StreamSubscription? _onMessageOpenedSub;
+
+  // Đã gửi FCM token lên backend chưa (trong phiên hiện tại) — tránh POST thừa
+  // mỗi lần resume, nhưng vẫn gửi được khi user bật quyền từ Cài đặt.
+  static bool _tokenSent = false;
+
+  /// Setup FCM + local notifications. KHÔNG request quyền ở đây.
+  /// Trả về: true = đã được cấp, false = bị từ chối, null = chưa hỏi lần nào.
+  static Future<bool?> init(WidgetRef ref) async {
+    final settings = await _fcm.getNotificationSettings();
+    final status = settings.authorizationStatus;
+    final bool? granted = (status == AuthorizationStatus.authorized ||
+            status == AuthorizationStatus.provisional)
+        ? true
+        : status == AuthorizationStatus.denied
+            ? false
+            : null; // notDetermined
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+    // Không request quyền trong initialize — để HomeScreen hỏi đúng lúc
     const ios = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
     );
     await _localNotif.initialize(
       const InitializationSettings(android: android, iOS: ios),
@@ -80,19 +98,26 @@ class NotificationService {
 
     FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
 
-    await _refreshFcmToken(ref);
-    _fcm.onTokenRefresh.listen((_) => _refreshFcmToken(ref));
+    // Chỉ lấy token ngay nếu đã có quyền — tránh retry APNs 10s khi chưa hỏi
+    if (granted == true) await _refreshFcmToken(ref);
+
+    // Huỷ subscription cũ trước khi đăng ký lại (tránh leak khi re-login)
+    _tokenRefreshSub?.cancel();
+    _onMessageSub?.cancel();
+    _onMessageOpenedSub?.cancel();
+
+    _tokenRefreshSub = _fcm.onTokenRefresh.listen((_) => _refreshFcmToken(ref));
 
     // Foreground: show local notification + refresh state
-    FirebaseMessaging.onMessage.listen((msg) {
+    _onMessageSub = FirebaseMessaging.onMessage.listen((msg) {
       final type = msg.data['type'];
       if (type == 'order_offer') {
         // Foreground: RTDB listener tự navigate, chỉ show notification nhỏ
         final data = msg.data;
         _localNotif.show(
           (data['order_code'] ?? '').hashCode,
-          '🚀 Đơn hàng mới #${data['order_code'] ?? ''}',
-          data['pickup_address'] ?? 'Nhấn để xem đơn hàng',
+          'Có đơn hàng mới!',
+          'Nhấn để xem và nhận đơn hàng',
           const NotificationDetails(
             android: AndroidNotificationDetails(
               'order_offer_channel', 'Đơn hàng mới',
@@ -114,7 +139,34 @@ class NotificationService {
       }
     });
 
-    FirebaseMessaging.onMessageOpenedApp.listen((_) {});
+    _onMessageOpenedSub = FirebaseMessaging.onMessageOpenedApp.listen((_) {});
+
+    return granted;
+  }
+
+  /// Gọi khi tài xế đã xem priming dialog và đồng ý → mới hỏi quyền hệ thống.
+  /// Truyền ref để gửi FCM token ngay sau khi cấp quyền lần đầu.
+  static Future<bool> requestPermission(WidgetRef ref) async {
+    await _fcm.requestPermission(alert: true, badge: true, sound: true);
+    final settings = await _fcm.getNotificationSettings();
+    final granted = settings.authorizationStatus == AuthorizationStatus.authorized ||
+        settings.authorizationStatus == AuthorizationStatus.provisional;
+    if (granted) await _refreshFcmToken(ref);
+    return granted;
+  }
+
+  /// Gọi khi app resume: cập nhật trạng thái quyền cho banner, đồng thời
+  /// nếu đã có quyền mà token chưa gửi (user vừa bật quyền từ Cài đặt) thì
+  /// gửi FCM token lên backend — nếu không tài xế có quyền nhưng vẫn không
+  /// nhận được push đơn hàng.
+  /// Trả về true nếu CHƯA được cấp quyền (để hiện banner).
+  static Future<bool> refreshPermissionState(WidgetRef ref) async {
+    final settings = await _fcm.getNotificationSettings();
+    final status = settings.authorizationStatus;
+    final granted = status == AuthorizationStatus.authorized ||
+        status == AuthorizationStatus.provisional;
+    if (granted && !_tokenSent) await _refreshFcmToken(ref);
+    return !granted;
   }
 
   static void ensureOfferListener(int driverId) {
@@ -136,6 +188,7 @@ class NotificationService {
           '/driver/update-fcm-token',
           data: {'fcm_token': token},
         );
+        _tokenSent = true;
       }
     } catch (_) {}
   }

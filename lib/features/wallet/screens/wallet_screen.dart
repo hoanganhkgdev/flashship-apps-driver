@@ -45,10 +45,11 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
 
                 // ── Gradient header ──────────────────────────────────
                 _WalletHeader(
-                  balance:    wallet.balance,
-                  loading:    wallet.loading,
-                  onTopUp:    () => _showTopUp(context),
-                  onWithdraw: () => _showWithdraw(context),
+                  balance:      wallet.balance,
+                  loading:      wallet.loading,
+                  balanceError: wallet.balanceError,
+                  onTopUp:      () => _showTopUp(context),
+                  onWithdraw:   () => _showWithdraw(context),
                 ),
 
                 // ── Cards ────────────────────────────────────────────
@@ -168,7 +169,6 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _WithdrawSheet(
-        balance:     wallet.balance,
         bankAccount: wallet.bankAccount,
         onSubmit:    (amount) async {
           final ok = await ref.read(walletProvider.notifier).withdraw(amount);
@@ -190,12 +190,14 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
 class _WalletHeader extends StatelessWidget {
   final int balance;
   final bool loading;
+  final bool balanceError;
   final VoidCallback onTopUp;
   final VoidCallback onWithdraw;
 
   const _WalletHeader({
     required this.balance,
     required this.loading,
+    this.balanceError = false,
     required this.onTopUp,
     required this.onWithdraw,
   });
@@ -284,6 +286,21 @@ class _WalletHeader extends StatelessWidget {
                               fontWeight: FontWeight.w900, letterSpacing: -1,
                             ),
                           ),
+
+                    if (balanceError && !loading) ...[
+                      const SizedBox(height: 6),
+                      Row(children: [
+                        const Icon(Icons.wifi_off_rounded,
+                            size: 13, color: Colors.white),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Không tải được số dư mới nhất — kéo xuống để thử lại',
+                          style: TextStyle(
+                              fontSize: 11.5,
+                              color: Colors.white.withValues(alpha: 0.9)),
+                        ),
+                      ]),
+                    ],
 
                     const SizedBox(height: 24),
 
@@ -576,22 +593,20 @@ class _TxItem extends StatelessWidget {
 
 // ── Withdraw sheet ────────────────────────────────────────────────────────────
 
-class _WithdrawSheet extends StatefulWidget {
-  final int balance;
+class _WithdrawSheet extends ConsumerStatefulWidget {
   final BankAccount bankAccount;
   final Future<bool> Function(int amount) onSubmit;
 
   const _WithdrawSheet({
-    required this.balance,
     required this.bankAccount,
     required this.onSubmit,
   });
 
   @override
-  State<_WithdrawSheet> createState() => _WithdrawSheetState();
+  ConsumerState<_WithdrawSheet> createState() => _WithdrawSheetState();
 }
 
-class _WithdrawSheetState extends State<_WithdrawSheet> {
+class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
   final _ctrl = TextEditingController();
   bool _loading = false;
   String? _error;
@@ -614,7 +629,9 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
       setState(() => _error = 'Số tiền tối thiểu là 50,000 đ');
       return;
     }
-    if (amount > widget.balance) {
+    // Đọc số dư mới nhất tại thời điểm bấm — không dùng snapshot lúc mở sheet,
+    // tránh validate sai nếu số dư đổi trong lúc sheet đang mở.
+    if (amount > ref.read(walletProvider).balance) {
       setState(() => _error = 'Số tiền vượt quá số dư khả dụng');
       return;
     }
@@ -639,6 +656,8 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
   Widget build(BuildContext context) {
     final bottom  = MediaQuery.of(context).viewInsets.bottom;
     final hasBank = !widget.bankAccount.isEmpty;
+    // Watch trực tiếp — số dư luôn tươi kể cả khi thay đổi trong lúc sheet mở.
+    final balance = ref.watch(walletProvider).balance;
 
     return Container(
       decoration: const BoxDecoration(
@@ -673,7 +692,7 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
             const Text('Rút tiền', style: TextStyle(
               fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.textPrimary,
             )),
-            Text('Số dư: ${Fmt.currency(widget.balance)}',
+            Text('Số dư: ${Fmt.currency(balance)}',
                 style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           ]),
         ]),
@@ -771,7 +790,7 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
           // Quick amount chips
           Wrap(spacing: 8, runSpacing: 8, children: [
             ..._quickAmounts
-              .where((a) => a <= widget.balance)
+              .where((a) => a <= balance)
               .map((a) => GestureDetector(
                 onTap: () => _setAmount(a),
                 child: Container(
@@ -786,7 +805,7 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
                 ),
               )),
             GestureDetector(
-              onTap: () => _setAmount(widget.balance),
+              onTap: () => _setAmount(balance),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                 decoration: BoxDecoration(

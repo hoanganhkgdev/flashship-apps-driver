@@ -86,7 +86,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
     if (!mounted) return;
     if (ok) {
-      context.go('/pending');
+      // Token + user đã lưu, router tự redirect về /pending vì isPending=true
+      context.go('/home');
     } else {
       setState(() {
         _loading = false;

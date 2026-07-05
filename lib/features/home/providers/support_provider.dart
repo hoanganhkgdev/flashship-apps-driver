@@ -25,7 +25,24 @@ class SupportItem {
     color:    j['color'] as String?,
   );
 
-  Uri get uri => Uri.parse(value);
+  // Chuẩn hoá value thành URI launch được — admin có thể nhập số/link thô
+  // (vd "0981483284", "zalo.me/flashship") thiếu scheme.
+  Uri get uri {
+    final v = value.trim();
+    switch (type) {
+      case 'phone':
+        final raw = v.startsWith('tel:') ? v.substring(4) : v;
+        return Uri.parse('tel:${raw.replaceAll(RegExp(r'[^0-9+]'), '')}');
+      case 'email':
+        final raw = v.startsWith('mailto:') ? v.substring(7) : v;
+        return Uri.parse('mailto:$raw');
+      default:
+        // zalo / facebook / website / url — đảm bảo có scheme
+        final parsed = Uri.tryParse(v);
+        if (parsed != null && parsed.hasScheme) return parsed;
+        return Uri.parse('https://$v');
+    }
+  }
 
   IconData get materialIcon => switch (type) {
     'phone'    => Icons.phone_rounded,

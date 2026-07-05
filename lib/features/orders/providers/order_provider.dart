@@ -108,6 +108,11 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
     'pickup_lng':   o.pickupLng,
     'delivery_lat': o.deliveryLat,
     'delivery_lng': o.deliveryLng,
+    // Thiếu 3 field này thì restore từ local storage mất dữ liệu batch
+    // (đơn hiện như đơn thường) nếu app bị kill trước khi fetch() kịp chạy.
+    'is_batch':    o.isBatch,
+    'stops_count': o.stopsCount,
+    'stops':       o.stops,
   };
 
   // ── Public API ───────────────────────────────────────────────────────────────
@@ -292,6 +297,9 @@ class OrderHistoryState {
 class OrderHistoryNotifier extends StateNotifier<OrderHistoryState> {
   final Ref _ref;
   int _page = 1;
+  // Tăng mỗi lần fetch (refresh hoặc load-more) — response nào không khớp
+  // request mới nhất bị bỏ qua, tránh refresh và load-more race nhau đè state.
+  int _requestId = 0;
 
   OrderHistoryNotifier(this._ref) : super(const OrderHistoryState());
 
@@ -303,12 +311,14 @@ class OrderHistoryNotifier extends StateNotifier<OrderHistoryState> {
       if (!state.hasMore || state.loading) return;
       state = state.copyWith(loading: true);
     }
+    final myRequestId = ++_requestId;
 
     try {
       final res = await _ref.read(apiClientProvider).get(
         '/orders/completed',
         params: {'page': _page, 'per_page': 10},
       );
+      if (myRequestId != _requestId) return; // có request mới hơn đã chạy
       final raw = res.data['data'] ?? res.data;
       List<dynamic> list = [];
       if (raw is List) {
@@ -319,12 +329,20 @@ class OrderHistoryNotifier extends StateNotifier<OrderHistoryState> {
       final orders = list.map((e) => OrderModel.fromJson(e as Map<String, dynamic>)).toList();
       final hasMore = raw is Map ? raw['has_more'] == true : false;
       _page++;
+      final merged = refresh ? orders : [...state.orders, ...orders];
+      // Dedupe theo id — phòng đơn mới chen vào offset giữa các lần phân trang
+      final seen = <int>{};
+      final deduped = [
+        for (final o in merged)
+          if (seen.add(o.id)) o
+      ];
       state = state.copyWith(
-        orders:  refresh ? orders : [...state.orders, ...orders],
+        orders:  deduped,
         loading: false,
         hasMore: hasMore,
       );
     } catch (_) {
+      if (myRequestId != _requestId) return;
       state = state.copyWith(loading: false);
     }
   }

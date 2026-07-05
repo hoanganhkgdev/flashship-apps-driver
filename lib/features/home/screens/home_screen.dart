@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:permission_handler/permission_handler.dart' hide ServiceStatus;
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/services/offer_listener_service.dart';
@@ -25,6 +26,19 @@ import '../../score/providers/score_provider.dart';
 import '../providers/support_provider.dart';
 
 final homeTabProvider = StateProvider<int>((ref) => 0);
+final _notifDeniedProvider = StateProvider<bool>((ref) => false);
+// 'service' = GPS tắt, 'permission' = quyền bị từ chối, null = ổn
+final _locationIssueProvider = StateProvider<String?>((ref) => null);
+
+Future<String?> _checkLocationIssue() async {
+  final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+  if (!serviceEnabled) return 'service';
+  final perm = await Geolocator.checkPermission();
+  if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
+    return 'permission';
+  }
+  return null;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Root shell
@@ -40,11 +54,47 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen>
     with WidgetsBindingObserver {
 
+  StreamSubscription<ServiceStatus>? _gpsStatusSub;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) => NotificationService.init(ref));
+
+    // Theo dõi realtime khi GPS bị bật/tắt ngay lúc app đang mở (kéo thanh
+    // notification tắt GPS mà không rời app → resume không kích hoạt).
+    _gpsStatusSub = Geolocator.getServiceStatusStream().listen((_) async {
+      final issue = await _checkLocationIssue();
+      if (mounted) ref.read(_locationIssueProvider.notifier).state = issue;
+    }, onError: (_) {});
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // try/finally đảm bảo location check luôn chạy dù có return sớm
+      try {
+        final status = await NotificationService.init(ref);
+        if (status == true) {
+          if (mounted) ref.read(_notifDeniedProvider.notifier).state = false;
+          return;
+        }
+        if (status == null) {
+          // Chưa hỏi lần nào → hiện priming dialog trước
+          if (!mounted) return;
+          final confirmed = await _showNotifPrimingDialog(context);
+          if (!mounted) return;
+          if (confirmed == true) {
+            final granted = await NotificationService.requestPermission(ref);
+            if (mounted) ref.read(_notifDeniedProvider.notifier).state = !granted;
+          } else {
+            if (mounted) ref.read(_notifDeniedProvider.notifier).state = true;
+          }
+        } else {
+          // Đã từ chối → hiện banner hướng dẫn vào Settings
+          if (mounted) ref.read(_notifDeniedProvider.notifier).state = true;
+        }
+      } finally {
+        final locationIssue = await _checkLocationIssue();
+        if (mounted) ref.read(_locationIssueProvider.notifier).state = locationIssue;
+      }
+    });
     Future.microtask(() {
       ref.read(activeOrderProvider.notifier).fetch();
       ref.read(walletProvider.notifier).fetch();
@@ -94,6 +144,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ref.read(authProvider.notifier).refreshUser();
       ref.read(activeOrderProvider.notifier).fetch();
       ref.read(walletProvider.notifier).fetch();
+      NotificationService.refreshPermissionState(ref).then((notGranted) {
+        if (mounted) ref.read(_notifDeniedProvider.notifier).state = notGranted;
+      });
+      _checkLocationIssue().then((issue) {
+        if (mounted) ref.read(_locationIssueProvider.notifier).state = issue;
+      });
+      // Đảm bảo location stream còn sống sau khi app về foreground
+      final isOnline = ref.read(authProvider).user?.isOnline ?? false;
+      if (isOnline) LocationService.instance.restart();
     }
   }
 
@@ -101,6 +160,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   void dispose() {
+    _gpsStatusSub?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     SessionGuardService.instance.onForceLogout   = null;
     SessionGuardService.instance.onAccountLocked = null;
@@ -217,25 +277,36 @@ class _DashboardPage extends ConsumerStatefulWidget {
   ConsumerState<_DashboardPage> createState() => _DashboardPageState();
 }
 
-class _DashboardPageState extends ConsumerState<_DashboardPage> {
+class _DashboardPageState extends ConsumerState<_DashboardPage>
+    with WidgetsBindingObserver {
   bool _togglingOnline   = false;
   Map<String, dynamic> _stats = {};
   int _todayEarnings     = 0;
   int _yesterdayEarnings = 0;
-  int _codPending        = 0;
-  int _debtCount         = 0;
   Timer? _onlineTimer;
   Timer? _heartbeatTimer;
+  Timer? _locationApiTimer;
+  double? _lastLat;
+  double? _lastLng;
+  double? _lastBearing;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadAll();
     Future.microtask(() {
       _syncOnlineTimer();
       final uid = ref.read(authProvider).user?.id;
       if (uid != null) ref.read(scoreProvider.notifier).subscribeRTDB(uid);
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Card thu nhập/số đơn/rating + COD không tự refresh trên resume như ví
+    // → làm mới để tránh hiển thị số liệu cũ khi mở lại app.
+    if (state == AppLifecycleState.resumed) _loadAll();
   }
 
   void _syncOnlineTimer() {
@@ -264,13 +335,27 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
     final driver = ref.read(authProvider).user;
     if (driver == null) return '';
 
-    // Giây tích lũy từ các session trước trong ngày
-    final accumulated = driver.dailyOnlineSeconds;
+    final now = DateTime.now();
+    final todayStr = '${now.year.toString().padLeft(4, '0')}-'
+        '${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
 
-    // Giây của session hiện tại (chỉ khi đang online)
-    final currentSession = (driver.isOnline && driver.onlineSince != null)
-        ? DateTime.now().difference(driver.onlineSince!).inSeconds.clamp(0, 86400)
-        : 0;
+    // Giây tích lũy từ các session trước trong ngày — bỏ nếu là số liệu ngày cũ
+    // (vd mở lại app sáng hôm sau khi data còn lưu từ hôm qua).
+    final accumulated =
+        driver.dailyOnlineDate == todayStr ? driver.dailyOnlineSeconds : 0;
+
+    // Giây của session hiện tại — chỉ tính từ 6:30 sáng.
+    // Vùng chết 00:00–6:30 không tính: online_since bị kẹp về 6:30 hôm nay
+    // nên trước 6:30 sẽ ra số âm → clamp về 0.
+    int currentSession = 0;
+    if (driver.isOnline && driver.onlineSince != null) {
+      final windowStart = DateTime(now.year, now.month, now.day, 6, 30);
+      final start = driver.onlineSince!.isAfter(windowStart)
+          ? driver.onlineSince!
+          : windowStart;
+      currentSession = now.difference(start).inSeconds.clamp(0, 86400);
+    }
 
     final total = (accumulated + currentSession).clamp(0, 86400);
     if (total == 0 && !driver.isOnline) return '';
@@ -285,15 +370,16 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _onlineTimer?.cancel();
     _heartbeatTimer?.cancel();
+    _locationApiTimer?.cancel();
     super.dispose();
   }
 
   Future<void> _loadAll() => Future.wait([
         _loadStats(),
         _loadEarnings(),
-        _loadCodPending(),
         Future.microtask(() => ref.read(scoreProvider.notifier).fetch()),
       ]);
 
@@ -318,34 +404,28 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
     } catch (_) {}
   }
 
-  Future<void> _loadCodPending() async {
-    try {
-      final res    = await ref.read(apiClientProvider).get('/debts/');
-      final list   = (res.data['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-      final unpaid = list.where((d) => d['status'] != 'paid').toList();
-      final total  = unpaid.fold<int>(0, (s, d) => s + num.parse((d['amount_due'] ?? 0).toString()).toInt());
-      if (mounted) setState(() { _codPending = total; _debtCount = unpaid.length; });
-    } catch (_) {}
-  }
-
   Future<bool> _ensureLocationPermission() async {
+    // GPS service phải bật — nếu không tài xế online nhưng không push được
+    // vị trí → ghost driver (dispatch không thấy toạ độ).
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Text('GPS đang tắt. Vui lòng bật vị trí để có thể nhận đơn.'),
+        backgroundColor: AppColors.danger,
+        action: SnackBarAction(
+          label: 'Bật GPS',
+          textColor: Colors.white,
+          onPressed: () => Geolocator.openLocationSettings(),
+        ),
+      ));
+      return false;
+    }
     var perm = await Geolocator.checkPermission();
     if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
     if (perm == LocationPermission.always || perm == LocationPermission.whileInUse) return true;
     if (!mounted) return false;
     if (perm == LocationPermission.deniedForever) {
-      await showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Cần quyền vị trí', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-          content: const Text('Ứng dụng cần quyền truy cập vị trí để hoạt động khi bạn online.\n\nVào Cài đặt → Ứng dụng → FlashShip → Quyền → Vị trí để cấp quyền.', style: TextStyle(fontSize: 14, height: 1.5)),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Bỏ qua')),
-            FilledButton(onPressed: () async { Navigator.pop(context); await Geolocator.openAppSettings(); }, child: const Text('Mở cài đặt')),
-          ],
-        ),
-      );
+      await _showLocationPermissionGuide(context);
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cần quyền vị trí để bật online')));
     }
@@ -370,6 +450,7 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
       );
       _stopOnlineTimer();
       _heartbeatTimer?.cancel();
+      _locationApiTimer?.cancel();
       LocationService.instance.stop();
       OfferListenerService.instance.stop();
       final uid = ref.read(authProvider).user?.id;
@@ -381,6 +462,9 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
   }
 
   Future<void> _toggleOnline() async {
+    // Chặn gọi chồng — nếu không, có thể race với _forceOffline() (nợ vừa
+    // quá hạn) hoặc 1 tap bị xử lý trễ, gây tắt/bật liên tiếp trong 1 giây.
+    if (_togglingOnline) return;
     final currentlyOnline = ref.read(authProvider).user?.isOnline ?? false;
     if (!currentlyOnline) {
       setState(() => _togglingOnline = true);
@@ -411,6 +495,7 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
       } else {
         _stopOnlineTimer();
         _heartbeatTimer?.cancel();
+        _locationApiTimer?.cancel();
         LocationService.instance.stop();
         OfferListenerService.instance.stop();
         final uid = ref.read(authProvider).user?.id;
@@ -420,7 +505,9 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
       }
     } on DioException catch (e) {
       if (mounted) {
-        final code = e.response?.data?['code'] as String?;
+        // Body có thể không phải Map (HTML 500, string...) → cast an toàn
+        final data = e.response?.data;
+        final code = data is Map ? data['code'] as String? : null;
         if (code == 'debt_overdue') {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: const Text('Bạn có công nợ quá hạn. Vui lòng thanh toán trước khi hoạt động.'),
@@ -434,8 +521,9 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
             ),
           ));
         } else {
+          final msg = data is Map ? data['message'] as String? : null;
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(e.response?.data?['message'] as String? ?? 'Không thể đổi trạng thái'),
+            content: Text(msg ?? 'Không thể đổi trạng thái'),
             backgroundColor: AppColors.danger,
           ));
         }
@@ -449,12 +537,30 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
     try {
       final perm = await Geolocator.checkPermission();
       if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) return;
+      // Timeout 6s để tránh treo khi GPS chưa bắt được tín hiệu
       final pos = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(accuracy: LocationAccuracy.best));
-      await _pushLocation(driverId, pos.latitude, pos.longitude, pos.heading);
-    } catch (_) {}
-    LocationService.instance.start((lat, lng, bearing) => _pushLocation(driverId, lat, lng, bearing));
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 6),
+        ),
+      );
+      if (pos.accuracy <= 50) {
+        final bearing = pos.heading < 0 ? 0.0 : pos.heading;
+        _lastLat = pos.latitude;
+        _lastLng = pos.longitude;
+        _lastBearing = bearing;
+        await _pushLocation(driverId, pos.latitude, pos.longitude, bearing);
+        _callLocationApi(driverId); // cập nhật MySQL+Redis ngay khi bật online
+      }
+    } catch (_) {} // timeout hoặc không có GPS → bỏ qua, stream sẽ tự cập nhật
+    LocationService.instance.start((lat, lng, bearing) {
+      _lastLat = lat;
+      _lastLng = lng;
+      _lastBearing = bearing;
+      _pushLocation(driverId, lat, lng, bearing);
+    });
     _startHeartbeat(driverId);
+    _startLocationApiTimer(driverId);
   }
 
   void _startHeartbeat(int? driverId) {
@@ -466,20 +572,42 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
     });
   }
 
+  void _startLocationApiTimer(int? driverId) {
+    _locationApiTimer?.cancel();
+    if (driverId == null) return;
+    _locationApiTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _callLocationApi(driverId);
+    });
+  }
+
+  Future<void> _callLocationApi(int? driverId) async {
+    if (driverId == null || _lastLat == null) return;
+    try {
+      await ref.read(apiClientProvider).post('/driver/update-location', data: {
+        'latitude': _lastLat,
+        'longitude': _lastLng,
+        'bearing': _lastBearing ?? 0.0,
+      });
+    } catch (_) {}
+  }
+
   Future<void> _pushLocation(int? driverId, double lat, double lng, double bearing) async {
     if (driverId == null) return;
     try {
+      // update() thay vì set() để không xóa các field khác backend có thể ghi vào node này
       await FirebaseDatabase.instance.ref('flashship_main/locations/driver_$driverId')
-          .set({'lat': lat, 'lng': lng, 'bearing': bearing, 'updated_at': ServerValue.timestamp, 'heartbeat_at': ServerValue.timestamp});
+          .update({'lat': lat, 'lng': lng, 'bearing': bearing, 'updated_at': ServerValue.timestamp, 'heartbeat_at': ServerValue.timestamp});
     } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) {
-    final user       = ref.watch(authProvider).user;
-    final wallet     = ref.watch(walletProvider);
-    final scoreState = ref.watch(scoreProvider);
-    final isOnline   = user?.isOnline ?? false;
+    final user        = ref.watch(authProvider).user;
+    final wallet      = ref.watch(walletProvider);
+    final scoreState  = ref.watch(scoreProvider);
+    final isOnline    = user?.isOnline ?? false;
+    final notifDenied   = ref.watch(_notifDeniedProvider);
+    final locationIssue = ref.watch(_locationIssueProvider);
 
     ref.listen<WalletState>(walletProvider, (prev, next) {
       final hadOverdue = prev?.debts.any((d) => d.isOverdue) ?? false;
@@ -487,7 +615,19 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
       if (!hadOverdue && hasOverdue) _forceOffline();
     });
 
+    // Đơn active giảm (hoàn tất / huỷ) → làm mới thu nhập, số đơn + ví/công nợ
+    ref.listen<ActiveOrderState>(activeOrderProvider, (prev, next) {
+      if ((prev?.orders.length ?? 0) > next.orders.length) {
+        _loadAll();
+        ref.read(walletProvider.notifier).fetch();
+      }
+    });
+
     final hasOverdueDebt = wallet.debts.any((d) => d.isOverdue);
+    // Công nợ = tổng còn lại (amount - đã trả) của các khoản chưa tất toán,
+    // lấy từ walletProvider (cùng nguồn với banner & màn công nợ).
+    final codPending = wallet.debts.fold<int>(0, (s, d) => s + d.remaining);
+    final debtCount  = wallet.debts.length;
 
     final todayOrders = ((_stats['today_orders'] as num?) ?? 0).toInt();
     final rating      = (_stats['rating']        as num?)?.toDouble() ?? 0.0;
@@ -517,6 +657,12 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
                 onlineTimeStr: _onlineTimeStr,
                 onToggle:      _toggleOnline,
               ),
+
+              // ── Location / GPS banner ─────────────────────────────────
+              if (locationIssue != null) _LocationIssueBanner(issue: locationIssue),
+
+              // ── Notification permission banner ────────────────────────
+              if (notifDenied) const _NotifDeniedBanner(),
 
               // ── Overdue debt banner ───────────────────────────────────
               if (wallet.debts.any((d) => d.isOverdue)) ...[
@@ -551,7 +697,6 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
                     // Score
                     _ScoreCard(
                       score:   scoreState.score,
-                      loading: scoreState.loading,
                       onTap:   () => context.push('/score'),
                     ),
 
@@ -560,8 +705,8 @@ class _DashboardPageState extends ConsumerState<_DashboardPage> {
                     // Finance
                     _FinanceCard(
                       balance:     wallet.balance,
-                      codPending:  _codPending,
-                      debtCount:   _debtCount,
+                      codPending:  codPending,
+                      debtCount:   debtCount,
                       onWalletTap: () => context.push('/wallet'),
                       onDebtTap:   () => Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const DebtScreen())),
@@ -945,16 +1090,17 @@ class _EarningsCard extends StatelessWidget {
 
 class _ScoreCard extends StatelessWidget {
   final DriverScoreModel? score;
-  final bool loading;
   final VoidCallback onTap;
-  const _ScoreCard({required this.score, required this.loading, required this.onTap});
+  const _ScoreCard({required this.score, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: _surfaceCard(
-        child: loading || score == null
+        // Chỉ hiện spinner lần đầu (chưa có điểm). Khi đã có điểm thì giữ hiển
+        // thị trong lúc refresh (RTDB ping / resume) để tránh nháy sang spinner.
+        child: score == null
             ? const SizedBox(
                 height: 48,
                 child: Center(child: CircularProgressIndicator(
@@ -965,7 +1111,8 @@ class _ScoreCard extends StatelessWidget {
   }
 
   Widget _content(DriverScoreModel s) {
-    final progress = s.maxScore > 0 ? s.score / s.maxScore : 0.0;
+    final progress =
+        (s.maxScore > 0 ? s.score / s.maxScore : 0.0).clamp(0.0, 1.0);
 
     return Row(children: [
 
@@ -1190,13 +1337,18 @@ class _SupportCard extends ConsumerWidget {
   const _SupportCard();
 
   Future<void> _launch(BuildContext context, SupportItem item) async {
-    final uri = item.uri;
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể mở liên kết này')),
-        );
-      }
+    // URI xấu (admin nhập sai) có thể ném exception → bọc try/catch để hiện
+    // thông báo thay vì crash.
+    bool ok = false;
+    try {
+      ok = await launchUrl(item.uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      ok = false;
+    }
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể mở liên kết này')),
+      );
     }
   }
 
@@ -1377,6 +1529,249 @@ class _OverdueBanner extends StatelessWidget {
         ]),
       ),
     );
+  }
+}
+
+// ── Notification priming dialog (Apple compliance) ───────────────────────────
+
+Future<bool?> _showNotifPrimingDialog(BuildContext context) {
+  return showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Row(children: [
+        Icon(Icons.notifications_active_rounded, color: Color(0xFFE65100), size: 22),
+        SizedBox(width: 10),
+        Text('Bật thông báo', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+      ]),
+      content: const Text(
+        'Flash Driver cần gửi thông báo để báo khi có đơn hàng mới.\n\nKhông có thông báo, bạn sẽ không nhận được đơn.',
+        style: TextStyle(fontSize: 14, height: 1.5),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Bỏ qua', style: TextStyle(color: Color(0xFF9E9E9E))),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: FilledButton.styleFrom(backgroundColor: const Color(0xFFE65100)),
+          child: const Text('Cho phép'),
+        ),
+      ],
+    ),
+  );
+}
+
+// ── Location permission guide dialog ─────────────────────────────────────────
+
+Future<void> _showLocationPermissionGuide(BuildContext context) {
+  return showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Row(children: [
+        Icon(Icons.location_on_rounded, color: Color(0xFF1565C0), size: 22),
+        SizedBox(width: 10),
+        Text('Cấp quyền vị trí', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+      ]),
+      content: const Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Làm theo 4 bước sau:', style: TextStyle(fontSize: 13, color: Color(0xFF666666))),
+          SizedBox(height: 12),
+          _GuideStep(number: '1', text: 'Bấm "Mở cài đặt" bên dưới'),
+          SizedBox(height: 8),
+          _GuideStep(number: '2', text: 'Chọn ứng dụng Flash Driver'),
+          SizedBox(height: 8),
+          _GuideStep(number: '3', text: 'Chọn Vị trí'),
+          SizedBox(height: 8),
+          _GuideStep(number: '4', text: 'Chọn "Luôn luôn"'),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Để sau', style: TextStyle(color: Color(0xFF9E9E9E))),
+        ),
+        FilledButton(
+          onPressed: () { Navigator.pop(context); Geolocator.openAppSettings(); },
+          style: FilledButton.styleFrom(backgroundColor: const Color(0xFF1565C0)),
+          child: const Text('Mở cài đặt'),
+        ),
+      ],
+    ),
+  );
+}
+
+// ── Location / GPS banner ─────────────────────────────────────────────────────
+
+class _LocationIssueBanner extends StatelessWidget {
+  final String issue;
+  const _LocationIssueBanner({required this.issue});
+
+  @override
+  Widget build(BuildContext context) {
+    final isServiceOff = issue == 'service';
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFF1565C0),
+      padding: const EdgeInsets.fromLTRB(16, 10, 12, 14),
+      child: Row(children: [
+        Icon(
+          isServiceOff ? Icons.location_off_rounded : Icons.location_disabled_rounded,
+          color: Colors.white,
+          size: 18,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            isServiceOff
+                ? 'GPS đang tắt — hãy bật vị trí để nhận đơn.'
+                : 'Chưa cấp quyền vị trí — hãy bật để nhận đơn.',
+            style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: () => isServiceOff
+              ? Geolocator.openLocationSettings()
+              : _showLocationPermissionGuide(context),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              isServiceOff ? 'Bật GPS' : 'Mở cài đặt',
+              style: const TextStyle(
+                color: Color(0xFF1565C0),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+// ── Notification denied banner ────────────────────────────────────────────────
+
+class _NotifDeniedBanner extends StatelessWidget {
+  const _NotifDeniedBanner();
+
+  void _showGuideDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(children: [
+          Icon(Icons.notifications_active_rounded, color: Color(0xFFE65100), size: 22),
+          SizedBox(width: 10),
+          Text('Bật thông báo', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+        ]),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Làm theo 4 bước sau:', style: TextStyle(fontSize: 13, color: Color(0xFF666666))),
+            SizedBox(height: 12),
+            _GuideStep(number: '1', text: 'Bấm "Mở cài đặt" bên dưới'),
+            SizedBox(height: 8),
+            _GuideStep(number: '2', text: 'Chọn ứng dụng Flash Driver'),
+            SizedBox(height: 8),
+            _GuideStep(number: '3', text: 'Chọn Thông báo'),
+            SizedBox(height: 8),
+            _GuideStep(number: '4', text: 'Bật "Cho phép thông báo"'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Để sau', style: TextStyle(color: Color(0xFF9E9E9E))),
+          ),
+          FilledButton(
+            onPressed: () { Navigator.pop(context); openAppSettings(); },
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFE65100)),
+            child: const Text('Mở cài đặt'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFFE65100),
+      padding: const EdgeInsets.fromLTRB(16, 10, 12, 14),
+      child: Row(children: [
+        const Icon(Icons.notifications_off_rounded, color: Colors.white, size: 18),
+        const SizedBox(width: 8),
+        const Expanded(
+          child: Text(
+            'Thông báo bị tắt — bạn sẽ không nhận được đơn mới.',
+            style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: () => _showGuideDialog(context),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text(
+              'Bật thông báo',
+              style: TextStyle(
+                color: Color(0xFFE65100),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+class _GuideStep extends StatelessWidget {
+  final String number;
+  final String text;
+  const _GuideStep({required this.number, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Container(
+        width: 22,
+        height: 22,
+        decoration: const BoxDecoration(
+          color: Color(0xFFE65100),
+          shape: BoxShape.circle,
+        ),
+        child: Center(
+          child: Text(number,
+              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+        ),
+      ),
+      const SizedBox(width: 10),
+      Expanded(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Text(text, style: const TextStyle(fontSize: 14, height: 1.4)),
+        ),
+      ),
+    ]);
   }
 }
 

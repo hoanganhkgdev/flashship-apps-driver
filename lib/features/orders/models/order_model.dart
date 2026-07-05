@@ -145,7 +145,9 @@ class OrderModel {
       'motor' || 'car' => 'Đã đến xe',
       _                => 'Đã lấy hàng',
     },
-    'processing' => 'Hoàn thành',
+    // Đơn batch tự hoàn thành khi giao hết các điểm (xem _BatchStopsCard) —
+    // không cho bấm "Hoàn thành" thẳng ở thanh dưới kẻo bỏ sót điểm chưa giao.
+    'processing' => isBatch ? '' : 'Hoàn thành',
     _            => '',
   };
 

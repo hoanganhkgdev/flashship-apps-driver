@@ -747,9 +747,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ((res.data['data'] ?? res.data) as Map<String, dynamic>)['user']
               as Map<String, dynamic>?;
       if (mounted) {
+        // updateProfile() không trả avatar_locked/avatar_next_update_at (chỉ
+        // GET /driver/profile mới tính) — nhưng vừa upload thành công nghĩa
+        // là server vừa set avatar_updated_at=now(), nên tự tính khóa 30 ngày
+        // ở đây, không thì client vẫn tưởng đổi được ảnh tiếp cho tới lần
+        // pull-to-refresh kế tiếp.
         setState(() {
-          _photoUrl = userData?['profile_photo_url'] as String?;
-          _uploadingAvatar = false;
+          _photoUrl         = userData?['profile_photo_url'] as String?;
+          _avatarLocked     = true;
+          _avatarNextUpdate = DateTime.now().add(const Duration(days: 30));
+          _uploadingAvatar  = false;
         });
         _toast(context, 'Cập nhật ảnh thành công', success: true);
       }
@@ -924,12 +931,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
+              final messenger = ScaffoldMessenger.of(context);
               try {
                 await ref.read(apiClientProvider).post('/driver/delete-account/request');
                 if (mounted) setState(() => _deleteRequested = true);
-              } catch (_) {}
-              await ref.read(authProvider.notifier).logout();
-              if (context.mounted) context.go('/login');
+                await ref.read(authProvider.notifier).logout();
+                if (context.mounted) context.go('/login');
+              } catch (_) {
+                // Request thất bại thì không logout — tài xế tưởng đã gửi yêu
+                // cầu xóa nhưng thực ra chưa, để họ biết mà thử lại.
+                messenger.showSnackBar(const SnackBar(
+                  content: Text('Không thể gửi yêu cầu xóa tài khoản. Vui lòng thử lại.'),
+                  backgroundColor: AppColors.danger,
+                ));
+              }
             },
             child: const Text('Xác nhận', style: TextStyle(color: AppColors.danger)),
           ),

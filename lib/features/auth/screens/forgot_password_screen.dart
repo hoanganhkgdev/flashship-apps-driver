@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,9 +29,12 @@ class _ForgotPasswordScreenState
   bool _obscure1 = true;
   bool _obscure2 = true;
   String? _error;
+  int    _resendSeconds = 0;
+  Timer? _resendTimer;
 
   @override
   void dispose() {
+    _resendTimer?.cancel();
     _phoneCtrl.dispose();
     _otpCtrl.dispose();
     _passCtrl.dispose();
@@ -38,14 +42,26 @@ class _ForgotPasswordScreenState
     super.dispose();
   }
 
+  void _startResendTimer() {
+    _resendSeconds = 60;
+    _resendTimer?.cancel();
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() { if (_resendSeconds > 0) _resendSeconds--; });
+    });
+  }
+
   Future<void> _sendOtp() async {
-    if (!_phoneKey.currentState!.validate()) return;
+    if (_resendSeconds > 0) return;
+    // Bước 2: form phone đã bị unmount, validate trực tiếp từ controller
+    if (!_step2 && !_phoneKey.currentState!.validate()) return;
     setState(() { _loading = true; _error = null; });
     try {
       await ApiClient(null).post('/auth/forgot-password', data: {
         'phone': _phoneCtrl.text.trim(),
       });
       setState(() { _step2 = true; });
+      _startResendTimer();
     } catch (e) {
       setState(() { _error = _parseError(e); });
     } finally {
@@ -310,19 +326,28 @@ class _ForgotPasswordScreenState
             if (_step2) ...[
               const SizedBox(height: 14),
               Center(
-                child: GestureDetector(
-                  onTap: _loading ? null : _sendOtp,
-                  child: Text(
-                    'Gửi lại mã OTP',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: _loading
-                          ? AppColors.textSecondary
-                          : AppColors.primary,
-                    ),
-                  ),
-                ),
+                child: _resendSeconds > 0
+                    ? Text.rich(
+                        TextSpan(children: [
+                          const TextSpan(text: 'Gửi lại sau '),
+                          TextSpan(
+                            text: '${_resendSeconds}s',
+                            style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),
+                          ),
+                        ]),
+                        style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                      )
+                    : GestureDetector(
+                        onTap: _loading ? null : _sendOtp,
+                        child: Text(
+                          'Gửi lại mã OTP',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: _loading ? AppColors.textSecondary : AppColors.primary,
+                          ),
+                        ),
+                      ),
               ),
             ],
 

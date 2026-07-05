@@ -1,13 +1,64 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
+import '../providers/auth_provider.dart';
 
-class PendingScreen extends StatelessWidget {
+const _kSupportPhone = '0981483284';
+
+class PendingScreen extends ConsumerStatefulWidget {
   const PendingScreen({super.key});
 
+  @override
+  ConsumerState<PendingScreen> createState() => _PendingScreenState();
+}
+
+class _PendingScreenState extends ConsumerState<PendingScreen> {
+  bool   _approved   = false;
+  bool   _loggingIn  = false;
+  Timer? _pollTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startPolling();
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startPolling() {
+    _poll(); // check ngay khi mount, không chờ 30s
+    _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) => _poll());
+  }
+
+  Future<void> _poll() async {
+    if (!mounted || _approved) return;
+    try {
+      final res  = await ref.read(apiClientProvider).get('/driver/profile');
+      final data = (res.data['data'] ?? res.data) as Map<String, dynamic>;
+      final user = (data['user'] ?? data) as Map<String, dynamic>;
+      final status = (user['status'] as num?)?.toInt() ?? 0;
+      if (status == 1 && mounted) {
+        _pollTimer?.cancel();
+        setState(() => _approved = true);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _login() async {
+    setState(() => _loggingIn = true);
+    await ref.read(authProvider.notifier).refreshUser();
+    // Router tự redirect về /home khi isPending = false
+    if (mounted) setState(() => _loggingIn = false);
+  }
+
   Future<void> _callSupport() async {
-    final uri = Uri.parse('tel:0123456789');
+    final uri = Uri.parse('tel:$_kSupportPhone');
     if (await canLaunchUrl(uri)) launchUrl(uri);
   }
 
@@ -106,8 +157,8 @@ class PendingScreen extends StatelessWidget {
                     color: AppColors.warning,
                     title: 'Admin đang xét duyệt',
                     subtitle: 'Xác minh hồ sơ & CCCD của bạn',
-                    done: false,
-                    isActive: true,
+                    done: _approved,
+                    isActive: !_approved,
                   ),
                   const SizedBox(height: 12),
                   _StepCard(
@@ -116,7 +167,7 @@ class PendingScreen extends StatelessWidget {
                     title: 'Bắt đầu nhận đơn',
                     subtitle: 'Mở ứng dụng và bắt đầu kiếm tiền',
                     done: false,
-                    isActive: false,
+                    isActive: _approved,
                   ),
 
                   const SizedBox(height: 36),
@@ -219,22 +270,33 @@ class PendingScreen extends StatelessWidget {
                       ],
                     ),
                     child: ElevatedButton(
-                      onPressed: () => context.go('/login'),
+                      onPressed: (_approved && !_loggingIn) ? _login : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.transparent,
                         shadowColor: Colors.transparent,
+                        disabledBackgroundColor: Colors.transparent,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(26),
                         ),
                       ),
-                      child: const Text(
-                        'Kiểm tra trạng thái',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
+                      child: _loggingIn
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              _approved ? 'Đăng nhập' : 'Chờ admin duyệt...',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white.withValues(
+                                    alpha: _approved ? 1.0 : 0.5),
+                              ),
+                            ),
                     ),
                   ),
                   const SizedBox(height: 20),

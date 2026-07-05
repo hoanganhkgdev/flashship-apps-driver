@@ -22,7 +22,7 @@ class ActiveOrderScreen extends ConsumerStatefulWidget {
 class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
     with WidgetsBindingObserver {
   bool _actionLoading = false;
-  bool _completing    = false;
+  bool _completing = false;
 
   StreamSubscription? _cancelSub;
   String? _watchingOrderCode;
@@ -93,16 +93,29 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
     if (order.status == 'processing') {
       _completing = true;
       final ok = await notifier.complete(order.id);
-      if (mounted && ok) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Hoàn thành đơn hàng!'),
-          backgroundColor: AppColors.success,
-        ));
-        context.go('/home');
+      if (mounted) {
+        if (ok) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Hoàn thành đơn hàng!'),
+            backgroundColor: AppColors.success,
+          ));
+          context.go('/home');
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Không thể hoàn thành đơn. Vui lòng thử lại.'),
+            backgroundColor: AppColors.danger,
+          ));
+        }
       }
       _completing = false;
     } else {
-      await notifier.updateOrderStatus(order.nextStatus, orderId: order.id);
+      final ok = await notifier.updateOrderStatus(order.nextStatus, orderId: order.id);
+      if (mounted && !ok) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Không thể cập nhật trạng thái đơn. Vui lòng thử lại.'),
+          backgroundColor: AppColors.danger,
+        ));
+      }
     }
     if (mounted) setState(() => _actionLoading = false);
   }
@@ -117,7 +130,10 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
             : orders.first;
         _startCancelListener(watchOrder.code);
       }
-      if ((prev?.orders.length ?? 0) > 0 && next.orders.isEmpty && mounted && !_completing) {
+      if ((prev?.orders.length ?? 0) > 0 &&
+          next.orders.isEmpty &&
+          mounted &&
+          !_completing) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Đơn hàng đã bị huỷ'),
           backgroundColor: AppColors.danger,
@@ -129,7 +145,9 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
     final allOrders = ref.watch(activeOrderProvider).orders;
     final order = allOrders.length > widget.orderIndex
         ? allOrders[widget.orderIndex]
-        : allOrders.isNotEmpty ? allOrders.first : null;
+        : allOrders.isNotEmpty
+            ? allOrders.first
+            : null;
 
     if (order == null) {
       return Scaffold(
@@ -139,10 +157,10 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
       );
     }
 
-    final isTopup  = order.serviceType == 'topup';
-    final isRide   = const ['bike', 'motor', 'car'].contains(order.serviceType);
+    final isTopup = order.serviceType == 'topup';
+    final isRide = const ['bike', 'motor', 'car'].contains(order.serviceType);
     final isPickup = order.status == 'assigned';
-    final color    = Fmt.serviceColor(order.serviceType);
+    final color = Fmt.serviceColor(order.serviceType);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -153,7 +171,6 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
       child: Scaffold(
         backgroundColor: AppColors.background,
         body: Column(children: [
-
           // ── Gradient header ────────────────────────────────────────
           _Header(order: order, color: color),
 
@@ -162,36 +179,46 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
               children: [
-
                 // Route or Topup
                 if (isTopup)
                   _TopupCard(
-                    order:      order,
-                    color:      color,
-                    onCall:     order.deliveryPhone.isNotEmpty
-                        ? () => _callPhone(order.deliveryPhone) : null,
+                    order: order,
+                    color: color,
+                    onCall: order.deliveryPhone.isNotEmpty
+                        ? () => _callPhone(order.deliveryPhone)
+                        : null,
                     onNavigate: () => _navigateTo(
-                      lat: order.pickupLat, lng: order.pickupLng,
+                      lat: order.pickupLat,
+                      lng: order.pickupLng,
                       address: order.pickupAddress,
                     ),
                   )
                 else
                   _RouteCard(
-                    order:         order,
-                    isPickup:      isPickup,
-                    isRide:        isRide,
-                    color:         color,
-                    onCallPickup:  isRide
-                        ? (order.deliveryPhone.isNotEmpty ? () => _callPhone(order.deliveryPhone) : null)
-                        : (order.pickupPhone != null ? () => _callPhone(order.pickupPhone!) : null),
-                    onNavPickup:   () => _navigateTo(
-                      lat: order.pickupLat, lng: order.pickupLng,
+                    order: order,
+                    isPickup: isPickup,
+                    isRide: isRide,
+                    color: color,
+                    onCallPickup: isRide
+                        ? (order.deliveryPhone.isNotEmpty
+                            ? () => _callPhone(order.deliveryPhone)
+                            : null)
+                        : (order.pickupPhone != null
+                            ? () => _callPhone(order.pickupPhone!)
+                            : null),
+                    onNavPickup: () => _navigateTo(
+                      lat: order.pickupLat,
+                      lng: order.pickupLng,
                       address: order.pickupAddress,
                     ),
-                    onCallDelivery: isRide ? null
-                        : (order.deliveryPhone.isNotEmpty ? () => _callPhone(order.deliveryPhone) : null),
-                    onNavDelivery:  () => _navigateTo(
-                      lat: order.deliveryLat, lng: order.deliveryLng,
+                    onCallDelivery: isRide
+                        ? null
+                        : (order.deliveryPhone.isNotEmpty
+                            ? () => _callPhone(order.deliveryPhone)
+                            : null),
+                    onNavDelivery: () => _navigateTo(
+                      lat: order.deliveryLat,
+                      lng: order.deliveryLng,
                       address: order.deliveryAddress,
                     ),
                   ),
@@ -201,7 +228,6 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
                   const SizedBox(height: 12),
                   _NoteCard(note: order.orderNote!),
                 ],
-
 
                 // Batch stops
                 if (order.isBatch && order.stops.isNotEmpty) ...[
@@ -231,11 +257,12 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
 
           // ── Action bar ─────────────────────────────────────────────
           _BottomBar(
-            order:         order,
-            isLast:        order.isLastStep,
-            color:         color,
+            order: order,
+            isLast: order.isLastStep,
+            color: color,
             actionLoading: _actionLoading,
-            onAction:      order.nextAction.isNotEmpty ? () => _handleAction(order) : null,
+            onAction:
+                order.nextAction.isNotEmpty ? () => _handleAction(order) : null,
           ),
         ]),
       ),
@@ -269,100 +296,110 @@ class _Header extends StatelessWidget {
       ),
       child: Stack(clipBehavior: Clip.none, children: [
         Positioned(top: -40, right: -40, child: _Bubble(150, 0.07)),
-        Positioned(top: 80,  left: -30,  child: _Bubble(80,  0.05)),
+        Positioned(top: 80, left: -30, child: _Bubble(80, 0.05)),
         Positioned(bottom: 40, right: 30, child: _Bubble(55, 0.04)),
         Column(children: [
-        Padding(
-          padding: EdgeInsets.fromLTRB(16, top + 12, 16, 0),
-          child: Row(children: [
-
-            // Back button
-            GestureDetector(
-              onTap: () => context.go('/home'),
-              child: Container(
-                width: 34, height: 34,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.20),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white, size: 16,
+          Padding(
+            padding: EdgeInsets.fromLTRB(16, top + 12, 16, 0),
+            child: Row(children: [
+              // Back button
+              GestureDetector(
+                onTap: () => context.go('/home'),
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.20),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: Colors.white,
+                    size: 16,
+                  ),
                 ),
               ),
-            ),
 
-            const SizedBox(width: 12),
+              const SizedBox(width: 12),
 
-            // Service name
-            Expanded(
-              child: Row(children: [
+              // Service name
+              Expanded(
+                child: Row(children: [
+                  Text(
+                    () {
+                      if (order.isShopOrder) {
+                        return switch (order.shopServiceType) {
+                          'shop_batch' => 'Đơn gộp',
+                          'shop_pickup' => 'Lấy hộ',
+                          _ => 'Giao đơn',
+                        };
+                      }
+                      return Fmt.serviceLabel(order.serviceType);
+                    }(),
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  if (order.isShopOrder) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: Text(
+                        order.isBatch ? 'SHOP•${order.stopsCount}đ' : 'SHOP',
+                        style: const TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ]),
+              ),
+
+              // Step + code
+              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isLastStep
+                        ? AppColors.success.withValues(alpha: 0.85)
+                        : Colors.white.withValues(alpha: 0.22),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    stepLabel,
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white),
+                  ),
+                ),
+                const SizedBox(height: 5),
                 Text(
-                  () {
-                    if (order.isShopOrder) {
-                      return switch (order.shopServiceType) {
-                        'shop_batch'  => 'Đơn gộp',
-                        'shop_pickup' => 'Lấy hộ',
-                        _             => 'Giao đơn',
-                      };
-                    }
-                    return Fmt.serviceLabel(order.serviceType);
-                  }(),
-                  style: const TextStyle(
-                    fontSize: 17, fontWeight: FontWeight.w800,
-                    color: Colors.white, letterSpacing: -0.3,
+                  '#${order.code}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withValues(alpha: 0.75),
                   ),
                 ),
-                if (order.isShopOrder) ...[
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.25),
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    child: Text(
-                      order.isBatch ? 'SHOP•${order.stopsCount}đ' : 'SHOP',
-                      style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.white),
-                    ),
-                  ),
-                ],
               ]),
-            ),
-
-            // Step + code
-            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isLastStep
-                      ? AppColors.success.withValues(alpha: 0.85)
-                      : Colors.white.withValues(alpha: 0.22),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  stepLabel,
-                  style: const TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
-                ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                '#${order.code}',
-                style: TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.w500,
-                  color: Colors.white.withValues(alpha: 0.75),
-                ),
-              ),
             ]),
-          ]),
-        ),
-
-        const SizedBox(height: 16),
-        Container(height: 20, color: AppColors.background),
-        ]),   // Column
-      ]),     // Stack
-    );        // Container
+          ),
+          const SizedBox(height: 16),
+          Container(height: 20, color: AppColors.background),
+        ]), // Column
+      ]), // Stack
+    ); // Container
   }
 }
 
@@ -371,7 +408,8 @@ class _Bubble extends StatelessWidget {
   const _Bubble(this.size, this.opacity);
   @override
   Widget build(BuildContext context) => Container(
-        width: size, height: size,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: Colors.white.withValues(alpha: opacity),
@@ -389,9 +427,9 @@ class _RouteCard extends StatelessWidget {
   final bool isRide;
   final Color color;
   final VoidCallback? onCallPickup;
-  final VoidCallback  onNavPickup;
+  final VoidCallback onNavPickup;
   final VoidCallback? onCallDelivery;
-  final VoidCallback  onNavDelivery;
+  final VoidCallback onNavDelivery;
 
   const _RouteCard({
     required this.order,
@@ -405,12 +443,12 @@ class _RouteCard extends StatelessWidget {
   });
 
   String get _pickupLabel => switch (order.serviceType) {
-    'shopping' => 'Điểm mua hàng',
-    'bike'     => 'Điểm đón khách',
-    'motor'    => 'Vị trí xe máy',
-    'car'      => 'Vị trí ô tô',
-    _          => 'Điểm lấy hàng',
-  };
+        'shopping' => 'Điểm mua hàng',
+        'bike' => 'Điểm đón khách',
+        'motor' => 'Vị trí xe máy',
+        'car' => 'Vị trí ô tô',
+        _ => 'Điểm lấy hàng',
+      };
 
   String get _deliveryLabel => isRide ? 'Điểm đến' : 'Điểm giao hàng';
 
@@ -419,11 +457,14 @@ class _RouteCard extends StatelessWidget {
     final pickupPhone = isRide
         ? (order.deliveryPhone.isNotEmpty ? order.deliveryPhone : null)
         : order.pickupPhone;
-    final deliveryPhone = isRide ? null
+    final deliveryPhone = isRide
+        ? null
         : (order.deliveryPhone.isNotEmpty ? order.deliveryPhone : null);
 
     final pickupPlace = order.isShopOrder
-        ? (order.storeName?.isNotEmpty == true ? order.storeName : order.pickupPlaceName)
+        ? (order.storeName?.isNotEmpty == true
+            ? order.storeName
+            : order.pickupPlaceName)
         : order.pickupPlaceName;
     final deliveryPlace = order.deliveryPlaceName?.isNotEmpty == true
         ? order.deliveryPlaceName
@@ -431,26 +472,26 @@ class _RouteCard extends StatelessWidget {
 
     return _card(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
         // ── Pickup stop ────────────────────────────────────────────
         _RouteStop(
-          isOrigin:    true,
-          isActive:    isPickup,
-          isDone:      !isPickup,
-          color:       color,
-          label:       _pickupLabel,
-          placeName:   pickupPlace,
-          address:     order.pickupAddress,
-          phone:       pickupPhone,
-          onCall:      onCallPickup,
-          onNav:       onNavPickup,
+          isOrigin: true,
+          isActive: isPickup,
+          isDone: !isPickup,
+          color: color,
+          label: _pickupLabel,
+          placeName: pickupPlace,
+          address: order.pickupAddress,
+          phone: pickupPhone,
+          onCall: onCallPickup,
+          onNav: onNavPickup,
         ),
 
         // ── Connector ──────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.only(left: 13),
           child: Container(
-            width: 2, height: 32,
+            width: 2,
+            height: 32,
             decoration: BoxDecoration(
               color: isPickup
                   ? const Color(0xFFE0E0E0)
@@ -462,18 +503,17 @@ class _RouteCard extends StatelessWidget {
 
         // ── Delivery stop ──────────────────────────────────────────
         _RouteStop(
-          isOrigin:    false,
-          isActive:    !isPickup,
-          isDone:      false,
-          color:       color,
-          label:       _deliveryLabel,
-          placeName:   deliveryPlace,
-          address:     order.deliveryAddress,
-          phone:       deliveryPhone,
-          onCall:      onCallDelivery,
-          onNav:       onNavDelivery,
+          isOrigin: false,
+          isActive: !isPickup,
+          isDone: false,
+          color: color,
+          label: _deliveryLabel,
+          placeName: deliveryPlace,
+          address: order.deliveryAddress,
+          phone: deliveryPhone,
+          onCall: onCallDelivery,
+          onNav: onNavDelivery,
         ),
-
       ]),
     );
   }
@@ -506,17 +546,17 @@ class _RouteStop extends StatelessWidget {
 
   Color get _dotColor {
     if (isActive) return color;
-    if (isDone)   return AppColors.success;
+    if (isDone) return AppColors.success;
     return const Color(0xFFE0E0E0);
   }
 
   @override
   Widget build(BuildContext context) {
     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
       // Timeline dot
       Container(
-        width: 28, height: 28,
+        width: 28,
+        height: 28,
         decoration: BoxDecoration(
           color: _dotColor.withValues(alpha: isActive ? 1.0 : 0.12),
           shape: BoxShape.circle,
@@ -532,12 +572,12 @@ class _RouteStop extends StatelessWidget {
 
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
           // Label + active badge
           Row(children: [
             Text(label,
                 style: TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
                   color: isActive ? color : AppColors.textTertiary,
                 )),
             if (isActive) ...[
@@ -550,7 +590,9 @@ class _RouteStop extends StatelessWidget {
                 ),
                 child: Text('Đang đến',
                     style: TextStyle(
-                      fontSize: 9, fontWeight: FontWeight.w700, color: color,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: color,
                     )),
               ),
             ],
@@ -562,7 +604,8 @@ class _RouteStop extends StatelessWidget {
           if (placeName != null && placeName!.isNotEmpty) ...[
             Text(placeName!,
                 style: const TextStyle(
-                  fontSize: 15, fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
                 )),
             const SizedBox(height: 2),
@@ -571,7 +614,9 @@ class _RouteStop extends StatelessWidget {
           // Address
           Text(address,
               style: const TextStyle(
-                fontSize: 12.5, color: AppColors.textSecondary, height: 1.4,
+                fontSize: 12.5,
+                color: AppColors.textSecondary,
+                height: 1.4,
               )),
 
           // Phone — tappable
@@ -592,7 +637,8 @@ class _RouteStop extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text(phone!,
                     style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.info,
                     )),
               ]),
@@ -604,7 +650,7 @@ class _RouteStop extends StatelessWidget {
           // Action pill buttons
           Row(children: [
             _PillBtn(
-              icon:  Icons.near_me_rounded,
+              icon: Icons.near_me_rounded,
               label: 'Dẫn đường',
               color: AppColors.primary,
               onTap: onNav,
@@ -612,7 +658,7 @@ class _RouteStop extends StatelessWidget {
             if (onCall != null) ...[
               const SizedBox(width: 8),
               _PillBtn(
-                icon:  Icons.call_rounded,
+                icon: Icons.call_rounded,
                 label: 'Gọi điện',
                 color: AppColors.success,
                 onTap: onCall,
@@ -632,29 +678,34 @@ class _PillBtn extends StatelessWidget {
   final String label;
   final Color color;
   final VoidCallback? onTap;
-  const _PillBtn({required this.icon, required this.label,
-      required this.color, required this.onTap});
+  const _PillBtn(
+      {required this.icon,
+      required this.label,
+      required this.color,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 14, color: color),
-        const SizedBox(width: 5),
-        Text(label,
-            style: TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w700, color: color,
-            )),
-      ]),
-    ),
-  );
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withValues(alpha: 0.2)),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 5),
+            Text(label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                )),
+          ]),
+        ),
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -665,7 +716,7 @@ class _TopupCard extends StatelessWidget {
   final OrderModel order;
   final Color color;
   final VoidCallback? onCall;
-  final VoidCallback  onNavigate;
+  final VoidCallback onNavigate;
 
   const _TopupCard({
     required this.order,
@@ -678,11 +729,11 @@ class _TopupCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return _card(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
         // ── Header ──────────────────────────────────────────────────
         const Text('Thông tin nạp tiền',
             style: TextStyle(
-              fontSize: 14, fontWeight: FontWeight.w800,
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
             )),
 
@@ -695,11 +746,13 @@ class _TopupCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.warning.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.warning.withValues(alpha: 0.2)),
+              border:
+                  Border.all(color: AppColors.warning.withValues(alpha: 0.2)),
             ),
             child: Row(children: [
               Container(
-                width: 44, height: 44,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: AppColors.warning.withValues(alpha: 0.13),
                   shape: BoxShape.circle,
@@ -711,14 +764,17 @@ class _TopupCard extends StatelessWidget {
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('Số tiền cần nạp',
                     style: TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
                       color: AppColors.warning,
                     )),
                 const SizedBox(height: 3),
                 Text(Fmt.currency(order.codAmount!),
                     style: const TextStyle(
-                      fontSize: 26, fontWeight: FontWeight.w900,
-                      color: AppColors.warning, letterSpacing: -0.5,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.warning,
+                      letterSpacing: -0.5,
                     )),
               ]),
             ]),
@@ -732,7 +788,8 @@ class _TopupCard extends StatelessWidget {
         // ── Phone row ────────────────────────────────────────────
         Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           Container(
-            width: 34, height: 34,
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
               color: AppColors.success.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(10),
@@ -741,19 +798,25 @@ class _TopupCard extends StatelessWidget {
                 size: 16, color: AppColors.success),
           ),
           const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('SĐT cần nạp',
-                style: TextStyle(
-                  fontSize: 11, color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w500,
-                )),
-            const SizedBox(height: 3),
-            Text(order.deliveryPhone,
-                style: const TextStyle(
-                  fontSize: 20, fontWeight: FontWeight.w900,
-                  color: AppColors.textPrimary, letterSpacing: -0.3,
-                )),
-          ])),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                const Text('SĐT cần nạp',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    )),
+                const SizedBox(height: 3),
+                Text(order.deliveryPhone,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textPrimary,
+                      letterSpacing: -0.3,
+                    )),
+              ])),
         ]),
 
         const SizedBox(height: 12),
@@ -763,7 +826,8 @@ class _TopupCard extends StatelessWidget {
         // ── Location row ─────────────────────────────────────────
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
-            width: 34, height: 34,
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(10),
@@ -771,18 +835,25 @@ class _TopupCard extends StatelessWidget {
             child: Icon(Icons.location_on_rounded, size: 16, color: color),
           ),
           const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Điểm nạp tiền',
-                style: TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.w600, color: color,
-                )),
-            const SizedBox(height: 3),
-            Text(order.pickupAddress,
-                style: const TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary, height: 1.4,
-                )),
-          ])),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text('Điểm nạp tiền',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: color,
+                    )),
+                const SizedBox(height: 3),
+                Text(order.pickupAddress,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                      height: 1.4,
+                    )),
+              ])),
         ]),
 
         const SizedBox(height: 16),
@@ -803,11 +874,10 @@ class _TopupCard extends StatelessWidget {
               icon: Icons.call_rounded,
               label: 'Gọi điện',
               color: AppColors.success,
-              onTap: onCall ?? () {},
+              onTap: onCall,
             ),
           ),
         ]),
-
       ]),
     );
   }
@@ -826,7 +896,9 @@ class _NoteCard extends StatelessWidget {
   Widget _buildNoteWithPhoneLinks(String text) {
     final matches = _phoneRegex.allMatches(text).toList();
     if (matches.isEmpty) {
-      return Text(text, style: const TextStyle(fontSize: 13, color: AppColors.textPrimary, height: 1.5));
+      return Text(text,
+          style: const TextStyle(
+              fontSize: 13, color: AppColors.textPrimary, height: 1.5));
     }
 
     final spans = <InlineSpan>[];
@@ -839,12 +911,18 @@ class _NoteCard extends StatelessWidget {
       spans.add(WidgetSpan(
         alignment: PlaceholderAlignment.middle,
         child: GestureDetector(
-          onTap: () => launchUrl(Uri.parse('tel:$phone')),
-          child: Text(phone, style: const TextStyle(
-            fontSize: 13, color: Colors.blue, height: 1.5,
-            decoration: TextDecoration.underline,
-            decorationColor: Colors.blue,
-          )),
+          onTap: () async {
+            final uri = Uri.parse('tel:$phone');
+            if (await canLaunchUrl(uri)) launchUrl(uri);
+          },
+          child: Text(phone,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.blue,
+                height: 1.5,
+                decoration: TextDecoration.underline,
+                decorationColor: Colors.blue,
+              )),
         ),
       ));
       lastEnd = m.end;
@@ -852,35 +930,44 @@ class _NoteCard extends StatelessWidget {
     if (lastEnd < text.length) {
       spans.add(TextSpan(text: text.substring(lastEnd)));
     }
-    return RichText(text: TextSpan(
-      style: const TextStyle(fontSize: 13, color: AppColors.textPrimary, height: 1.5),
+    return RichText(
+        text: TextSpan(
+      style: const TextStyle(
+          fontSize: 13, color: AppColors.textPrimary, height: 1.5),
       children: spans,
     ));
   }
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-    decoration: BoxDecoration(
-      color: const Color(0xFFFFF8E1),
-      borderRadius: BorderRadius.circular(AppRadius.card),
-      border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.30)),
-      boxShadow: AppColors.cardShadow,
-    ),
-    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Icon(Icons.sticky_note_2_outlined, size: 18, color: AppColors.warning),
-      const SizedBox(width: 10),
-      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('GHI CHÚ',
-            style: TextStyle(
-              fontSize: 10, fontWeight: FontWeight.w700,
-              color: AppColors.warning, letterSpacing: 0.5,
-            )),
-        const SizedBox(height: 4),
-        _buildNoteWithPhoneLinks(note),
-      ])),
-    ]),
-  );
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF8E1),
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          border: Border.all(
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.30)),
+          boxShadow: AppColors.cardShadow,
+        ),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Icon(Icons.sticky_note_2_outlined,
+              size: 18, color: AppColors.warning),
+          const SizedBox(width: 10),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                const Text('GHI CHÚ',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.warning,
+                      letterSpacing: 0.5,
+                    )),
+                const SizedBox(height: 4),
+                _buildNoteWithPhoneLinks(note),
+              ])),
+        ]),
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -903,18 +990,25 @@ class _BatchStopsCardState extends ConsumerState<_BatchStopsCard> {
     if (_delivering.contains(seq)) return;
     setState(() => _delivering.add(seq));
     try {
-      final res = await ref.read(apiClientProvider).post(
-          '/orders/${widget.order.code}/stops/$seq/deliver');
+      final res = await ref
+          .read(apiClientProvider)
+          .post('/orders/${widget.order.code}/stops/$seq/deliver');
       final completed = res.data['completed'] as bool? ?? false;
       if (!mounted) return;
       setState(() => _delivering.remove(seq));
-      ref.read(activeOrderProvider.notifier).fetch();
+      // Đợi fetch xong rồi mới điều hướng — tránh Home render lúc state
+      // active order còn cũ nếu request refresh bị chậm/lỗi.
+      await ref.read(activeOrderProvider.notifier).fetch();
+      if (!mounted) return;
       if (completed) widget.onCompleted?.call();
     } catch (e) {
       if (mounted) {
         setState(() => _delivering.remove(seq));
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: $e'), backgroundColor: AppColors.danger),
+          const SnackBar(
+            content: Text('Không thể cập nhật điểm giao. Vui lòng thử lại.'),
+            backgroundColor: AppColors.danger,
+          ),
         );
       }
     }
@@ -922,13 +1016,12 @@ class _BatchStopsCardState extends ConsumerState<_BatchStopsCard> {
 
   @override
   Widget build(BuildContext context) {
-    final stops      = widget.order.stops;
-    final delivered  = stops.where((s) => s['delivered_at'] != null).length;
+    final stops = widget.order.stops;
+    final delivered = stops.where((s) => s['delivered_at'] != null).length;
     final canDeliver = widget.order.status == 'processing';
 
     return _card(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
         // Header
         Row(children: [
           Icon(Icons.route_rounded, size: 13, color: AppColors.textTertiary),
@@ -936,8 +1029,10 @@ class _BatchStopsCardState extends ConsumerState<_BatchStopsCard> {
           Text(
             'CÁC ĐIỂM GIAO ($delivered/${stops.length})',
             style: const TextStyle(
-              fontSize: 10, fontWeight: FontWeight.w700,
-              color: AppColors.textTertiary, letterSpacing: 0.5,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textTertiary,
+              letterSpacing: 0.5,
             ),
           ),
         ]),
@@ -959,83 +1054,103 @@ class _BatchStopsCardState extends ConsumerState<_BatchStopsCard> {
 
         // Stops list
         ...stops.asMap().entries.map((e) {
-          final i       = e.key;
-          final stop    = e.value;
-          final seq     = stop['seq']       as int?    ?? (i + 1);
-          final isDone  = stop['delivered_at'] != null;
-          final addr    = stop['address']   as String? ?? '';
-          final phone   = stop['phone']     as String? ?? '';
-          final name    = stop['name']      as String? ?? '';
-          final cod     = (stop['cod_amount'] as num?)?.toInt() ?? 0;
+          final i = e.key;
+          final stop = e.value;
+          final seq = stop['seq'] as int? ?? (i + 1);
+          final isDone = stop['delivered_at'] != null;
+          final addr = stop['address'] as String? ?? '';
+          final phone = stop['phone'] as String? ?? '';
+          final name = stop['name'] as String? ?? '';
+          final cod = (stop['cod_amount'] as num?)?.toInt() ?? 0;
           final loading = _delivering.contains(seq);
 
           return Column(children: [
             if (i > 0) const Divider(height: 20, color: AppColors.divider),
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
               // Seq badge
               Container(
-                width: 28, height: 28,
+                width: 28,
+                height: 28,
                 decoration: BoxDecoration(
                   color: isDone ? AppColors.success : AppColors.primary,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
                   child: isDone
-                      ? const Icon(Icons.check_rounded, size: 15, color: Colors.white)
+                      ? const Icon(Icons.check_rounded,
+                          size: 15, color: Colors.white)
                       : Text('$seq',
                           style: const TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white)),
                 ),
               ),
 
               const SizedBox(width: 10),
 
               // Info
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                if (name.isNotEmpty)
-                  Text(name,
-                      style: TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w700,
-                        color: isDone ? AppColors.textSecondary : AppColors.textPrimary,
-                        decoration: isDone ? TextDecoration.lineThrough : null,
-                        decorationColor: AppColors.textSecondary,
-                      )),
-                Text(addr,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDone ? AppColors.textSecondary : AppColors.textPrimary,
-                    ),
-                    maxLines: 2, overflow: TextOverflow.ellipsis),
-                if (phone.isNotEmpty)
-                  GestureDetector(
-                    onTap: () => launchUrl(Uri.parse('tel:$phone')),
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 3),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(Icons.phone_rounded, size: 12, color: AppColors.info),
-                        const SizedBox(width: 4),
-                        Text(phone,
+              Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    if (name.isNotEmpty)
+                      Text(name,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: isDone
+                                ? AppColors.textSecondary
+                                : AppColors.textPrimary,
+                            decoration:
+                                isDone ? TextDecoration.lineThrough : null,
+                            decorationColor: AppColors.textSecondary,
+                          )),
+                    Text(addr,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDone
+                              ? AppColors.textSecondary
+                              : AppColors.textPrimary,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis),
+                    if (phone.isNotEmpty)
+                      GestureDetector(
+                        onTap: () async {
+                          final uri = Uri.parse('tel:$phone');
+                          if (await canLaunchUrl(uri)) launchUrl(uri);
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 3),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.phone_rounded,
+                                size: 12, color: AppColors.info),
+                            const SizedBox(width: 4),
+                            Text(phone,
+                                style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.info,
+                                    fontWeight: FontWeight.w600)),
+                          ]),
+                        ),
+                      ),
+                    if (cod > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 3),
+                        child: Text('Thu COD: ${Fmt.currency(cod)}',
                             style: const TextStyle(
-                                fontSize: 11, color: AppColors.info,
+                                fontSize: 11,
+                                color: AppColors.warning,
                                 fontWeight: FontWeight.w600)),
-                      ]),
-                    ),
-                  ),
-                if (cod > 0)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 3),
-                    child: Text('Thu COD: ${Fmt.currency(cod)}',
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.warning,
-                            fontWeight: FontWeight.w600)),
-                  ),
-              ])),
+                      ),
+                  ])),
 
               // Action
               if (!isDone)
                 SizedBox(
-                  width: 76, height: 34,
+                  width: 76,
+                  height: 34,
                   child: FilledButton(
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.success,
@@ -1043,11 +1158,16 @@ class _BatchStopsCardState extends ConsumerState<_BatchStopsCard> {
                       minimumSize: Size.zero,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(9)),
-                      textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                      textStyle: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w700),
                     ),
-                    onPressed: (!canDeliver || loading) ? null : () => _deliverStop(seq),
+                    onPressed: (!canDeliver || loading)
+                        ? null
+                        : () => _deliverStop(seq),
                     child: loading
-                        ? const SizedBox(width: 15, height: 15,
+                        ? const SizedBox(
+                            width: 15,
+                            height: 15,
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white))
                         : const Text('Đã giao'),
@@ -1077,11 +1197,11 @@ class _EarningCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return _card(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
         // ── Header ──────────────────────────────────────────────────
         const Text('Thu nhập đơn này',
             style: TextStyle(
-              fontSize: 14, fontWeight: FontWeight.w800,
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
             )),
 
@@ -1094,11 +1214,13 @@ class _EarningCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.success.withValues(alpha: 0.07),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.success.withValues(alpha: 0.18)),
+            border:
+                Border.all(color: AppColors.success.withValues(alpha: 0.18)),
           ),
           child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
             Container(
-              width: 44, height: 44,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 color: AppColors.success.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
@@ -1108,38 +1230,46 @@ class _EarningCard extends StatelessWidget {
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Tài xế nhận',
-                    style: TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
-                    )),
-                const SizedBox(height: 3),
-                Text(Fmt.currency(order.driverEarning),
-                    style: const TextStyle(
-                      fontSize: 26, fontWeight: FontWeight.w900,
-                      color: AppColors.success, letterSpacing: -0.5,
-                    )),
-                if (order.hasDiscount && order.discountAmount > 0) ...[
-                  const SizedBox(height: 3),
-                  Text(
-                    order.driverEarning == 0
-                        ? 'Tiền ship cộng vào ví sau hoàn thành'
-                        : '+ ${Fmt.currency(order.discountAmount)} cộng thêm vào ví',
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.success,
-                        fontWeight: FontWeight.w500),
-                  ),
-                ],
-              ]),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Tài xế nhận',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        )),
+                    const SizedBox(height: 3),
+                    Text(Fmt.currency(order.driverEarning),
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.success,
+                          letterSpacing: -0.5,
+                        )),
+                    if (order.hasDiscount && order.discountAmount > 0) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        order.driverEarning == 0
+                            ? 'Tiền ship cộng vào ví sau hoàn thành'
+                            : '+ ${Fmt.currency(order.discountAmount)} cộng thêm vào ví',
+                        style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.success,
+                            fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ]),
             ),
             if (order.isCod)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: AppColors.warning.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+                  border: Border.all(
+                      color: AppColors.warning.withValues(alpha: 0.3)),
                 ),
                 child: Column(children: [
                   const Icon(Icons.monetization_on_rounded,
@@ -1147,7 +1277,8 @@ class _EarningCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   const Text('Thu tiền',
                       style: TextStyle(
-                        fontSize: 9, fontWeight: FontWeight.w800,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
                         color: AppColors.warning,
                       )),
                 ]),
@@ -1194,11 +1325,13 @@ class _EarningCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.warning.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.warning.withValues(alpha: 0.2)),
+              border:
+                  Border.all(color: AppColors.warning.withValues(alpha: 0.2)),
             ),
             child: Row(children: [
               Container(
-                width: 38, height: 38,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
                   color: AppColors.warning.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(10),
@@ -1209,18 +1342,20 @@ class _EarningCard extends StatelessWidget {
               const SizedBox(width: 12),
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('Tiền ứng mua hàng',
-                    style: TextStyle(fontSize: 11, color: AppColors.warning,
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.warning,
                         fontWeight: FontWeight.w600)),
                 const SizedBox(height: 3),
                 Text(Fmt.currency(order.codAmount!),
                     style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
                         color: AppColors.warning)),
               ]),
             ]),
           ),
         ],
-
       ]),
     );
   }
@@ -1239,14 +1374,15 @@ class _FeeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(children: [
-    Expanded(
-      child: Text(label,
-          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-    ),
-    Text(value,
-        style: TextStyle(
-            fontSize: 13, fontWeight: FontWeight.w700, color: valueColor)),
-  ]);
+        Expanded(
+          child: Text(label,
+              style: const TextStyle(
+                  fontSize: 13, color: AppColors.textSecondary)),
+        ),
+        Text(value,
+            style: TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w700, color: valueColor)),
+      ]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1286,9 +1422,9 @@ class _BottomBar extends StatelessWidget {
         ],
       ),
       child: _SwipeButton(
-        label:     order.nextAction,
-        color:     isLast ? AppColors.success : color,
-        loading:   actionLoading,
+        label: order.nextAction,
+        color: isLast ? AppColors.success : color,
+        loading: actionLoading,
         onConfirm: onAction,
       ),
     );
@@ -1318,15 +1454,15 @@ class _SwipeButton extends StatefulWidget {
 
 class _SwipeButtonState extends State<_SwipeButton>
     with SingleTickerProviderStateMixin {
-  static const double _h     = 58.0;
+  static const double _h = 58.0;
   static const double _thumb = 50.0;
-  static const double _pad   = 4.0;
+  static const double _pad = 4.0;
 
-  double _dragX     = 0;
-  bool   _triggered = false;
+  double _dragX = 0;
+  bool _triggered = false;
 
   late AnimationController _ctrl;
-  late Animation<double>   _snapAnim;
+  late Animation<double> _snapAnim;
 
   @override
   void initState() {
@@ -1349,10 +1485,17 @@ class _SwipeButtonState extends State<_SwipeButton>
   void _onEnd(DragEndDetails d, double max) {
     if (_triggered || widget.loading) return;
     if (_dragX >= max * 0.82) {
-      setState(() { _dragX = max; _triggered = true; });
+      setState(() {
+        _dragX = max;
+        _triggered = true;
+      });
       widget.onConfirm?.call();
       Future.delayed(const Duration(milliseconds: 800), () {
-        if (mounted) setState(() { _dragX = 0; _triggered = false; });
+        if (mounted)
+          setState(() {
+            _dragX = 0;
+            _triggered = false;
+          });
       });
     } else {
       _snapAnim = Tween<double>(begin: _dragX, end: 0).animate(
@@ -1367,7 +1510,7 @@ class _SwipeButtonState extends State<_SwipeButton>
     return SizedBox(
       height: _h,
       child: LayoutBuilder(builder: (ctx, box) {
-        final max      = box.maxWidth - _thumb - _pad * 2;
+        final max = box.maxWidth - _thumb - _pad * 2;
         final progress = max > 0 ? (_dragX / max).clamp(0.0, 1.0) : 0.0;
 
         return Container(
@@ -1377,7 +1520,6 @@ class _SwipeButtonState extends State<_SwipeButton>
             border: Border.all(color: widget.color.withValues(alpha: 0.30)),
           ),
           child: Stack(children: [
-
             // Fill progress
             Positioned.fill(
               child: FractionallySizedBox(
@@ -1414,20 +1556,25 @@ class _SwipeButtonState extends State<_SwipeButton>
             // Thumb
             Positioned(
               left: _pad + _dragX,
-              top:  _pad,
+              top: _pad,
               child: GestureDetector(
                 onHorizontalDragUpdate: (d) => _onUpdate(d, max),
-                onHorizontalDragEnd:   (d) => _onEnd(d, max),
+                onHorizontalDragEnd: (d) => _onEnd(d, max),
                 child: Container(
-                  width: _thumb, height: _thumb,
+                  width: _thumb,
+                  height: _thumb,
                   decoration: BoxDecoration(
-                    color: widget.loading ? AppColors.textSecondary : widget.color,
+                    color:
+                        widget.loading ? AppColors.textSecondary : widget.color,
                     borderRadius: BorderRadius.circular(13),
                   ),
                   child: widget.loading
-                      ? const Center(child: SizedBox(width: 20, height: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white)))
+                      ? const Center(
+                          child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white)))
                       : const Icon(Icons.arrow_forward_ios_rounded,
                           color: Colors.white, size: 20),
                 ),
@@ -1445,17 +1592,18 @@ class _SwipeButtonState extends State<_SwipeButton>
 // ─────────────────────────────────────────────────────────────────────────────
 
 Widget _card({required Widget child}) => Container(
-  width: double.infinity,
-  padding: const EdgeInsets.all(16),
-  decoration: BoxDecoration(
-    color: Colors.white,
-    borderRadius: BorderRadius.circular(16),
-    boxShadow: [
-      BoxShadow(
-        color: Colors.black.withValues(alpha: 0.05),
-        blurRadius: 10, offset: const Offset(0, 2),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-    ],
-  ),
-  child: child,
-);
+      child: child,
+    );

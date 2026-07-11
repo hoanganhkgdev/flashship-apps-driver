@@ -12,6 +12,18 @@ import 'offer_listener_service.dart';
 
 final _localNotif = FlutterLocalNotificationsPlugin();
 
+/// Banner offer chỉ nên sống đến lúc đơn hết hạn — tính từ expires_at server
+/// gửi kèm (epoch giây). Không có/không hợp lệ thì mặc định 25s.
+int _offerTimeoutMs(Map<String, dynamic> data) {
+  final exp = int.tryParse('${data['expires_at'] ?? ''}') ?? 0;
+  if (exp > 0) {
+    final remain = exp * 1000 - DateTime.now().millisecondsSinceEpoch;
+    if (remain <= 1000) return 1000; // đã hết hạn từ trước — tắt gần như ngay
+    if (remain < 60000) return remain;
+  }
+  return 25000;
+}
+
 @pragma('vm:entry-point')
 Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
@@ -31,6 +43,9 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
       vibrationPattern: Int64List.fromList([0, 500, 200, 500, 200, 500, 200, 500, 200, 500]),
       fullScreenIntent: false,
       category: AndroidNotificationCategory.call,
+      // Tự biến mất đúng lúc offer hết hạn — không để tài xế bấm vào xác
+      // thông báo của đơn đã chuyển người khác.
+      timeoutAfter: _offerTimeoutMs(data),
     );
 
     const iosDetails = DarwinNotificationDetails(
@@ -52,6 +67,11 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
 
 class NotificationService {
   static final _fcm = FirebaseMessaging.instance;
+
+  /// Xoá banner offer khỏi khay khi offer bị thu hồi
+  /// (hết hạn / người khác nhận / khách huỷ).
+  static Future<void> cancelOfferNotification(String orderCode) =>
+      _localNotif.cancel(orderCode.hashCode);
 
   static StreamSubscription? _tokenRefreshSub;
   static StreamSubscription? _onMessageSub;
@@ -118,14 +138,15 @@ class NotificationService {
           (data['order_code'] ?? '').hashCode,
           'Có đơn hàng mới!',
           'Nhấn để xem và nhận đơn hàng',
-          const NotificationDetails(
+          NotificationDetails(
             android: AndroidNotificationDetails(
               'order_offer_channel', 'Đơn hàng mới',
               importance: Importance.max, priority: Priority.high,
-              sound: RawResourceAndroidNotificationSound('order_offer'),
+              sound: const RawResourceAndroidNotificationSound('order_offer'),
               playSound: true,
+              timeoutAfter: _offerTimeoutMs(data),
             ),
-            iOS: DarwinNotificationDetails(
+            iOS: const DarwinNotificationDetails(
               sound: 'order_offer.aiff',
               presentSound: true,
               interruptionLevel: InterruptionLevel.timeSensitive,

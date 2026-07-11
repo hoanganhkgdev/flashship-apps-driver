@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/widgets.dart';
 import '../router/app_router.dart';
+import 'notification_service.dart';
 
 /// Lắng nghe RTDB path dispatch/driver_{id}/offer.
 /// Khi backend ghi offer → navigate tới màn hình offer.
@@ -15,6 +16,7 @@ class OfferListenerService {
   StreamSubscription? _sub;
   int? _driverId;
   bool _offerVisible = false;
+  String? _lastOrderCode;
 
   /// Callback được set bởi HomeScreen để reset tab khi offer bị dismiss
   VoidCallback? onOfferDismissed;
@@ -46,6 +48,9 @@ class OfferListenerService {
     final data = event.snapshot.value;
 
     if (data == null) {
+      // Offer bị thu hồi (hết hạn / người khác nhận / khách huỷ)
+      // → xoá luôn banner trong khay để không bấm vào đơn đã chết.
+      _cancelOfferBanner();
       if (_offerVisible) {
         _offerVisible = false;
         _navigateHome();
@@ -55,10 +60,12 @@ class OfferListenerService {
 
     if (data is! Map) return;
     final offer = Map<String, dynamic>.from(data);
+    _lastOrderCode = '${offer['order_code'] ?? ''}';
 
     final expiresAt = (offer['expires_at'] as num?)?.toInt() ?? 0;
     final remaining = expiresAt - DateTime.now().millisecondsSinceEpoch ~/ 1000;
     if (remaining <= 0) {
+      _cancelOfferBanner();
       _clearOffer();
       return;
     }
@@ -66,6 +73,14 @@ class OfferListenerService {
     if (!_offerVisible) {
       _offerVisible = true;
       _navigateToOffer(offer);
+    }
+  }
+
+  void _cancelOfferBanner() {
+    final code = _lastOrderCode;
+    if (code != null && code.isNotEmpty) {
+      NotificationService.cancelOfferNotification(code);
+      _lastOrderCode = null;
     }
   }
 

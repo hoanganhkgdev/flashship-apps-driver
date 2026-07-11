@@ -1491,11 +1491,12 @@ class _SwipeButtonState extends State<_SwipeButton>
       });
       widget.onConfirm?.call();
       Future.delayed(const Duration(milliseconds: 800), () {
-        if (mounted)
+        if (mounted) {
           setState(() {
             _dragX = 0;
             _triggered = false;
           });
+        }
       });
     } else {
       _snapAnim = Tween<double>(begin: _dragX, end: 0).animate(

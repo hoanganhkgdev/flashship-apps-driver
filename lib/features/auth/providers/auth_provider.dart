@@ -91,6 +91,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// Đọc message lỗi an toàn — server có thể trả non-JSON (HTML 502/503),
+  /// truy cập thẳng data['message'] sẽ nổ ngay trong khối catch.
+  static String _dioMsg(DioException e, String fallback) {
+    final data = e.response?.data;
+    if (data is Map) {
+      final msg = data['message'];
+      if (msg is String && msg.isNotEmpty) return msg;
+    }
+    return fallback;
+  }
+
   Future<bool> sendOtp(String phone) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
@@ -99,8 +110,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(isLoading: false);
       return true;
     } on DioException catch (e) {
-      final msg = e.response?.data['message'] as String? ?? 'Không thể gửi OTP';
-      state = state.copyWith(isLoading: false, error: msg);
+      state = state.copyWith(isLoading: false, error: _dioMsg(e, 'Không thể gửi OTP'));
       return false;
     } catch (_) {
       state = state.copyWith(isLoading: false, error: 'Có lỗi xảy ra. Vui lòng thử lại.');
@@ -113,7 +123,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String otp,
     required String name,
     required String password,
-    required String cccd,
     int? cityId,
     String? avatarPath,
   }) async {
@@ -125,7 +134,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
         'otp':      otp,
         'name':     name,
         'password': password,
-        'cccd':     cccd,
         if (cityId != null) 'city_id': cityId,
         if (avatarPath != null)
           'avatar': await MultipartFile.fromFile(avatarPath, filename: 'avatar.jpg'),
@@ -135,40 +143,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _saveSession(payload);
       return true;
     } on DioException catch (e) {
-      final msg = e.response?.data['message'] as String? ?? 'Xác thực thất bại';
-      state = state.copyWith(isLoading: false, error: msg);
-      return false;
-    } catch (_) {
-      state = state.copyWith(isLoading: false, error: 'Có lỗi xảy ra. Vui lòng thử lại.');
-      return false;
-    }
-  }
-
-  Future<bool> register({
-    required String name,
-    required String phone,
-    required String password,
-    required int cityId,
-    double? latitude,
-    double? longitude,
-  }) async {
-    state = state.copyWith(isLoading: true, error: null);
-    try {
-      final api = ApiClient(null);
-      final res = await api.post('/auth/register', data: {
-        'name':      name,
-        'phone':     phone,
-        'password':  password,
-        'city_id':   cityId,
-        if (latitude != null) 'latitude': latitude,
-        if (longitude != null) 'longitude': longitude,
-      });
-      final payload = (res.data['data'] ?? res.data) as Map<String, dynamic>;
-      await _saveSession(payload);
-      return true;
-    } on DioException catch (e) {
-      final msg = e.response?.data['message'] as String? ?? 'Đăng ký thất bại';
-      state = state.copyWith(isLoading: false, error: msg);
+      state = state.copyWith(isLoading: false, error: _dioMsg(e, 'Xác thực thất bại'));
       return false;
     } catch (_) {
       state = state.copyWith(isLoading: false, error: 'Có lỗi xảy ra. Vui lòng thử lại.');

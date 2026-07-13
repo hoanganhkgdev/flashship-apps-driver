@@ -79,7 +79,6 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       otp:        otp,
       name:       data['name']     as String? ?? '',
       password:   data['password'] as String? ?? '',
-      cccd:       data['cccd']     as String? ?? '',
       cityId:     data['city_id']  as int?,
       avatarPath: data['avatar']   as String?,
     );

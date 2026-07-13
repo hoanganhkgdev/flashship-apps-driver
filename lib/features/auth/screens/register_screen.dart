@@ -108,7 +108,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       'phone':    phone,
       'name':     _nameCtrl.text.trim(),
       'password': _passwordCtrl.text,
-      'cccd':     '',
       'city_id':  _selectedCity!.id,
       'avatar':   null,
     });

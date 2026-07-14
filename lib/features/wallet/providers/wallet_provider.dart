@@ -164,16 +164,6 @@ class WalletNotifier extends StateNotifier<WalletState> {
       return false;
     }
   }
-
-  Future<bool> payDebt(int debtId) async {
-    try {
-      await _ref.read(apiClientProvider).post('/debts/$debtId/pay/wallet');
-      await fetch();
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
 }
 
 final walletProvider = StateNotifierProvider<WalletNotifier, WalletState>(

@@ -6,7 +6,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/wallet_model.dart';
 import '../providers/wallet_provider.dart';
-import '../widgets/payment_qr_sheet.dart';
 
 class WalletScreen extends ConsumerStatefulWidget {
   const WalletScreen({super.key});
@@ -48,7 +47,6 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                   balance:      wallet.balance,
                   loading:      wallet.loading,
                   balanceError: wallet.balanceError,
-                  onTopUp:      () => _showTopUp(context),
                   onWithdraw:   () => _showWithdraw(context),
                 ),
 
@@ -75,91 +73,6 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
   }
 
   // ── Sheets ─────────────────────────────────────────────────────────────────
-
-  Future<void> _showTopUp(BuildContext context) async {
-    final ctrl = TextEditingController();
-    final amount = await showModalBottomSheet<int>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(20, 8, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const SizedBox(height: 8),
-          const Text('Nạp tiền vào ví',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-          const SizedBox(height: 4),
-          const Text('Quét QR để nạp tiền vào ví FlashShip',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-          const SizedBox(height: 20),
-          TextField(
-            controller: ctrl,
-            keyboardType: TextInputType.number,
-            autofocus: true,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
-            decoration: InputDecoration(
-              hintText: 'Nhập số tiền (đ)',
-              hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 15),
-              filled: true,
-              fillColor: const Color(0xFFF5F5F5),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-              focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8, runSpacing: 8,
-            children: [50000, 100000, 200000, 500000].map((v) => GestureDetector(
-              onTap: () => ctrl.text = v.toString(),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F5F5),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(Fmt.currency(v),
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-              ),
-            )).toList(),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity, height: 50,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-              onPressed: () {
-                final v = int.tryParse(ctrl.text.replaceAll(RegExp(r'\D'), ''));
-                if (v == null || v < 10000) return;
-                Navigator.pop(ctx, v);
-              },
-              child: const Text('Tạo QR thanh toán',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
-            ),
-          ),
-        ]),
-      ),
-    );
-
-    if (amount == null || !context.mounted) return;
-    final paid = await PaymentQrSheet.show(
-      context, type: 'topup', amount: amount, label: 'Nạp ví FlashShip',
-    );
-    if (paid && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Nạp tiền thành công!'),
-        backgroundColor: AppColors.success,
-      ));
-    }
-  }
 
   Future<void> _showWithdraw(BuildContext context) async {
     final wallet    = ref.read(walletProvider);
@@ -191,14 +104,12 @@ class _WalletHeader extends StatelessWidget {
   final int balance;
   final bool loading;
   final bool balanceError;
-  final VoidCallback onTopUp;
   final VoidCallback onWithdraw;
 
   const _WalletHeader({
     required this.balance,
     required this.loading,
     this.balanceError = false,
-    required this.onTopUp,
     required this.onWithdraw,
   });
 
@@ -304,22 +215,16 @@ class _WalletHeader extends StatelessWidget {
 
                     const SizedBox(height: 24),
 
-                    // Action buttons
-                    Row(children: [
-                      Expanded(child: _HeaderBtn(
-                        icon: Icons.add_rounded,
-                        label: 'Nạp tiền',
-                        filled: true,
-                        onTap: onTopUp,
-                      )),
-                      const SizedBox(width: 12),
-                      Expanded(child: _HeaderBtn(
+                    // Action button
+                    SizedBox(
+                      width: double.infinity,
+                      child: _HeaderBtn(
                         icon: Icons.arrow_upward_rounded,
                         label: 'Rút tiền',
-                        filled: false,
+                        filled: true,
                         onTap: onWithdraw,
-                      )),
-                    ]),
+                      ),
+                    ),
                   ],
                 ),
               ),

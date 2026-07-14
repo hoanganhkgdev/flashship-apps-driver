@@ -1295,6 +1295,17 @@ class _EarningCard extends StatelessWidget {
           label: 'Phí giao hàng',
           value: Fmt.currency(order.shippingFee + order.discountAmount),
         ),
+        // Phụ phí đêm khuya đã được cộng sẵn vào "Phí giao hàng" ở trên (backend
+        // tính fee = base + surcharge) — hiện tách dòng để tài xế biết vì sao
+        // phí cao hơn bình thường, không phải cộng thêm vào tổng.
+        if (order.nightSurcharge > 0) ...[
+          const SizedBox(height: 8),
+          _FeeRow(
+            label: '· Gồm phụ phí đêm khuya',
+            value: Fmt.currency(order.nightSurcharge),
+            valueColor: AppColors.textSecondary,
+          ),
+        ],
         if (order.hasDiscount) ...[
           const SizedBox(height: 8),
           _FeeRow(

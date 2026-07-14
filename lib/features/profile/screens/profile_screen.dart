@@ -63,61 +63,67 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _loadData() async {
-    try {
-      final results = await Future.wait([
-        ref.read(apiClientProvider).get('/driver/profile'),
-        ref.read(apiClientProvider).get('/driver/stats'),
-        ref.read(apiClientProvider).get('/driver/score'),
-      ]);
+    // Chạy độc lập — 1 API lỗi (vd /driver/stats timeout) không được làm
+    // trắng cả trang, kể cả khi profile/score đã lấy được bình thường.
+    Map<String, dynamic>? profileData;
+    Map<String, dynamic>? statsData;
+    Map<String, dynamic>? scoreData;
 
-      final profileData =
-          ((results[0].data['data'] ?? results[0].data) as Map<String, dynamic>)['user']
-              as Map<String, dynamic>?;
-      final statsData =
-          (results[1].data['data'] ?? results[1].data) as Map<String, dynamic>?;
-      final scoreData =
-          (results[2].data['data'] ?? results[2].data) as Map<String, dynamic>?;
+    await Future.wait([
+      ref.read(apiClientProvider).get('/driver/profile').then((r) {
+        profileData = ((r.data['data'] ?? r.data) as Map<String, dynamic>)['user']
+            as Map<String, dynamic>?;
+      }).catchError((_) {}),
+      ref.read(apiClientProvider).get('/driver/stats').then((r) {
+        statsData = (r.data['data'] ?? r.data) as Map<String, dynamic>?;
+      }).catchError((_) {}),
+      ref.read(apiClientProvider).get('/driver/score').then((r) {
+        scoreData = (r.data['data'] ?? r.data) as Map<String, dynamic>?;
+      }).catchError((_) {}),
+    ]);
 
-      if (mounted) {
-        setState(() {
-          if (profileData != null) {
-            _cityName        = profileData['city_name'] as String?;
-            _photoUrl        = profileData['profile_photo_url'] as String?;
-            _rating          = profileData['rating'] == null
-                ? null
-                : double.tryParse(profileData['rating'].toString());
-            _licenseStatus   = profileData['license_status'] as String?;
-            _cccdImageStatus = profileData['cccd_image_status'] as String?;
-            _vehicleType     = profileData['vehicle_type'] as String?;
-            _licensePlate    = profileData['license_plate'] as String?;
-            _balance         = (profileData['balance'] as num?)?.toInt();
-            _bankName        = profileData['bank_name'] as String?;
-            _bankAccount     = profileData['bank_account'] as String?;
-            _deleteRequested = profileData['delete_requested_at'] != null;
-            _nameLocked      = profileData['name_locked'] as bool? ?? false;
-            _avatarLocked    = profileData['avatar_locked'] as bool? ?? false;
-            final nextRaw    = profileData['avatar_next_update_at'] as String?;
-            _avatarNextUpdate = nextRaw != null ? DateTime.tryParse(nextRaw) : null;
-          }
-          if (statsData != null) {
-            _acceptanceRate = statsData['acceptance_rate'] as int?;
-            _completionRate = statsData['completion_rate'] as int?;
-          }
-          if (scoreData != null) {
-            _score        = scoreData['score']     as int?;
-            _maxScore     = scoreData['max_score'] as int?;
-            _scoreLabel   = scoreData['label']     as String?;
-            final week    = scoreData['week']      as Map<String, dynamic>?;
-            _scoreBonusAt   = (week?['bonus_at']   as num?)?.toInt();
-            _scorePenaltyAt = (week?['penalty_at'] as num?)?.toInt();
-            _scoreBonusAmt  = (week?['bonus_amount']   as num?)?.toInt();
-            _scorePenaltyAmt= (week?['penalty_amount'] as num?)?.toInt();
-            final streak  = scoreData['streak']    as Map<String, dynamic>?;
-            _scoreStreak  = (streak?['count']      as num?)?.toInt();
-          }
-        });
-      }
-    } catch (_) {}
+    if (mounted) {
+      setState(() {
+        final p = profileData;
+        if (p != null) {
+          _cityName        = p['city_name'] as String?;
+          _photoUrl        = p['profile_photo_url'] as String?;
+          _rating          = p['rating'] == null
+              ? null
+              : double.tryParse(p['rating'].toString());
+          _licenseStatus   = p['license_status'] as String?;
+          _cccdImageStatus = p['cccd_image_status'] as String?;
+          _vehicleType     = p['vehicle_type'] as String?;
+          _licensePlate    = p['license_plate'] as String?;
+          _balance         = (p['balance'] as num?)?.toInt();
+          _bankName        = p['bank_name'] as String?;
+          _bankAccount     = p['bank_account'] as String?;
+          _deleteRequested = p['delete_requested_at'] != null;
+          _nameLocked      = p['name_locked'] as bool? ?? false;
+          _avatarLocked    = p['avatar_locked'] as bool? ?? false;
+          final nextRaw    = p['avatar_next_update_at'] as String?;
+          _avatarNextUpdate = nextRaw != null ? DateTime.tryParse(nextRaw) : null;
+        }
+        final s = statsData;
+        if (s != null) {
+          _acceptanceRate = s['acceptance_rate'] as int?;
+          _completionRate = s['completion_rate'] as int?;
+        }
+        final sc = scoreData;
+        if (sc != null) {
+          _score        = sc['score']     as int?;
+          _maxScore     = sc['max_score'] as int?;
+          _scoreLabel   = sc['label']     as String?;
+          final week    = sc['week']      as Map<String, dynamic>?;
+          _scoreBonusAt   = (week?['bonus_at']   as num?)?.toInt();
+          _scorePenaltyAt = (week?['penalty_at'] as num?)?.toInt();
+          _scoreBonusAmt  = (week?['bonus_amount']   as num?)?.toInt();
+          _scorePenaltyAmt= (week?['penalty_amount'] as num?)?.toInt();
+          final streak  = sc['streak']    as Map<String, dynamic>?;
+          _scoreStreak  = (streak?['count']      as num?)?.toInt();
+        }
+      });
+    }
   }
 
   @override

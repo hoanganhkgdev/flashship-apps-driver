@@ -170,9 +170,14 @@ class _KycScreenState extends ConsumerState<KycScreen> {
     try {
       final formData = FormData.fromMap(
           {'image': await MultipartFile.fromFile(file.path, filename: file.name)});
-      await ref.read(apiClientProvider).postMultipart('/driver/profile/cccd-image', formData);
+      final res = await ref.read(apiClientProvider).postMultipart('/driver/profile/cccd-image', formData);
+      final imageUrl = res.data['image_url'] as String?;
       if (mounted) {
-        setState(() { _cccdStatus = 'pending'; _uploadingCccd = false; });
+        setState(() {
+          _cccdStatus    = 'pending';
+          _cccdImageUrl  = imageUrl;
+          _uploadingCccd = false;
+        });
         _toast('Tải lên thành công, đang chờ xét duyệt', success: true);
       }
     } catch (_) {

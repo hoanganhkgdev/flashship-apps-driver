@@ -31,8 +31,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   String? _licenseStatus;
   String? _cccdImageStatus;
-  String? _vehicleType;
-  String? _licensePlate;
   bool _deleteRequested = false;
 
   int?    _balance;
@@ -93,8 +91,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               : double.tryParse(p['rating'].toString());
           _licenseStatus   = p['license_status'] as String?;
           _cccdImageStatus = p['cccd_image_status'] as String?;
-          _vehicleType     = p['vehicle_type'] as String?;
-          _licensePlate    = p['license_plate'] as String?;
           _balance         = (p['balance'] as num?)?.toInt();
           _bankName        = p['bank_name'] as String?;
           _bankAccount     = p['bank_account'] as String?;
@@ -373,8 +369,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 child: _KycSummaryCard(
                   cccdStatus:    _cccdImageStatus,
                   licenseStatus: _licenseStatus,
-                  vehicleType:   _vehicleType,
-                  licensePlate:  _licensePlate,
                   onTap: () async {
                     await context.push('/kyc');
                     _loadData();
@@ -1465,15 +1459,11 @@ class _StatDivider extends StatelessWidget {
 class _KycSummaryCard extends StatelessWidget {
   final String? cccdStatus;
   final String? licenseStatus;
-  final String? vehicleType;
-  final String? licensePlate;
   final VoidCallback onTap;
 
   const _KycSummaryCard({
     required this.cccdStatus,
     required this.licenseStatus,
-    required this.vehicleType,
-    required this.licensePlate,
     required this.onTap,
   });
 
@@ -1481,15 +1471,13 @@ class _KycSummaryCard extends StatelessWidget {
     int n = 0;
     if (cccdStatus    == 'approved') n++;
     if (licenseStatus == 'approved') n++;
-    if (vehicleType   != null) n++;
-    if (licensePlate?.isNotEmpty ?? false) n++;
     return n;
   }
 
   @override
   Widget build(BuildContext context) {
     final steps  = _steps;
-    final isDone = steps == 4;
+    final isDone = steps == 2;
     final color  = isDone ? AppColors.success : AppColors.primary;
 
     return Material(
@@ -1555,7 +1543,7 @@ class _KycSummaryCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(3),
               child: LinearProgressIndicator(
-                value: steps / 4,
+                value: steps / 2,
                 minHeight: 5,
                 backgroundColor: const Color(0xFFF0F0F0),
                 valueColor: AlwaysStoppedAnimation<Color>(color),
@@ -1565,8 +1553,6 @@ class _KycSummaryCard extends StatelessWidget {
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               _StepChip('CCCD',      cccdStatus    == 'approved'),
               _StepChip('Bằng lái',  licenseStatus == 'approved'),
-              _StepChip('Loại xe',   vehicleType   != null),
-              _StepChip('Biển số',   licensePlate?.isNotEmpty ?? false),
             ]),
           ]),
         ),

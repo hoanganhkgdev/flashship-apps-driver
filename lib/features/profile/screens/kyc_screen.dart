@@ -17,12 +17,6 @@ class KycScreen extends ConsumerStatefulWidget {
 class _KycScreenState extends ConsumerState<KycScreen> {
   bool _loading = true;
 
-  // Vehicle
-  String? _vehicleType;
-  final _plateCtrl = TextEditingController();
-  bool _vehicleDirty = false;
-  bool _savingVehicle = false;
-
   // Docs
   String? _cccdStatus;
   String? _cccdImageUrl;
@@ -39,12 +33,6 @@ class _KycScreenState extends ConsumerState<KycScreen> {
     Future.microtask(_loadData);
   }
 
-  @override
-  void dispose() {
-    _plateCtrl.dispose();
-    super.dispose();
-  }
-
   Future<void> _loadData() async {
     if (!mounted) return;
     setState(() => _loading = true);
@@ -54,16 +42,13 @@ class _KycScreenState extends ConsumerState<KycScreen> {
           as Map<String, dynamic>?;
       if (mounted && data != null) {
         setState(() {
-          _vehicleType      = data['vehicle_type'] as String?;
-          _plateCtrl.text   = data['license_plate'] as String? ?? '';
           _cccdStatus             = data['cccd_image_status'] as String?;
           _cccdImageUrl           = data['cccd_image_url'] as String?;
           _cccdRejectionReason    = data['cccd_image_rejection_reason'] as String?;
           _licenseStatus          = data['license_status'] as String?;
           _licenseImageUrl        = data['license_image_url'] as String?;
           _licenseRejectionReason = data['license_rejection_reason'] as String?;
-          _loading          = false;
-          _vehicleDirty     = false;
+          _loading                = false;
         });
       }
     } catch (_) {
@@ -75,33 +60,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
     int n = 0;
     if (_cccdStatus == 'approved') n++;
     if (_licenseStatus == 'approved') n++;
-    if (_vehicleType != null) n++;
-    if (_plateCtrl.text.trim().isNotEmpty) n++;
     return n;
-  }
-
-  Future<void> _saveVehicle() async {
-    final plate = _plateCtrl.text.trim();
-    setState(() => _savingVehicle = true);
-    try {
-      final body = <String, dynamic>{};
-      if (_vehicleType != null) body['vehicle_type'] = _vehicleType;
-      // Luôn gửi kể cả khi rỗng — nếu không, xoá trắng biển số rồi lưu sẽ báo
-      // thành công nhưng server âm thầm giữ nguyên giá trị cũ (field bị loại
-      // khỏi request khi rỗng).
-      body['license_plate'] = plate;
-
-      await ref.read(apiClientProvider).post('/driver/profile/update', data: body);
-      if (mounted) {
-        setState(() { _savingVehicle = false; _vehicleDirty = false; });
-        _toast('Đã lưu thông tin xe', success: true);
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _savingVehicle = false);
-        _toast('Lưu thất bại');
-      }
-    }
   }
 
   // ── Uploads ──────────────────────────────────────────────────────────────────
@@ -254,18 +213,6 @@ class _KycScreenState extends ConsumerState<KycScreen> {
 
               const SizedBox(height: 16),
 
-              // ── Phương tiện ──────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  _sectionLabel('PHƯƠNG TIỆN'),
-                  const SizedBox(height: 8),
-                  _buildVehicleCard(),
-                ]),
-              ),
-
-              const SizedBox(height: 12),
-
               // ── Giấy tờ ─────────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -287,7 +234,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
   // ── Header ────────────────────────────────────────────────────────────────────
 
   Widget _buildHeader(double top, int steps) {
-    final isDone = steps == 4;
+    final isDone = steps == 2;
     return Stack(clipBehavior: Clip.none, children: [
       Container(
         decoration: const BoxDecoration(
@@ -392,7 +339,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
-                  value: steps / 4,
+                  value: steps / 2,
                   minHeight: 6,
                   backgroundColor: Colors.white.withValues(alpha: 0.2),
                   valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
@@ -402,8 +349,6 @@ class _KycScreenState extends ConsumerState<KycScreen> {
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 _StepDot(label: 'CCCD', done: _cccdStatus == 'approved'),
                 _StepDot(label: 'Bằng lái', done: _licenseStatus == 'approved'),
-                _StepDot(label: 'Loại xe', done: _vehicleType != null),
-                _StepDot(label: 'Biển số', done: _plateCtrl.text.trim().isNotEmpty),
               ]),
             ]),
           ),
@@ -422,114 +367,6 @@ class _KycScreenState extends ConsumerState<KycScreen> {
         ),
       ),
     ]);
-  }
-
-  // ── Vehicle card ─────────────────────────────────────────────────────────────
-
-  Widget _buildVehicleCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8, offset: const Offset(0, 2)),
-        ],
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
-        // Vehicle type
-        const Text('Loại xe',
-            style: TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
-        const SizedBox(height: 10),
-        Row(children: [
-          Expanded(
-            child: _VehicleChip(
-              icon: Icons.two_wheeler_rounded, label: 'Xe máy',
-              selected: _vehicleType == 'motorbike',
-              onTap: () => setState(() { _vehicleType = 'motorbike'; _vehicleDirty = true; }),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _VehicleChip(
-              icon: Icons.directions_car_rounded, label: 'Ô tô',
-              selected: _vehicleType == 'car',
-              onTap: () => setState(() { _vehicleType = 'car'; _vehicleDirty = true; }),
-            ),
-          ),
-        ]),
-
-        const SizedBox(height: 16),
-        const Divider(height: 1, color: Color(0xFFF0F0F0)),
-        const SizedBox(height: 16),
-
-        // License plate
-        const Text('Biển số xe',
-            style: TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.background,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFE5E7EB)),
-          ),
-          child: TextField(
-            controller: _plateCtrl,
-            textCapitalization: TextCapitalization.characters,
-            style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.5,
-                color: AppColors.textPrimary),
-            decoration: InputDecoration(
-              hintText: 'VD: 59B1-12345',
-              hintStyle: TextStyle(
-                  color: AppColors.textSecondary.withValues(alpha: 0.7),
-                  fontWeight: FontWeight.w400,
-                  fontSize: 14,
-                  letterSpacing: 0),
-              prefixIcon: const Icon(Icons.confirmation_number_outlined,
-                  size: 18, color: AppColors.textSecondary),
-              border: InputBorder.none,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-            ),
-            onChanged: (_) => setState(() => _vehicleDirty = true),
-          ),
-        ),
-
-        if (_vehicleDirty) ...[
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: _savingVehicle ? null : _saveVehicle,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-              child: _savingVehicle
-                  ? const SizedBox(
-                      width: 18, height: 18,
-                      child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2))
-                  : const Text('Lưu thông tin xe',
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white)),
-            ),
-          ),
-        ],
-      ]),
-    );
   }
 
   // ── Docs card ─────────────────────────────────────────────────────────────────
@@ -620,52 +457,6 @@ class _StepDot extends StatelessWidget {
               fontWeight: FontWeight.w500,
               color: Colors.white.withValues(alpha: done ? 1.0 : 0.6))),
     ]);
-  }
-}
-
-// ── Vehicle chip ──────────────────────────────────────────────────────────────
-
-class _VehicleChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  const _VehicleChip({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = selected ? AppColors.primary : AppColors.textSecondary;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
-        decoration: BoxDecoration(
-          color: selected
-              ? AppColors.primary.withValues(alpha: 0.08)
-              : AppColors.background,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: selected ? AppColors.primary : const Color(0xFFE5E7EB),
-            width: selected ? 1.5 : 1,
-          ),
-        ),
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(width: 8),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  color: color)),
-        ]),
-      ),
-    );
   }
 }
 

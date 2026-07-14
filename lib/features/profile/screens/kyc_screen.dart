@@ -323,7 +323,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
                 ),
-                child: Text('$steps/4',
+                child: Text('$steps/2',
                     style: const TextStyle(
                         fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
               ),

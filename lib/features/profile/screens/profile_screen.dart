@@ -1519,7 +1519,7 @@ class _KycSummaryCard extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary)),
                   Text(
-                    isDone ? 'Hồ sơ đã hoàn thiện' : '$steps/4 mục đã hoàn thiện',
+                    isDone ? 'Hồ sơ đã hoàn thiện' : '$steps/2 mục đã hoàn thiện',
                     style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                 ]),
@@ -1530,7 +1530,7 @@ class _KycSummaryCard extends StatelessWidget {
                   color: color.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text('$steps/4',
+                child: Text('$steps/2',
                     style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,

@@ -71,6 +71,16 @@ class LocationService {
         distanceFilter: 10,
         intervalDuration: const Duration(seconds: 5),
         forceLocationManager: false,
+        // Không có foreground service, Android (Doze/tiết kiệm pin) đóng băng
+        // GPS + timer heartbeat/vị trí sau vài phút tắt màn hình — tài xế vẫn
+        // "online" nhưng app đã bị hệ điều hành cho ngủ, không nhận được đơn.
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationTitle: 'FlashShip đang hoạt động',
+          notificationText: 'Đang nhận đơn hàng — đừng tắt để không bị gián đoạn',
+          notificationChannelName: 'Đang chạy nền',
+          enableWakeLock: true,
+          setOngoing: true,
+        ),
       );
     }
     return AppleSettings(

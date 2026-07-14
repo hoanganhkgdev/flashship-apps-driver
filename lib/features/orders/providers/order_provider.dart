@@ -184,8 +184,12 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
       }
       return null;
     } on DioException catch (e) {
-      return e.response?.data?['message'] as String?
-          ?? 'Không thể nhận đơn. Vui lòng thử lại.';
+      // data có thể không phải Map (HTML lỗi 502/503) — truy cập thẳng
+      // data?['message'] sẽ ném NoSuchMethodError, thoát khỏi catch này và
+      // làm accept() không bao giờ trả về, kẹt nút "Đang xử lý..." vĩnh viễn.
+      final data = e.response?.data;
+      final msg = data is Map ? data['message'] as String? : null;
+      return msg ?? 'Không thể nhận đơn. Vui lòng thử lại.';
     } catch (_) {
       return 'Không thể nhận đơn. Vui lòng thử lại.';
     }

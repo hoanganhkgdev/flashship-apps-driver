@@ -15,7 +15,12 @@ class OfferListenerService {
 
   StreamSubscription? _sub;
   int? _driverId;
-  bool _offerVisible = false;
+  // Mã đơn đang hiện trên màn hình offer (null = không có gì đang hiện) —
+  // trước đây chỉ là cờ đúng/sai, không phân biệt được đơn nào. Nếu đơn A
+  // hết hạn và đơn B được ghi gần như cùng lúc, Firebase có thể chỉ giao sự
+  // kiện cuối (đơn B) — cờ đúng/sai sẽ thấy "đang hiện rồi" và bỏ qua đơn B,
+  // tài xế vẫn đứng nhìn đơn A đã chết. So sánh theo orderId sửa đúng lỗi này.
+  int? _visibleOrderId;
   String? _lastOrderCode;
 
   /// Callback được set bởi HomeScreen để reset tab khi offer bị dismiss
@@ -29,7 +34,7 @@ class OfferListenerService {
     _sub = FirebaseDatabase.instance
         .ref('dispatch/driver_$driverId/offer')
         .onValue
-        .listen(_onEvent, onError: (e) {
+        .listen((event) => _handleValue(event.snapshot.value), onError: (e) {
       debugPrint('[OfferListener] RTDB error: $e');
     });
   }
@@ -38,21 +43,40 @@ class OfferListenerService {
     _sub?.cancel();
     _sub = null;
     _driverId = null;
-    _offerVisible = false;
+    _visibleOrderId = null;
   }
 
-  /// Gọi khi offer screen tự xử lý (accept / decline / tự dismiss).
-  void markOfferHandled() => _offerVisible = false;
+  /// Gọi khi offer screen tự xử lý (accept / decline / tự dismiss) — chỉ mở
+  /// lại nếu đúng đơn đang được coi là hiện, tránh 1 lệnh gọi trễ của màn
+  /// hình đơn CŨ vô tình xoá trạng thái "đang hiện" của đơn MỚI hơn.
+  void markOfferHandled(int orderId) {
+    if (_visibleOrderId == orderId) _visibleOrderId = null;
+  }
 
-  void _onEvent(DatabaseEvent event) {
-    final data = event.snapshot.value;
+  /// Đảm bảo offer hiện tại (nếu còn) đang được hiển thị — gọi khi tài xế
+  /// bấm vào thông báo, không phụ thuộc listener RTDB đã chạy hay chưa (app
+  /// vừa mở lại từ trạng thái bị kill thì listener chưa kịp start). Đọc
+  /// thẳng 1 lần từ RTDB — nguồn dữ liệu đầy đủ, không dùng dữ liệu tối
+  /// thiểu có trong payload thông báo (thiếu địa chỉ/tiền công...).
+  Future<void> ensureOfferVisible(int driverId) async {
+    _driverId ??= driverId;
+    try {
+      final snap = await FirebaseDatabase.instance
+          .ref('dispatch/driver_$driverId/offer')
+          .get();
+      _handleValue(snap.value);
+    } catch (e) {
+      debugPrint('[OfferListener] ensureOfferVisible failed: $e');
+    }
+  }
 
+  void _handleValue(Object? data) {
     if (data == null) {
       // Offer bị thu hồi (hết hạn / người khác nhận / khách huỷ)
       // → xoá luôn banner trong khay để không bấm vào đơn đã chết.
       _cancelOfferBanner();
-      if (_offerVisible) {
-        _offerVisible = false;
+      if (_visibleOrderId != null) {
+        _visibleOrderId = null;
         _navigateHome();
       }
       return;
@@ -62,6 +86,14 @@ class OfferListenerService {
     final offer = Map<String, dynamic>.from(data);
     _lastOrderCode = '${offer['order_code'] ?? ''}';
 
+    // Kiểm tra orderId hợp lệ TRƯỚC khi đụng vào _visibleOrderId — trước
+    // đây bật cờ "đang hiện" rồi mới kiểm tra bên trong _navigateToOffer(),
+    // nên payload thiếu order_id sẽ làm cờ kẹt "đang hiện" mãi mãi dù chưa
+    // từng mở màn hình nào (dispose() không cứu được vì màn hình không hề
+    // tồn tại để mà huỷ).
+    final orderId = (offer['order_id'] as num?)?.toInt();
+    if (orderId == null) return;
+
     final expiresAt = (offer['expires_at'] as num?)?.toInt() ?? 0;
     final remaining = expiresAt - DateTime.now().millisecondsSinceEpoch ~/ 1000;
     if (remaining <= 0) {
@@ -70,9 +102,9 @@ class OfferListenerService {
       return;
     }
 
-    if (!_offerVisible) {
-      _offerVisible = true;
-      _navigateToOffer(offer);
+    if (_visibleOrderId != orderId) {
+      _visibleOrderId = orderId;
+      _navigateToOffer(offer, orderId);
     }
   }
 
@@ -84,10 +116,7 @@ class OfferListenerService {
     }
   }
 
-  void _navigateToOffer(Map<String, dynamic> offer) {
-    final orderId = (offer['order_id'] as num?)?.toInt();
-    if (orderId == null) return;
-
+  void _navigateToOffer(Map<String, dynamic> offer, int orderId) {
     var retries = 0;
     void attempt() {
       if (_driverId == null) return; // đã stop() trong lúc chờ

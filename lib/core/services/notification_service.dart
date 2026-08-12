@@ -3,10 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../router/app_router.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/orders/providers/order_provider.dart';
 import '../../features/wallet/providers/wallet_provider.dart';
@@ -26,40 +24,25 @@ int _offerTimeoutMs(Map<String, dynamic> data) {
   return 25000;
 }
 
-/// Điều hướng tới màn hình offer khi tài xế BẤM VÀO thông báo — bất kể lúc
-/// bấm app đang tắt hẳn, ở nền, hay đang mở. Dùng chung cho cả 3 nguồn tap:
-/// `getInitialMessage()` (app bị kill, bấm mở lại), `onMessageOpenedApp`
+/// Đảm bảo màn hình offer đang hiện khi tài xế BẤM VÀO thông báo — bất kể
+/// lúc bấm app đang tắt hẳn, ở nền, hay đang mở. Dùng chung cho cả 3 nguồn
+/// tap: `getInitialMessage()` (app bị kill, bấm mở lại), `onMessageOpenedApp`
 /// (app ở nền), `onDidReceiveNotificationResponse` (bấm local notification
-/// lúc app còn sống). Trước đây cả 3 đường này đều không làm gì — tài xế
-/// bấm vào thông báo chỉ mở app về trang chủ, không thấy đơn đâu, phải tự
-/// đợi luồng RTDB (OfferListenerService) tự bắt kịp nếu app khởi động đủ
-/// nhanh so với hạn 25s của offer — không đảm bảo.
+/// lúc app còn sống). Trước đây cả 3 đường này đều không làm gì.
 ///
-/// Chỉ dùng dữ liệu tối thiểu có trong payload thông báo (order_id,
-/// order_code, expires_at) — OrderOfferScreen tự khớp lại dữ liệu đầy đủ
-/// hơn qua RTDB ngay sau đó nếu offer còn hiệu lực.
-void _navigateToOfferFromNotification(Map<String, dynamic> data) {
+/// KHÔNG tự dựng dữ liệu đơn từ payload thông báo (chỉ có order_id/
+/// order_code/expires_at, thiếu địa chỉ/tiền công...) — payload đó từng bị
+/// dùng thẳng làm dữ liệu màn hình, hiện ra toàn ô trống, và nếu RTDB đã mở
+/// sẵn màn hình đúng (trường hợp phổ biến nhất — app đang chạy) thì còn GHI
+/// ĐÈ mất màn hình tốt đó bằng bản trống. Giao hẳn cho
+/// `OfferListenerService.ensureOfferVisible()` — đọc thẳng RTDB (nguồn dữ
+/// liệu đầy đủ) và tái dùng đúng logic điều hướng đã có, không tạo đường
+/// điều hướng thứ 2 chạy song song dễ lệch nhau.
+void _navigateToOfferFromNotification(Map<String, dynamic> data, WidgetRef ref) {
   if (data['type'] != 'order_offer') return;
-  final orderId = int.tryParse('${data['order_id'] ?? ''}');
-  if (orderId == null) return;
-
-  final offerData = <String, dynamic>{
-    'id': orderId,
-    'order_code': data['order_code'] ?? '',
-    'expires_at': int.tryParse('${data['expires_at'] ?? ''}'),
-  };
-
-  var retries = 0;
-  void attempt() {
-    final router = appRouter;
-    if (router != null) {
-      router.go('/order/offer/$orderId', extra: offerData);
-    } else if (++retries < 10) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
-    }
-  }
-
-  attempt();
+  final driverId = ref.read(authProvider).user?.id;
+  if (driverId == null) return;
+  OfferListenerService.instance.ensureOfferVisible(driverId);
 }
 
 /// KHÔNG tự show local notification ở đây nữa. Backend (`FCMService::
@@ -122,7 +105,7 @@ class NotificationService {
         if (payload == null) return;
         try {
           final data = jsonDecode(payload) as Map<String, dynamic>;
-          _navigateToOfferFromNotification(data);
+          _navigateToOfferFromNotification(data, ref);
         } catch (_) {}
       },
     );
@@ -160,7 +143,7 @@ class NotificationService {
     // trị đúng 1 lần ngay sau khi app khởi động do bị tap-launch.
     final initialMessage = await _fcm.getInitialMessage();
     if (initialMessage != null) {
-      _navigateToOfferFromNotification(initialMessage.data);
+      _navigateToOfferFromNotification(initialMessage.data, ref);
     }
 
     // Chỉ lấy token ngay nếu đã có quyền — tránh retry APNs 10s khi chưa hỏi
@@ -201,10 +184,32 @@ class NotificationService {
           // khi tài xế bấm vào banner này lúc app đang mở/nền nhẹ.
           payload: jsonEncode(data),
         );
-      } else if (type == 'order_status') {
+      } else if (type == 'order_status' || type == 'order_assigned_direct') {
         try { ref.read(activeOrderProvider.notifier).fetch(); } catch (_) {}
       } else if (type == 'debt_overdue') {
         try { ref.read(walletProvider.notifier).fetch(); } catch (_) {}
+      }
+
+      // Foreground: FCM không tự hiện banner — show local notification cho
+      // các type chưa có local notification riêng (delivery_reminder,
+      // order_taken, order_assigned_direct, broadcast...). order_offer đã
+      // show custom notification phía trên (kênh riêng + chuông riêng).
+      if (type != 'order_offer' && msg.notification != null) {
+        final n = msg.notification!;
+        if (n.title != null || n.body != null) {
+          _localNotif.show(
+            DateTime.now().millisecondsSinceEpoch ~/ 1000,
+            n.title ?? '',
+            n.body ?? '',
+            const NotificationDetails(
+              android: AndroidNotificationDetails(
+                'general_channel', 'Thông báo chung',
+                importance: Importance.high, priority: Priority.high,
+              ),
+              iOS: DarwinNotificationDetails(),
+            ),
+          );
+        }
       }
     });
 
@@ -212,7 +217,7 @@ class NotificationService {
     // mở lại đúng đơn — trước đây callback rỗng, bấm vào chỉ đưa app lên
     // foreground ở màn hình đang dở, không thấy đơn đâu.
     _onMessageOpenedSub = FirebaseMessaging.onMessageOpenedApp.listen((msg) {
-      _navigateToOfferFromNotification(msg.data);
+      _navigateToOfferFromNotification(msg.data, ref);
     });
 
     return granted;

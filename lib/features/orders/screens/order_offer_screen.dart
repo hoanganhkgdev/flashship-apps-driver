@@ -175,7 +175,7 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
     // bị tính vào % offer bỏ lỡ oan. Xem điều tra tài xế #351 (mất 41/41
     // đơn liên tiếp trong 1 buổi sáng, GPS vẫn tươi suốt — không phải do
     // tài xế lơ là hay app chết).
-    OfferListenerService.instance.markOfferHandled();
+    OfferListenerService.instance.markOfferHandled(widget.orderId);
     WidgetsBinding.instance.removeObserver(this);
     _pulseCtrl.dispose();
     _player.stop();

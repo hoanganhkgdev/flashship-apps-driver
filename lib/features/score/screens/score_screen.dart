@@ -807,7 +807,7 @@ class _RulesCardState extends ConsumerState<_RulesCard> {
                   ),
                   const SizedBox(width: 8),
                   Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('≥ ${ref.watch(scoreProvider).score?.week?.bonusAt ?? 150} điểm',
+                    Text('≥ ${ref.watch(scoreProvider).score?.week?.bonusAt ?? 130} điểm',
                         style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                     Text('+${_fmt(ref.watch(scoreProvider).score?.week?.bonusAmount ?? 50000)}đ',
                         style: const TextStyle(

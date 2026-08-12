@@ -40,6 +40,13 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyDnE3bCwhzy4tJ22BVmRMyolwuyCx-1rQc"/>
+        <!-- FCM tự dùng kênh này cho MỌI thông báo không tự khai channel_id
+             riêng (đơn bị huỷ, công nợ...) — thiếu dòng này Android 8+ đẩy
+             vào kênh mặc định "Miscellaneous", im chuông, dễ bị bỏ sót.
+             Kênh "general_channel" tạo ở NotificationService.init(). -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="general_channel"/>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

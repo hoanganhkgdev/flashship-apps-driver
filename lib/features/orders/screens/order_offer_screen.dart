@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/services/offer_listener_service.dart';
@@ -92,24 +91,43 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
   bool _viewedCalled = false;
   bool _accepting    = false;
 
-  Future<void> _markOfferViewed() async {
+  // Đồng hồ lạc quan: chuyển ngay khi mở màn hình xem đơn, KHÔNG đợi API trả
+  // lời. Server đã cấp sẵn hạn quyết định (APP_DECISION_SECS) từ lúc tài xế
+  // được offer — app chỉ hiển thị lại, không dùng tốc độ mạng của chính nó để
+  // quyết định khi nào chuyển đồng hồ (tránh race condition: đồng hồ ngắn ban
+  // đầu chạm hết giờ trước khi API "đã xem" kịp trả lời).
+  void _markOfferViewed() {
     if (_viewedCalled) return;
+    if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+      return;
+    }
+    _viewedCalled = true;
+
+    if (mounted) {
+      _timer?.cancel();
+      setState(() {
+        _remaining     = 30;
+        _totalDuration = 30;
+      });
+      _startTimer();
+    }
+
+    // Tín hiệu "đã xem" gửi nền song song, không chặn đồng hồ/UI — chỉ để
+    // server ghi nhận offer_viewed_at (phân biệt từ chối/timeout/bỏ lỡ).
+    _sendViewedSignal();
+  }
+
+  Future<void> _sendViewedSignal([int attempt = 0]) async {
     try {
-      if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
-        return;
-      }
       await ref.read(apiClientProvider).post('/orders/${widget.orderId}/view-offer');
-      _viewedCalled = true;
-      // Server đã reset expires_at lên 30s từ lúc này — cập nhật lại countdown
-      if (mounted) {
-        _timer?.cancel();
-        setState(() {
-          _remaining     = 30;
-          _totalDuration = 30;
-        });
-        _startTimer();
+    } catch (_) {
+      // Mất mạng thật — thử lại ngầm vài lần trong vài giây đầu, không ảnh
+      // hưởng gì tới đồng hồ đang chạy trên máy tài xế.
+      if (attempt < 3 && mounted) {
+        await Future.delayed(Duration(seconds: attempt + 1));
+        if (mounted) _sendViewedSignal(attempt + 1);
       }
-    } catch (_) {}
+    }
   }
 
   Future<void> _playOfferSound() async {
@@ -173,27 +191,11 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
           fallback: _order,
         );
     if (!mounted) return;
-    if (error == null) {
-      _broadcastLocationNow();
-    } else {
+    if (error != null) {
       _showError(error);
     }
     ref.read(homeTabProvider.notifier).state = 1;
     context.go('/home');
-  }
-
-  void _broadcastLocationNow() {
-    Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.medium,
-        timeLimit: Duration(seconds: 4),
-      ),
-    ).then((pos) {
-      ref.read(apiClientProvider).post(
-        '/driver/update-location',
-        data: {'latitude': pos.latitude, 'longitude': pos.longitude},
-      ).ignore();
-    }).catchError((_) {});
   }
 
   Future<void> _decline() async {

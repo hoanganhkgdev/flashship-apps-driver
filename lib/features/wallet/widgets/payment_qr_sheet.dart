@@ -90,10 +90,14 @@ class _PaymentQrSheetState extends ConsumerState<PaymentQrSheet> {
 
       _startPolling();
     } catch (e) {
+      // resp.data có thể không phải Map (HTML lỗi 502/503) — truy cập thẳng
+      // data?['message'] ném NoSuchMethodError không được bắt, khiến sheet
+      // kẹt loading vĩnh viễn thay vì hiện nút "Thử lại".
       String msg = 'Không tạo được QR thanh toán. Vui lòng thử lại.';
       final resp = (e as dynamic)?.response;
-      if (resp != null) {
-        final serverMsg = resp.data?['message'] as String?;
+      final data = resp?.data;
+      if (data is Map) {
+        final serverMsg = data['message'] as String?;
         if (serverMsg != null && serverMsg.isNotEmpty) msg = serverMsg;
       }
       if (mounted) setState(() { _loading = false; _error = msg; });

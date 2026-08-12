@@ -60,12 +60,5 @@ class ApiClient {
         data: formData,
         options: Options(contentType: 'multipart/form-data'),
       );
-
-  Future<Response> getExternal(String url) {
-    final dio = Dio();
-    dio.options.connectTimeout = const Duration(seconds: 8);
-    dio.options.receiveTimeout = const Duration(seconds: 8);
-    return dio.get(url, options: Options(headers: {'Accept': 'application/json'}));
-  }
 }
 

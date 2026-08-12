@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:permission_handler/permission_handler.dart' hide ServiceStatus;
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/location_service.dart';
+import '../../../core/services/location_push_service.dart';
 import '../../../core/services/offer_listener_service.dart';
 import '../../../core/services/session_guard_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -23,6 +24,8 @@ import '../../wallet/screens/earnings_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 import '../../score/models/score_model.dart';
 import '../../score/providers/score_provider.dart';
+import '../../shifts/providers/shift_provider.dart';
+import '../../shifts/screens/shift_registration_screen.dart';
 import '../providers/support_provider.dart';
 
 final homeTabProvider = StateProvider<int>((ref) => 0);
@@ -107,6 +110,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final uid = ref.read(authProvider).user?.id;
     if (uid == null) return;
 
+    // logout() tự dừng LocationService/OfferListenerService + dọn Firebase —
+    // xem auth_provider.dart, gom về 1 chỗ cho mọi đường gọi logout.
     SessionGuardService.instance.onForceLogout = () async {
       await ref.read(authProvider.notifier).logout();
       if (mounted) {
@@ -284,11 +289,6 @@ class _DashboardPageState extends ConsumerState<_DashboardPage>
   int _todayEarnings     = 0;
   int _yesterdayEarnings = 0;
   Timer? _onlineTimer;
-  Timer? _heartbeatTimer;
-  Timer? _locationApiTimer;
-  double? _lastLat;
-  double? _lastLng;
-  double? _lastBearing;
 
   @override
   void initState() {
@@ -315,7 +315,7 @@ class _DashboardPageState extends ConsumerState<_DashboardPage>
     OfferListenerService.instance.start(driver!.id);
     OfferListenerService.instance.onOfferDismissed =
         () => ref.read(homeTabProvider.notifier).state = 0;
-    _startLocationUpdates();
+    LocationPushService.instance.start(driver.id);
     _startOnlineTimer();
   }
 
@@ -331,49 +331,10 @@ class _DashboardPageState extends ConsumerState<_DashboardPage>
     _onlineTimer = null;
   }
 
-  String get _onlineTimeStr {
-    final driver = ref.read(authProvider).user;
-    if (driver == null) return '';
-
-    final now = DateTime.now();
-    final todayStr = '${now.year.toString().padLeft(4, '0')}-'
-        '${now.month.toString().padLeft(2, '0')}-'
-        '${now.day.toString().padLeft(2, '0')}';
-
-    // Giây tích lũy từ các session trước trong ngày — bỏ nếu là số liệu ngày cũ
-    // (vd mở lại app sáng hôm sau khi data còn lưu từ hôm qua).
-    final accumulated =
-        driver.dailyOnlineDate == todayStr ? driver.dailyOnlineSeconds : 0;
-
-    // Giây của session hiện tại — chỉ tính từ 6:30 sáng.
-    // Vùng chết 00:00–6:30 không tính: online_since bị kẹp về 6:30 hôm nay
-    // nên trước 6:30 sẽ ra số âm → clamp về 0.
-    int currentSession = 0;
-    if (driver.isOnline && driver.onlineSince != null) {
-      final windowStart = DateTime(now.year, now.month, now.day, 6, 30);
-      final start = driver.onlineSince!.isAfter(windowStart)
-          ? driver.onlineSince!
-          : windowStart;
-      currentSession = now.difference(start).inSeconds.clamp(0, 86400);
-    }
-
-    final total = (accumulated + currentSession).clamp(0, 86400);
-    if (total == 0 && !driver.isOnline) return '';
-
-    final h = total ~/ 3600;
-    final m = (total % 3600) ~/ 60;
-    final s = total % 60;
-    if (h > 0) return '${h}g ${m.toString().padLeft(2, '0')}p';
-    if (m > 0) return '${m}p ${s.toString().padLeft(2, '0')}s';
-    return '${s}s';
-  }
-
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _onlineTimer?.cancel();
-    _heartbeatTimer?.cancel();
-    _locationApiTimer?.cancel();
     super.dispose();
   }
 
@@ -381,6 +342,7 @@ class _DashboardPageState extends ConsumerState<_DashboardPage>
         _loadStats(),
         _loadEarnings(),
         Future.microtask(() => ref.read(scoreProvider.notifier).fetch()),
+        Future.microtask(() => ref.read(shiftProvider.notifier).fetch()),
       ]);
 
   Future<void> _loadStats() async {
@@ -436,26 +398,25 @@ class _DashboardPageState extends ConsumerState<_DashboardPage>
     final isOnline = ref.read(authProvider).user?.isOnline ?? false;
     if (!isOnline || _togglingOnline) return;
     if (mounted) setState(() => _togglingOnline = true);
+    // Dừng gửi vị trí NGAY trước khi gọi API — cùng lý do với _toggleOnline():
+    // chờ tới lúc có phản hồi mới dừng thì stream/timer vẫn kịp bắn 1 lần
+    // trong lúc chờ mạng, ghi đè lên ngay sau lệnh xoá Firebase.
+    _stopOnlineTimer();
+    LocationPushService.instance.stop();
+    OfferListenerService.instance.stop();
     try {
       final res             = await ref.read(apiClientProvider).post('/driver/toggle-status');
       final raw             = res.data['is_online'];
       final nowOnline       = raw == true || raw == 1;
       final onlineSince     = res.data['online_since'] != null
           ? DateTime.tryParse(res.data['online_since'] as String) : null;
-      final dailyOnlineSecs = (res.data['daily_online_seconds'] as num?)?.toInt();
       await ref.read(authProvider.notifier).updateOnlineStatus(
         nowOnline,
         onlineSince: onlineSince,
-        dailyOnlineSeconds: dailyOnlineSecs,
       );
-      _stopOnlineTimer();
-      _heartbeatTimer?.cancel();
-      _locationApiTimer?.cancel();
-      LocationService.instance.stop();
-      OfferListenerService.instance.stop();
       final uid = ref.read(authProvider).user?.id;
       if (uid != null) {
-        FirebaseDatabase.instance.ref('flashship_main/locations/driver_$uid').remove().ignore();
+        FirebaseDatabase.instance.ref('locations/driver_$uid').remove().ignore();
       }
     } catch (_) {}
     if (mounted) setState(() => _togglingOnline = false);
@@ -473,6 +434,14 @@ class _DashboardPageState extends ConsumerState<_DashboardPage>
         if (mounted) setState(() => _togglingOnline = false);
         return;
       }
+    } else {
+      // Dừng gửi vị trí NGAY (trước khi gọi API) — nếu chờ tới lúc có phản
+      // hồi mới dừng, stream/timer vẫn kịp bắn 1 lần trong lúc chờ mạng, rồi
+      // ghi đè lên đúng lúc lệnh xoá Firebase vừa chạy xong (thứ tự 2 request
+      // mạng không đảm bảo) — marker "chớp lại" thay vì biến mất hẳn.
+      _stopOnlineTimer();
+      LocationPushService.instance.stop();
+      OfferListenerService.instance.stop();
     }
     setState(() => _togglingOnline = true);
     try {
@@ -481,26 +450,23 @@ class _DashboardPageState extends ConsumerState<_DashboardPage>
       final isOnline         = raw == true || raw == 1;
       final onlineSince      = res.data['online_since'] != null
           ? DateTime.tryParse(res.data['online_since'] as String) : null;
-      final dailyOnlineSecs  = (res.data['daily_online_seconds'] as num?)?.toInt();
       await ref.read(authProvider.notifier).updateOnlineStatus(
         isOnline,
         onlineSince: onlineSince,
-        dailyOnlineSeconds: dailyOnlineSecs,
       );
       if (isOnline) {
         _startOnlineTimer();
-        _startLocationUpdates();
-        final uid = ref.read(authProvider).user?.id;
-        if (uid != null) OfferListenerService.instance.start(uid);
-      } else {
-        _stopOnlineTimer();
-        _heartbeatTimer?.cancel();
-        _locationApiTimer?.cancel();
-        LocationService.instance.stop();
-        OfferListenerService.instance.stop();
         final uid = ref.read(authProvider).user?.id;
         if (uid != null) {
-          FirebaseDatabase.instance.ref('flashship_main/locations/driver_$uid').remove().ignore();
+          LocationPushService.instance.start(uid);
+          OfferListenerService.instance.start(uid);
+        }
+      } else {
+        // Đã dừng LocationPushService/timer ở trên (trước khi gọi API) rồi —
+        // ở đây chỉ còn dọn Firebase.
+        final uid = ref.read(authProvider).user?.id;
+        if (uid != null) {
+          FirebaseDatabase.instance.ref('locations/driver_$uid').remove().ignore();
         }
       }
     } on DioException catch (e) {
@@ -532,74 +498,6 @@ class _DashboardPageState extends ConsumerState<_DashboardPage>
     if (mounted) setState(() => _togglingOnline = false);
   }
 
-  Future<void> _startLocationUpdates() async {
-    final driverId = ref.read(authProvider).user?.id;
-    try {
-      final perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) return;
-      // Timeout 6s để tránh treo khi GPS chưa bắt được tín hiệu
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 6),
-        ),
-      );
-      if (pos.accuracy <= 50) {
-        final bearing = pos.heading < 0 ? 0.0 : pos.heading;
-        _lastLat = pos.latitude;
-        _lastLng = pos.longitude;
-        _lastBearing = bearing;
-        await _pushLocation(driverId, pos.latitude, pos.longitude, bearing);
-        _callLocationApi(driverId); // cập nhật MySQL+Redis ngay khi bật online
-      }
-    } catch (_) {} // timeout hoặc không có GPS → bỏ qua, stream sẽ tự cập nhật
-    LocationService.instance.start((lat, lng, bearing) {
-      _lastLat = lat;
-      _lastLng = lng;
-      _lastBearing = bearing;
-      _pushLocation(driverId, lat, lng, bearing);
-    });
-    _startHeartbeat(driverId);
-    _startLocationApiTimer(driverId);
-  }
-
-  void _startHeartbeat(int? driverId) {
-    _heartbeatTimer?.cancel();
-    if (driverId == null) return;
-    _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      FirebaseDatabase.instance.ref('flashship_main/locations/driver_$driverId/heartbeat_at')
-          .set(ServerValue.timestamp).ignore();
-    });
-  }
-
-  void _startLocationApiTimer(int? driverId) {
-    _locationApiTimer?.cancel();
-    if (driverId == null) return;
-    _locationApiTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      _callLocationApi(driverId);
-    });
-  }
-
-  Future<void> _callLocationApi(int? driverId) async {
-    if (driverId == null || _lastLat == null) return;
-    try {
-      await ref.read(apiClientProvider).post('/driver/update-location', data: {
-        'latitude': _lastLat,
-        'longitude': _lastLng,
-        'bearing': _lastBearing ?? 0.0,
-      });
-    } catch (_) {}
-  }
-
-  Future<void> _pushLocation(int? driverId, double lat, double lng, double bearing) async {
-    if (driverId == null) return;
-    try {
-      // update() thay vì set() để không xóa các field khác backend có thể ghi vào node này
-      await FirebaseDatabase.instance.ref('flashship_main/locations/driver_$driverId')
-          .update({'lat': lat, 'lng': lng, 'bearing': bearing, 'updated_at': ServerValue.timestamp, 'heartbeat_at': ServerValue.timestamp});
-    } catch (_) {}
-  }
-
   @override
   Widget build(BuildContext context) {
     final user        = ref.watch(authProvider).user;
@@ -608,6 +506,10 @@ class _DashboardPageState extends ConsumerState<_DashboardPage>
     final isOnline    = user?.isOnline ?? false;
     final notifDenied   = ref.watch(_notifDeniedProvider);
     final locationIssue = ref.watch(_locationIssueProvider);
+    final shiftState    = ref.watch(shiftProvider);
+    final hasNoShift     = shiftState.hasLoadedOnce &&
+        !shiftState.loading &&
+        shiftState.currentShiftIds.isEmpty;
 
     ref.listen<WalletState>(walletProvider, (prev, next) {
       final hadOverdue = prev?.debts.any((d) => d.isOverdue) ?? false;
@@ -654,7 +556,6 @@ class _DashboardPageState extends ConsumerState<_DashboardPage>
                 isOnline:      isOnline,
                 toggling:      _togglingOnline,
                 locked:        hasOverdueDebt,
-                onlineTimeStr: _onlineTimeStr,
                 onToggle:      _toggleOnline,
               ),
 
@@ -663,6 +564,14 @@ class _DashboardPageState extends ConsumerState<_DashboardPage>
 
               // ── Notification permission banner ────────────────────────
               if (notifDenied) const _NotifDeniedBanner(),
+
+              // ── No shift registered banner ────────────────────────────
+              if (hasNoShift)
+                _NoShiftBanner(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ShiftRegistrationScreen()),
+                  ),
+                ),
 
               // ── Overdue debt banner ───────────────────────────────────
               if (wallet.debts.any((d) => d.isOverdue)) ...[
@@ -676,7 +585,7 @@ class _DashboardPageState extends ConsumerState<_DashboardPage>
 
               // ── Content cards ────────────────────────────────────────
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 32),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -686,7 +595,6 @@ class _DashboardPageState extends ConsumerState<_DashboardPage>
                       todayEarnings:     _todayEarnings,
                       yesterdayEarnings: _yesterdayEarnings,
                       todayOrders:       todayOrders,
-                      onlineTimeStr:     _onlineTimeStr,
                       rating:            rating,
                       ratingCount:       ratingCount,
                       onTap:             widget.onGoToWallet,
@@ -735,7 +643,6 @@ class _GradientHeader extends StatelessWidget {
   final bool isOnline;
   final bool toggling;
   final bool locked;
-  final String onlineTimeStr;
   final VoidCallback onToggle;
 
   const _GradientHeader({
@@ -743,7 +650,6 @@ class _GradientHeader extends StatelessWidget {
     required this.isOnline,
     required this.toggling,
     required this.locked,
-    required this.onlineTimeStr,
     required this.onToggle,
   });
 
@@ -921,31 +827,11 @@ class _GradientHeader extends StatelessWidget {
                           Text(
                             locked
                                 ? 'Thanh toán công nợ để tiếp tục'
-                                : isOnline && onlineTimeStr.isNotEmpty
-                                    ? 'Đã online $onlineTimeStr'
-                                    : isOnline ? 'Đang hoạt động' : 'Nhấn để bắt đầu',
+                                : isOnline ? 'Đang hoạt động' : 'Nhấn để bắt đầu',
                             style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                           ),
                         ]),
                       ),
-
-                      // Time badge (online only)
-                      if (isOnline && onlineTimeStr.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: AppColors.successSoft,
-                            borderRadius: BorderRadius.circular(9),
-                          ),
-                          child: Text(
-                            onlineTimeStr,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.success,
-                            ),
-                          ),
-                        ),
                     ]),
                   ),
                 ),
@@ -983,7 +869,6 @@ class _EarningsCard extends StatelessWidget {
   final int todayEarnings;
   final int yesterdayEarnings;
   final int todayOrders;
-  final String onlineTimeStr;
   final double rating;
   final int ratingCount;
   final VoidCallback onTap;
@@ -992,7 +877,6 @@ class _EarningsCard extends StatelessWidget {
     required this.todayEarnings,
     required this.yesterdayEarnings,
     required this.todayOrders,
-    required this.onlineTimeStr,
     required this.rating,
     required this.ratingCount,
     required this.onTap,
@@ -1048,12 +932,6 @@ class _EarningsCard extends StatelessWidget {
           // Stats row
           Row(children: [
             _miniStat('$todayOrders', 'Đơn hôm nay', Icons.inventory_2_rounded),
-            _vDivider(),
-            _miniStat(
-              onlineTimeStr.isNotEmpty ? onlineTimeStr : '—',
-              'Online',
-              Icons.access_time_rounded,
-            ),
             _vDivider(),
             _miniStat(
               rating > 0 ? rating.toStringAsFixed(1) : '—',
@@ -1532,6 +1410,49 @@ class _OverdueBanner extends StatelessWidget {
   }
 }
 
+// ── No shift registered banner ─────────────────────────────────────────────────
+
+class _NoShiftBanner extends StatelessWidget {
+  final VoidCallback onTap;
+  const _NoShiftBanner({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        color: const Color(0xFFE65100),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+        child: Row(children: [
+          const Icon(Icons.schedule_rounded, color: Colors.white, size: 18),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Bạn chưa đăng ký ca làm việc. Đăng ký ngay để được xếp lịch.',
+              style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text('Đăng ký',
+                style: TextStyle(
+                  color: Color(0xFFE65100),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                )),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
 // ── Notification priming dialog (Apple compliance) ───────────────────────────
 
 Future<bool?> _showNotifPrimingDialog(BuildContext context) {
@@ -1615,47 +1536,15 @@ class _LocationIssueBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isServiceOff = issue == 'service';
-    return Container(
-      width: double.infinity,
+    return _AlertCard(
       color: const Color(0xFF1565C0),
-      padding: const EdgeInsets.fromLTRB(16, 10, 12, 14),
-      child: Row(children: [
-        Icon(
-          isServiceOff ? Icons.location_off_rounded : Icons.location_disabled_rounded,
-          color: Colors.white,
-          size: 18,
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            isServiceOff
-                ? 'GPS đang tắt — hãy bật vị trí để nhận đơn.'
-                : 'Chưa cấp quyền vị trí — hãy bật để nhận đơn.',
-            style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
-          ),
-        ),
-        const SizedBox(width: 8),
-        GestureDetector(
-          onTap: () => isServiceOff
-              ? Geolocator.openLocationSettings()
-              : _showLocationPermissionGuide(context),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              isServiceOff ? 'Bật GPS' : 'Mở cài đặt',
-              style: const TextStyle(
-                color: Color(0xFF1565C0),
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ),
-      ]),
+      icon: isServiceOff ? Icons.location_off_rounded : Icons.location_disabled_rounded,
+      title: isServiceOff ? 'GPS đang tắt' : 'Chưa cấp quyền vị trí',
+      subtitle: 'Hãy bật để nhận đơn',
+      buttonLabel: isServiceOff ? 'Bật GPS' : 'Mở cài đặt',
+      onTap: () => isServiceOff
+          ? Geolocator.openLocationSettings()
+          : _showLocationPermissionGuide(context),
     );
   }
 }
@@ -1707,32 +1596,94 @@ class _NotifDeniedBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
+    return _AlertCard(
       color: const Color(0xFFE65100),
-      padding: const EdgeInsets.fromLTRB(16, 10, 12, 14),
-      child: Row(children: [
-        const Icon(Icons.notifications_off_rounded, color: Colors.white, size: 18),
-        const SizedBox(width: 8),
-        const Expanded(
-          child: Text(
-            'Thông báo bị tắt — bạn sẽ không nhận được đơn mới.',
-            style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+      icon: Icons.notifications_off_rounded,
+      title: 'Thông báo bị tắt',
+      subtitle: 'Bạn sẽ không nhận được đơn mới',
+      buttonLabel: 'Bật thông báo',
+      onTap: () => _showGuideDialog(context),
+    );
+  }
+}
+
+// ── Shared alert card ─────────────────────────────────────────────────────────
+
+class _AlertCard extends StatelessWidget {
+  final Color color;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String buttonLabel;
+  final VoidCallback onTap;
+
+  const _AlertCard({
+    required this.color,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.buttonLabel,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.20)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.10),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
+        ],
+      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: color, size: 20),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title,
+                style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                    height: 1.2)),
+            const SizedBox(height: 2),
+            Text(subtitle,
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textSecondary,
+                    height: 1.2)),
+          ]),
+        ),
+        const SizedBox(width: 10),
         GestureDetector(
-          onTap: () => _showGuideDialog(context),
+          onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
+              color: color,
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: const Text(
-              'Bật thông báo',
-              style: TextStyle(
-                color: Color(0xFFE65100),
+            child: Text(
+              buttonLabel,
+              style: const TextStyle(
+                color: Colors.white,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),

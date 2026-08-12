@@ -4,5 +4,12 @@
 <dict>
 	<key>aps-environment</key>
 	<string>production</string>
+	<!-- Bắt buộc để mức "timeSensitive" trong DarwinNotificationDetails có tác
+	     dụng thật — thiếu key này, thông báo đơn hàng mới bị Chế độ Tập
+	     trung/Lái xe của iOS chặn hoàn toàn như thông báo thường. Cần bật
+	     capability "Time Sensitive Notifications" tương ứng cho App ID trên
+	     Apple Developer trước khi build, nếu không Xcode sẽ báo lỗi ký. -->
+	<key>com.apple.developer.usernotifications.time-sensitive</key>
+	<true/>
 </dict>
 </plist>

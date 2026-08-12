@@ -54,7 +54,18 @@ class ScoreNotifier extends StateNotifier<ScoreState> {
     _rtdbSub = FirebaseDatabase.instance
         .ref('driver_score/$driverId')
         .onValue
-        .listen((_) => fetch());
+        .listen((event) {
+      // Cập nhật ngay con số điểm từ chính sự kiện realtime — không cần
+      // đợi round-trip API mới thấy số mới. label/tips/streak/week vẫn có
+      // thể hơi cũ trong lúc chờ fetch() phía dưới, chấp nhận được vì
+      // chúng đổi ít và không phải thứ tài xế nhìn đầu tiên.
+      final raw = event.snapshot.value;
+      if (raw is Map && raw['score'] != null && state.score != null) {
+        final newScore = (raw['score'] as num).toInt();
+        state = state.copyWith(score: state.score!.copyWith(score: newScore));
+      }
+      fetch();
+    });
   }
 
   @override

@@ -5,8 +5,6 @@ class DriverModel {
   final String? email;
   final bool isOnline;
   final DateTime? onlineSince;
-  final int dailyOnlineSeconds;
-  final String? dailyOnlineDate; // 'YYYY-MM-DD' — ngày của dailyOnlineSeconds
   final double? latitude;
   final double? longitude;
   final String? planType;
@@ -21,8 +19,6 @@ class DriverModel {
     this.email,
     required this.isOnline,
     this.onlineSince,
-    this.dailyOnlineSeconds = 0,
-    this.dailyOnlineDate,
     this.latitude,
     this.longitude,
     this.planType,
@@ -40,8 +36,6 @@ class DriverModel {
     onlineSince:         j['online_since'] != null
         ? DateTime.tryParse(j['online_since'] as String)
         : null,
-    dailyOnlineSeconds:  (j['daily_online_seconds'] as num?)?.toInt() ?? 0,
-    dailyOnlineDate:     j['daily_online_date'] as String?,
     latitude:            j['latitude'] == null ? null : double.tryParse(j['latitude'].toString()),
     longitude:           j['longitude'] == null ? null : double.tryParse(j['longitude'].toString()),
     planType:            j['plan_type'] as String?,
@@ -62,16 +56,12 @@ class DriverModel {
     bool? isOnline,
     DateTime? onlineSince,
     bool clearOnlineSince = false,
-    int? dailyOnlineSeconds,
-    String? dailyOnlineDate,
     int? balance,
     int? status,
   }) => DriverModel(
     id: id, name: name, phone: phone, email: email,
     isOnline:           isOnline           ?? this.isOnline,
     onlineSince:        clearOnlineSince ? null : (onlineSince ?? this.onlineSince),
-    dailyOnlineSeconds: dailyOnlineSeconds ?? this.dailyOnlineSeconds,
-    dailyOnlineDate:    dailyOnlineDate    ?? this.dailyOnlineDate,
     latitude:           latitude, longitude: longitude,
     planType:           planType,
     balance:            balance ?? this.balance,

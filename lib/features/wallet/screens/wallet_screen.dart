@@ -519,7 +519,7 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
   static const _quickAmounts = [50000, 100000, 200000, 500000];
 
   void _setAmount(int amount) {
-    _ctrl.text = Fmt.currency(amount).replaceAll(' ₫', '').replaceAll(',', '.');
+    _ctrl.text = Fmt.currency(amount).replaceAll(' đ', '');
     setState(() => _error = null);
   }
 
@@ -704,7 +704,7 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
                     color: const Color(0xFFF0F0F0),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(Fmt.currency(a).replaceAll(' ₫', ''),
+                  child: Text(Fmt.currency(a).replaceAll(' đ', ''),
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary)),
                 ),

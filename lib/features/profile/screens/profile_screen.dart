@@ -378,6 +378,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
               const SizedBox(height: 12),
 
+              // ── Lịch làm việc ────────────────────────────────────────
+              _SettingsSection(
+                header: 'Lịch làm việc',
+                children: [
+                  _SettingsRow(
+                    icon:      Icons.schedule_rounded,
+                    iconBg:    const Color(0xFF14B8A6).withValues(alpha: 0.12),
+                    iconColor: const Color(0xFF14B8A6),
+                    label:     'Ca làm việc',
+                    onTap:     () => context.push('/shifts'),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
               // ── Tài chính ────────────────────────────────────────────
               _SettingsSection(
                 header: 'Tài chính',

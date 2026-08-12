@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../router/app_router.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/orders/providers/order_provider.dart';
 import '../../features/wallet/providers/wallet_provider.dart';
@@ -24,45 +26,55 @@ int _offerTimeoutMs(Map<String, dynamic> data) {
   return 25000;
 }
 
+/// Điều hướng tới màn hình offer khi tài xế BẤM VÀO thông báo — bất kể lúc
+/// bấm app đang tắt hẳn, ở nền, hay đang mở. Dùng chung cho cả 3 nguồn tap:
+/// `getInitialMessage()` (app bị kill, bấm mở lại), `onMessageOpenedApp`
+/// (app ở nền), `onDidReceiveNotificationResponse` (bấm local notification
+/// lúc app còn sống). Trước đây cả 3 đường này đều không làm gì — tài xế
+/// bấm vào thông báo chỉ mở app về trang chủ, không thấy đơn đâu, phải tự
+/// đợi luồng RTDB (OfferListenerService) tự bắt kịp nếu app khởi động đủ
+/// nhanh so với hạn 25s của offer — không đảm bảo.
+///
+/// Chỉ dùng dữ liệu tối thiểu có trong payload thông báo (order_id,
+/// order_code, expires_at) — OrderOfferScreen tự khớp lại dữ liệu đầy đủ
+/// hơn qua RTDB ngay sau đó nếu offer còn hiệu lực.
+void _navigateToOfferFromNotification(Map<String, dynamic> data) {
+  if (data['type'] != 'order_offer') return;
+  final orderId = int.tryParse('${data['order_id'] ?? ''}');
+  if (orderId == null) return;
+
+  final offerData = <String, dynamic>{
+    'id': orderId,
+    'order_code': data['order_code'] ?? '',
+    'expires_at': int.tryParse('${data['expires_at'] ?? ''}'),
+  };
+
+  var retries = 0;
+  void attempt() {
+    final router = appRouter;
+    if (router != null) {
+      router.go('/order/offer/$orderId', extra: offerData);
+    } else if (++retries < 10) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+    }
+  }
+
+  attempt();
+}
+
+/// KHÔNG tự show local notification ở đây nữa. Backend (`FCMService::
+/// sendDriverWakeUp()`) đã gửi kèm khối `notification` (không chỉ `data`)
+/// đúng kênh `order_offer_channel` — khi app ở nền/bị kill, hệ điều hành TỰ
+/// hiển thị thông báo hệ thống thẳng từ khối đó, không cần code Dart chạy.
+/// Trước đây gọi `_localNotif.show()` thêm ở đây tạo ra **2 thông báo trùng
+/// lặp** mỗi lần app ở nền/bị kill, và bản thân lệnh gọi cũng rủi ro vì
+/// plugin local-notifications chưa từng được `initialize()` trong tiến
+/// trình nền riêng biệt này. Giữ hàm rỗng (chỉ init Firebase) vì
+/// `FirebaseMessaging.onBackgroundMessage()` bắt buộc phải có 1 handler
+/// đã đăng ký.
 @pragma('vm:entry-point')
 Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  final data = message.data;
-  if (data['type'] == 'order_offer') {
-    final orderCode = data['order_code'] ?? '';
-
-    final androidDetails = AndroidNotificationDetails(
-      'order_offer_channel',
-      'Đơn hàng mới',
-      channelDescription: 'Thông báo đơn hàng mới cho tài xế',
-      importance: Importance.max,
-      priority: Priority.high,
-      sound: const RawResourceAndroidNotificationSound('order_offer'),
-      playSound: true,
-      enableVibration: true,
-      vibrationPattern: Int64List.fromList([0, 500, 200, 500, 200, 500, 200, 500, 200, 500]),
-      fullScreenIntent: false,
-      category: AndroidNotificationCategory.call,
-      // Tự biến mất đúng lúc offer hết hạn — không để tài xế bấm vào xác
-      // thông báo của đơn đã chuyển người khác.
-      timeoutAfter: _offerTimeoutMs(data),
-    );
-
-    const iosDetails = DarwinNotificationDetails(
-      sound: 'order_offer.aiff',
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-      interruptionLevel: InterruptionLevel.timeSensitive,
-    );
-
-    await _localNotif.show(
-      orderCode.hashCode,
-      'Có đơn hàng mới!',
-      'Nhấn để xem và nhận đơn hàng',
-      NotificationDetails(android: androidDetails, iOS: iosDetails),
-    );
-  }
 }
 
 class NotificationService {
@@ -102,9 +114,20 @@ class NotificationService {
     );
     await _localNotif.initialize(
       const InitializationSettings(android: android, iOS: ios),
+      // Bấm vào local notification (banner offer lúc app đang mở) → mở
+      // đúng đơn thay vì chỉ mở app về trang chủ. Payload là JSON encode
+      // lại từ data FCM gốc lúc show() — xem bên dưới.
+      onDidReceiveNotificationResponse: (response) {
+        final payload = response.payload;
+        if (payload == null) return;
+        try {
+          final data = jsonDecode(payload) as Map<String, dynamic>;
+          _navigateToOfferFromNotification(data);
+        } catch (_) {}
+      },
     );
 
-    // Tạo Android notification channel với custom sound
+    // Tạo Android notification channel với custom sound (đơn hàng mới)
     const channel = AndroidNotificationChannel(
       'order_offer_channel',
       'Đơn hàng mới',
@@ -116,7 +139,29 @@ class NotificationService {
     await _localNotif.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(channel);
 
+    // Kênh chung cho các thông báo còn lại (đơn bị huỷ, công nợ...) — không
+    // set thì Android 8+ tự đẩy vào kênh mặc định "Miscellaneous" (chuông
+    // im, dễ bị tài xế bỏ sót). Khớp với `default_notification_channel_id`
+    // khai trong AndroidManifest.xml để FCM tự dùng kênh này cho MỌI thông
+    // báo không chỉ định channel_id riêng — không cần sửa gì thêm ở backend.
+    const generalChannel = AndroidNotificationChannel(
+      'general_channel',
+      'Thông báo chung',
+      description: 'Đơn bị huỷ, công nợ, và các thông báo khác',
+      importance: Importance.high,
+    );
+    await _localNotif.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(generalChannel);
+
     FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
+
+    // App bị kill hẳn, tài xế bấm vào thông báo hệ thống (OS tự hiện từ
+    // khối `notification` backend gửi kèm) → mở lại đúng đơn. Chỉ có giá
+    // trị đúng 1 lần ngay sau khi app khởi động do bị tap-launch.
+    final initialMessage = await _fcm.getInitialMessage();
+    if (initialMessage != null) {
+      _navigateToOfferFromNotification(initialMessage.data);
+    }
 
     // Chỉ lấy token ngay nếu đã có quyền — tránh retry APNs 10s khi chưa hỏi
     if (granted == true) await _refreshFcmToken(ref);
@@ -152,6 +197,9 @@ class NotificationService {
               interruptionLevel: InterruptionLevel.timeSensitive,
             ),
           ),
+          // Cần payload để onDidReceiveNotificationResponse biết đơn nào
+          // khi tài xế bấm vào banner này lúc app đang mở/nền nhẹ.
+          payload: jsonEncode(data),
         );
       } else if (type == 'order_status') {
         try { ref.read(activeOrderProvider.notifier).fetch(); } catch (_) {}
@@ -160,7 +208,12 @@ class NotificationService {
       }
     });
 
-    _onMessageOpenedSub = FirebaseMessaging.onMessageOpenedApp.listen((_) {});
+    // App đang ở nền (chưa bị kill), tài xế bấm vào thông báo hệ thống →
+    // mở lại đúng đơn — trước đây callback rỗng, bấm vào chỉ đưa app lên
+    // foreground ở màn hình đang dở, không thấy đơn đâu.
+    _onMessageOpenedSub = FirebaseMessaging.onMessageOpenedApp.listen((msg) {
+      _navigateToOfferFromNotification(msg.data);
+    });
 
     return granted;
   }
@@ -207,7 +260,10 @@ class NotificationService {
       if (token != null) {
         await ref.read(apiClientProvider).post(
           '/driver/update-fcm-token',
-          data: {'fcm_token': token},
+          data: {
+            'fcm_token': token,
+            'platform': Platform.isIOS ? 'ios' : 'android',
+          },
         );
         _tokenSent = true;
       }

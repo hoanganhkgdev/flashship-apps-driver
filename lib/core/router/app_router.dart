@@ -16,6 +16,7 @@ import '../../features/wallet/screens/wallet_screen.dart';
 import '../../features/wallet/screens/bank_account_screen.dart';
 import '../../features/score/screens/score_screen.dart';
 import '../../features/profile/screens/kyc_screen.dart';
+import '../../features/shifts/screens/shift_registration_screen.dart';
 import '../../features/version/providers/app_version_provider.dart';
 
 
@@ -121,6 +122,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/kyc',
         builder: (_, __) => const KycScreen(),
+      ),
+      GoRoute(
+        path: '/shifts',
+        builder: (_, __) => const ShiftRegistrationScreen(),
       ),
     ],
   );

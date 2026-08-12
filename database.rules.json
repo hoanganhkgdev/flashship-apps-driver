@@ -1,0 +1,9 @@
+{
+  "rules": {
+    "locations": {
+      "$driverKey": {
+        ".write": "auth != null && auth.uid == ($driverKey + '_' + root.child('dispatch/' + $driverKey + '/session_device').val())"
+      }
+    }
+  }
+}

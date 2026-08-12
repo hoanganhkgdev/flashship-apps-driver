@@ -36,10 +36,10 @@ class WeekInfo {
   factory WeekInfo.fromJson(Map<String, dynamic> json) {
     final s = json['settlement'] as Map<String, dynamic>?;
     return WeekInfo(
-      bonusAt:      (json['bonus_at']       as num?)?.toInt() ?? 150,
+      bonusAt:      (json['bonus_at']       as num?)?.toInt() ?? 130,
       penaltyAt:    (json['penalty_at']     as num?)?.toInt() ?? 70,
-      bonusAmount:  (json['bonus_amount']   as num?)?.toInt() ?? 50000,
-      penaltyAmount:(json['penalty_amount'] as num?)?.toInt() ?? 50000,
+      bonusAmount:  (json['bonus_amount']   as num?)?.toInt() ?? 100000,
+      penaltyAmount:(json['penalty_amount'] as num?)?.toInt() ?? 100000,
       weekStart:    json['week_start']      as String? ?? '',
       settlement:   s != null ? WeekSettlement.fromJson(s) : null,
     );
@@ -111,6 +111,16 @@ class DriverScoreModel {
       week:     weekJson   != null ? WeekInfo.fromJson(weekJson)     : null,
     );
   }
+
+  DriverScoreModel copyWith({int? score}) => DriverScoreModel(
+        score:    score ?? this.score,
+        minScore: minScore,
+        maxScore: maxScore,
+        label:    label,
+        tips:     tips,
+        streak:   streak,
+        week:     week,
+      );
 }
 
 class ScoreLogEntry {

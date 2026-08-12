@@ -165,6 +165,17 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
   @override
   void dispose() {
     _timer?.cancel();
+    // Mở lại cờ "đang hiện offer" ở ĐÚNG 1 nơi CHẮC CHẮN luôn chạy khi màn
+    // hình này biến mất, bất kể thoát bằng cách nào (nhận/từ chối/hết giờ/
+    // hết hạn ngay lúc mở/back cứng...). Trước đây gọi rải rác ở từng nhánh
+    // hành động — thiếu đúng 1 nhánh (hết hạn ngay lúc mở màn hình, dòng
+    // ~66-72) là cờ kẹt `true` vĩnh viễn, mọi offer sau đó bị OfferListener-
+    // Service nuốt im lặng (không mở màn hình, không chuông) cho tới khi
+    // tắt/bật lại online hoặc khởi động lại app — tài xế không hề biết,
+    // bị tính vào % offer bỏ lỡ oan. Xem điều tra tài xế #351 (mất 41/41
+    // đơn liên tiếp trong 1 buổi sáng, GPS vẫn tươi suốt — không phải do
+    // tài xế lơ là hay app chết).
+    OfferListenerService.instance.markOfferHandled();
     WidgetsBinding.instance.removeObserver(this);
     _pulseCtrl.dispose();
     _player.stop();
@@ -176,7 +187,6 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
     if (!mounted) return;
     _timer?.cancel();
     _player.stop();
-    OfferListenerService.instance.markOfferHandled();
     context.go('/home');
   }
 
@@ -184,7 +194,6 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
     if (_accepting) return;
     setState(() => _accepting = true);
     _timer?.cancel();
-    OfferListenerService.instance.markOfferHandled();
 
     final error = await ref.read(activeOrderProvider.notifier).accept(
           widget.orderId,
@@ -200,7 +209,6 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
 
   Future<void> _decline() async {
     _timer?.cancel();
-    OfferListenerService.instance.markOfferHandled();
     await ref.read(activeOrderProvider.notifier).decline(widget.orderId);
     if (mounted) context.go('/home');
   }

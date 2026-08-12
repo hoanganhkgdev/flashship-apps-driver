@@ -156,8 +156,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         if (mounted) ref.read(_locationIssueProvider.notifier).state = issue;
       });
       // Đảm bảo location stream còn sống sau khi app về foreground
-      final isOnline = ref.read(authProvider).user?.isOnline ?? false;
-      if (isOnline) LocationService.instance.restart();
+      final user = ref.read(authProvider).user;
+      final isOnline = user?.isOnline ?? false;
+      if (isOnline) {
+        LocationService.instance.restart();
+        // Listener nhận đơn có thể đã chết/treo sau thời gian dài ở nền
+        // (Doze, mất mạng, iOS đóng băng socket) — trước đây chỉ GPS được
+        // cứu ở đây, đúng kiểu bất đối xứng đã gây ra bug GPS "chết vĩnh
+        // viễn". Đọc thẳng RTDB 1 lần, có đơn đang chờ thì mở màn hình
+        // ngay thay vì để trôi trong im lặng.
+        if (user != null) OfferListenerService.instance.ensureOfferVisible(user.id);
+      }
     }
   }
 

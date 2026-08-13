@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/gradient_header_shell.dart';
+import '../../../core/widgets/info_chip.dart';
 import '../models/wallet_model.dart';
 import '../providers/wallet_provider.dart';
 import '../widgets/payment_qr_sheet.dart';
@@ -50,7 +53,15 @@ class DebtScreen extends ConsumerWidget {
                       color: AppColors.primary, strokeWidth: 2)),
                 )
               else if (debts.isEmpty)
-                const SliverFillRemaining(child: _EmptyState())
+                SliverFillRemaining(
+                  child: EmptyState(
+                    icon: Icons.check_circle_rounded,
+                    iconColor: AppColors.success,
+                    iconBgColor: AppColors.success.withValues(alpha: 0.08),
+                    title: 'Không có công nợ',
+                    subtitle: 'Bạn đã thanh toán đầy đủ 🎉',
+                  ),
+                )
               else
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
@@ -105,23 +116,9 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final top = MediaQuery.of(context).padding.top;
 
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFCC5A08), Color(0xFFE8720C), Color(0xFFF59E30)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(top: -40, right: -40, child: _Bubble(150, 0.07)),
-          Positioned(top: 80,  left: -30,  child: _Bubble(80,  0.05)),
-          Positioned(bottom: 40, right: 30, child: _Bubble(55, 0.04)),
-
-          Column(children: [
-            SizedBox(height: top),
+    return GradientHeaderShell(
+      children: [
+        SizedBox(height: top),
 
             // Topbar
             Padding(
@@ -184,13 +181,13 @@ class _Header extends StatelessWidget {
                         ),
                         const SizedBox(height: 12),
                         Row(children: [
-                          _InfoChip(
+                          InfoChip(
                             icon: Icons.receipt_long_rounded,
                             label: '$count khoản',
                           ),
                           if (overdue > 0) ...[
                             const SizedBox(width: 8),
-                            _InfoChip(
+                            InfoChip(
                               icon: Icons.warning_amber_rounded,
                               label: '$overdue quá hạn',
                               danger: true,
@@ -201,55 +198,13 @@ class _Header extends StatelessWidget {
                     ),
             ),
 
-            const SizedBox(height: 24),
-            Container(height: 20, color: AppColors.background),
-          ]),
-        ],
-      ),
+        const SizedBox(height: 24),
+      ],
     );
   }
 }
 
-class _Bubble extends StatelessWidget {
-  final double size, opacity;
-  const _Bubble(this.size, this.opacity);
-  @override
-  Widget build(BuildContext context) => Container(
-        width: size, height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: opacity),
-        ),
-      );
-}
 
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool danger;
-  const _InfoChip({required this.icon, required this.label, this.danger = false});
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: (danger ? Colors.red : Colors.white).withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: (danger ? Colors.red : Colors.white).withValues(alpha: 0.35),
-          ),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 12, color: Colors.white.withValues(alpha: 0.9)),
-          const SizedBox(width: 5),
-          Text(label,
-              style: TextStyle(
-                fontSize: 12, fontWeight: FontWeight.w600,
-                color: Colors.white.withValues(alpha: 0.9),
-              )),
-        ]),
-      );
-}
 
 // ── Debt card ─────────────────────────────────────────────────────────────────
 
@@ -443,30 +398,3 @@ class _AmountCol extends StatelessWidget {
 
 // ── Empty state ───────────────────────────────────────────────────────────────
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) => Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 80, height: 80,
-            decoration: BoxDecoration(
-              color: AppColors.success.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.check_circle_rounded,
-                color: AppColors.success, size: 40),
-          ),
-          const SizedBox(height: 16),
-          const Text('Không có công nợ',
-              style: TextStyle(
-                fontSize: 17, fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
-              )),
-          const SizedBox(height: 6),
-          const Text('Bạn đã thanh toán đầy đủ 🎉',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-        ]),
-      );
-}

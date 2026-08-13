@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/gradient_header_shell.dart';
 import '../models/score_model.dart';
 import '../providers/score_provider.dart';
 
@@ -108,24 +109,12 @@ class _Header extends StatelessWidget {
     final prog     = (s != null && s.maxScore > 0) ? (s.score / s.maxScore).clamp(0.0, 1.0) : 0.0;
     final hasWeek  = s?.week != null;
 
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFCC5A08), Color(0xFFE8720C), Color(0xFFF59E30)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Decorative circles
-          Positioned(top: -50, right: -50, child: _Bubble(160, 0.07)),
-          Positioned(top: 90,  left: -30,  child: _Bubble(90,  0.05)),
-          Positioned(bottom: 60, right: 20, child: _Bubble(55, 0.04)),
-
-          Column(children: [
-            SizedBox(height: top),
+    return GradientHeaderShell(
+      bubble1Size: 160, bubble1Top: -50, bubble1Right: -50,
+      bubble2Size: 90,  bubble2Top: 90,  bubble2Left: -30,
+      bubble3Bottom: 60, bubble3Right: 20,
+      children: [
+        SizedBox(height: top),
 
             // Topbar
             Padding(
@@ -241,29 +230,11 @@ class _Header extends StatelessWidget {
 
             SizedBox(height: hasWeek && s != null ? 24 : 28),
 
-            // White curve
-            Container(height: 20, color: AppColors.background),
-          ]),
-        ],
-      ),
+      ],
     );
   }
 }
 
-class _Bubble extends StatelessWidget {
-  final double size;
-  final double opacity;
-  const _Bubble(this.size, this.opacity);
-
-  @override
-  Widget build(BuildContext context) => Container(
-        width: size, height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: opacity),
-        ),
-      );
-}
 
 // ── Progress bar in header (white style on gradient bg) ───────────────────────
 

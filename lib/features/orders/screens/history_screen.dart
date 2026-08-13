@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/gradient_header_shell.dart';
 import '../models/order_model.dart';
 import '../providers/order_provider.dart';
 import '../../wallet/providers/wallet_provider.dart';
@@ -132,9 +134,21 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               // Empty — completed tab
               if (!isLoading && isEmpty && !isActiveTab)
                 SliverFillRemaining(
-                  child: _EmptyState(onRefresh: () {
-                    ref.read(orderHistoryProvider.notifier).fetch(refresh: true);
-                  }),
+                  child: EmptyState(
+                    icon: Icons.receipt_long_rounded,
+                    iconColor: AppColors.primary.withValues(alpha: 0.45),
+                    iconBgColor: AppColors.primary.withValues(alpha: 0.08),
+                    circleSize: 76,
+                    iconSize: 36,
+                    title: 'Chưa có đơn nào',
+                    titleFontSize: 16,
+                    subtitle: 'Các đơn đã hoàn thành sẽ hiện ở đây',
+                    actionLabel: 'Tải lại',
+                    actionColor: AppColors.primary,
+                    onAction: () {
+                      ref.read(orderHistoryProvider.notifier).fetch(refresh: true);
+                    },
+                  ),
                 ),
 
               // ── Tab: Đang nhận ─────────────────────────────────────
@@ -238,23 +252,10 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final top = MediaQuery.of(context).padding.top;
 
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFCC5A08), Color(0xFFE8720C), Color(0xFFF59E30)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(top: -40, right: -40, child: _Bubble(150, 0.07)),
-          Positioned(top: 80,  left: -30,  child: _Bubble(80,  0.05)),
-          Positioned(bottom: 40, right: 30, child: _Bubble(55, 0.04)),
-
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            SizedBox(height: top),
+    return GradientHeaderShell(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: top),
 
             // Title
             const Padding(
@@ -312,27 +313,12 @@ class _Header extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 16),
-            Container(height: 20, color: AppColors.background),
-          ]),
-        ],
-      ),
+        const SizedBox(height: 16),
+      ],
     );
   }
 }
 
-class _Bubble extends StatelessWidget {
-  final double size, opacity;
-  const _Bubble(this.size, this.opacity);
-  @override
-  Widget build(BuildContext context) => Container(
-        width: size, height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: opacity),
-        ),
-      );
-}
 
 class _StatChip extends StatelessWidget {
   final IconData icon;
@@ -800,47 +786,3 @@ class _CompletedOrderCard extends StatelessWidget {
 
 // ── Empty state ───────────────────────────────────────────────────────────────
 
-class _EmptyState extends StatelessWidget {
-  final VoidCallback onRefresh;
-  const _EmptyState({required this.onRefresh});
-
-  @override
-  Widget build(BuildContext context) => Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 76, height: 76,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.receipt_long_rounded,
-                size: 36, color: AppColors.primary.withValues(alpha: 0.45)),
-          ),
-          const SizedBox(height: 16),
-          const Text('Chưa có đơn nào',
-              style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
-              )),
-          const SizedBox(height: 6),
-          const Text('Các đơn đã hoàn thành sẽ hiện ở đây',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-          const SizedBox(height: 20),
-          GestureDetector(
-            onTap: onRefresh,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              decoration: BoxDecoration(
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Text('Tải lại',
-                  style: TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
-                  )),
-            ),
-          ),
-        ]),
-      );
-}

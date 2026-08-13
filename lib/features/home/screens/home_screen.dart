@@ -14,6 +14,7 @@ import '../../../core/services/location_push_service.dart';
 import '../../../core/services/offer_listener_service.dart';
 import '../../../core/services/session_guard_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/bubble.dart';
 import '../../../core/utils/formatters.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../orders/providers/order_provider.dart';
@@ -324,8 +325,28 @@ class _DashboardPageState extends ConsumerState<_DashboardPage>
     OfferListenerService.instance.start(driver!.id);
     OfferListenerService.instance.onOfferDismissed =
         () => ref.read(homeTabProvider.notifier).state = 0;
+    LocationPushService.instance.onForceOffline = _handleForceOffline;
     LocationPushService.instance.start(driver.id);
     _startOnlineTimer();
+  }
+
+  /// Backend tự chuyển tài xế offline (GPS chết quá 10 phút) — RTDB bắn
+  /// is_online=false → LocationPushService nhận, gọi callback này.
+  /// Dừng mọi thứ và cập nhật UI giống hệt tắt online bình thường.
+  void _handleForceOffline() {
+    debugPrint('[HomeScreen] Nhận force-offline từ backend → dừng mọi thứ');
+    _stopOnlineTimer();
+    OfferListenerService.instance.stop();
+    // LocationPushService đã tự stop() trước khi gọi callback
+    ref.read(authProvider.notifier).updateOnlineStatus(false);
+    if (mounted) {
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Bạn đã bị tự động tắt online do mất tín hiệu GPS quá lâu. Bật lại GPS rồi bấm Online nhé!'),
+        backgroundColor: Color(0xFFE65100),
+        duration: Duration(seconds: 6),
+      ));
+    }
   }
 
   void _startOnlineTimer() {
@@ -683,9 +704,9 @@ class _GradientHeader extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Positioned(top: -50, right: -50, child: _Bubble(180, 0.07)),
-          Positioned(top: 90,  left: -30,  child: _Bubble(90,  0.05)),
-          Positioned(bottom: 40, right: 30, child: _Bubble(55, 0.04)),
+          Positioned(top: -50, right: -50, child: Bubble(180, 0.07)),
+          Positioned(top: 90,  left: -30,  child: Bubble(90,  0.05)),
+          Positioned(bottom: 40, right: 30, child: Bubble(55, 0.04)),
 
           Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -859,18 +880,6 @@ class _GradientHeader extends StatelessWidget {
   }
 }
 
-class _Bubble extends StatelessWidget {
-  final double size, opacity;
-  const _Bubble(this.size, this.opacity);
-  @override
-  Widget build(BuildContext context) => Container(
-        width: size, height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: opacity),
-        ),
-      );
-}
 
 // ── Earnings card ─────────────────────────────────────────────────────────────
 

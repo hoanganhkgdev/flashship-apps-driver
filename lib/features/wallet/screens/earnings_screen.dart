@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/gradient_header_shell.dart';
+import '../../../core/widgets/info_chip.dart';
 import '../models/wallet_model.dart';
 import '../providers/wallet_provider.dart';
 import '../../orders/models/order_model.dart';
@@ -138,23 +140,10 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final top = MediaQuery.of(context).padding.top;
 
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFCC5A08), Color(0xFFE8720C), Color(0xFFF59E30)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(top: -40, right: -40, child: _Bubble(150, 0.07)),
-          Positioned(top: 80,  left: -30,  child: _Bubble(80,  0.05)),
-          Positioned(bottom: 40, right: 30, child: _Bubble(55, 0.04)),
-
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            SizedBox(height: top),
+    return GradientHeaderShell(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: top),
 
             // Topbar
             Padding(
@@ -281,60 +270,22 @@ class _Header extends StatelessWidget {
                       ),
                       const SizedBox(height: 10),
                       Row(children: [
-                        _InfoChip(
+                        InfoChip(
                           icon: Icons.check_circle_rounded,
                           label: '${summary.orders} đơn hoàn thành',
+                          borderAlpha: 0.3,
                         ),
                       ]),
                     ]),
             ),
 
-            const SizedBox(height: 24),
-            Container(height: 20, color: AppColors.background),
-          ]),
-        ],
-      ),
+        const SizedBox(height: 24),
+      ],
     );
   }
 }
 
-class _Bubble extends StatelessWidget {
-  final double size, opacity;
-  const _Bubble(this.size, this.opacity);
-  @override
-  Widget build(BuildContext context) => Container(
-        width: size, height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: opacity),
-        ),
-      );
-}
 
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  const _InfoChip({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 12, color: Colors.white.withValues(alpha: 0.9)),
-          const SizedBox(width: 5),
-          Text(label,
-              style: TextStyle(
-                fontSize: 12, fontWeight: FontWeight.w600,
-                color: Colors.white.withValues(alpha: 0.9),
-              )),
-        ]),
-      );
-}
 
 // ── Stats row ─────────────────────────────────────────────────────────────────
 

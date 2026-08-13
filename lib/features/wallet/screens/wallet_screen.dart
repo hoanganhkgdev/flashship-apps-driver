@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/bubble.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/wallet_model.dart';
 import '../providers/wallet_provider.dart';
@@ -129,9 +130,9 @@ class _WalletHeader extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           // Decorative circles
-          Positioned(top: -40, right: -40, child: _Bubble(150, 0.07)),
-          Positioned(top: 80,  left: -30,  child: _Bubble(80,  0.05)),
-          Positioned(bottom: 50, right: 40, child: _Bubble(50, 0.04)),
+          Positioned(top: -40, right: -40, child: Bubble(150, 0.07)),
+          Positioned(top: 80,  left: -30,  child: Bubble(80,  0.05)),
+          Positioned(bottom: 50, right: 40, child: Bubble(50, 0.04)),
 
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,19 +239,6 @@ class _WalletHeader extends StatelessWidget {
   }
 }
 
-class _Bubble extends StatelessWidget {
-  final double size;
-  final double opacity;
-  const _Bubble(this.size, this.opacity);
-  @override
-  Widget build(BuildContext context) => Container(
-        width: size, height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: opacity),
-        ),
-      );
-}
 
 class _HeaderBtn extends StatelessWidget {
   final IconData icon;

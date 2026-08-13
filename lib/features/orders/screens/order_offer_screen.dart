@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/services/offer_listener_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/bubble.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../../home/screens/home_screen.dart';
@@ -244,8 +245,8 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
             ),
           ),
           child: Stack(clipBehavior: Clip.none, children: [
-            Positioned(top: -30, right: -30, child: _Bubble(120, 0.07)),
-            Positioned(bottom: 20, left: -20,  child: _Bubble(70,  0.05)),
+            Positioned(top: -30, right: -30, child: Bubble(120, 0.07)),
+            Positioned(bottom: 20, left: -20,  child: Bubble(70,  0.05)),
 
             Column(children: [
               SizedBox(height: top),
@@ -465,18 +466,6 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
   }
 }
 
-class _Bubble extends StatelessWidget {
-  final double size, opacity;
-  const _Bubble(this.size, this.opacity);
-  @override
-  Widget build(BuildContext context) => Container(
-        width: size, height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: opacity),
-        ),
-      );
-}
 
 // ────────────────────────────────────────────────────────────────────────────
 // Service content — hiển thị theo từng loại dịch vụ

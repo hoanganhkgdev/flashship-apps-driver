@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/gradient_header_shell.dart';
 import '../models/order_model.dart';
 import '../providers/order_provider.dart';
 
@@ -286,19 +287,8 @@ class _Header extends StatelessWidget {
     final stepLabel = order.status == 'assigned' ? 'Bước 1/2' : 'Bước 2/2';
     final isLastStep = order.isLastStep;
 
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFCC5A08), Color(0xFFE8720C), Color(0xFFF59E30)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Stack(clipBehavior: Clip.none, children: [
-        Positioned(top: -40, right: -40, child: _Bubble(150, 0.07)),
-        Positioned(top: 80, left: -30, child: _Bubble(80, 0.05)),
-        Positioned(bottom: 40, right: 30, child: _Bubble(55, 0.04)),
-        Column(children: [
+    return GradientHeaderShell(
+      children: [
           Padding(
             padding: EdgeInsets.fromLTRB(16, top + 12, 16, 0),
             child: Row(children: [
@@ -395,27 +385,12 @@ class _Header extends StatelessWidget {
               ]),
             ]),
           ),
-          const SizedBox(height: 16),
-          Container(height: 20, color: AppColors.background),
-        ]), // Column
-      ]), // Stack
-    ); // Container
+        const SizedBox(height: 16),
+      ],
+    );
   }
 }
 
-class _Bubble extends StatelessWidget {
-  final double size, opacity;
-  const _Bubble(this.size, this.opacity);
-  @override
-  Widget build(BuildContext context) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: opacity),
-        ),
-      );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Route card

@@ -7,7 +7,7 @@ import '../../../core/services/offer_listener_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../features/auth/providers/auth_provider.dart';
-import '../../home/screens/home_screen.dart';
+import '../../home/providers/home_providers.dart';
 import '../models/order_model.dart';
 import '../providers/order_provider.dart';
 import '../widgets/offer_actions.dart';
@@ -30,7 +30,7 @@ class OrderOfferScreen extends ConsumerStatefulWidget {
 
 class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  int _remaining     = 30;
+  int _remaining = 30;
   int _totalDuration = 30;
   Timer? _timer;
   late AnimationController _pulseCtrl;
@@ -91,7 +91,7 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
   }
 
   bool _viewedCalled = false;
-  bool _accepting    = false;
+  bool _accepting = false;
 
   // Đồng hồ lạc quan: chuyển ngay khi mở màn hình xem đơn, KHÔNG đợi API trả
   // lời. Server đã cấp sẵn hạn quyết định (APP_DECISION_SECS) từ lúc tài xế
@@ -108,7 +108,7 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
     if (mounted) {
       _timer?.cancel();
       setState(() {
-        _remaining     = 30;
+        _remaining = 30;
         _totalDuration = 30;
       });
       _startTimer();
@@ -121,7 +121,9 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
 
   Future<void> _sendViewedSignal([int attempt = 0]) async {
     try {
-      await ref.read(apiClientProvider).post('/orders/${widget.orderId}/view-offer');
+      await ref
+          .read(apiClientProvider)
+          .post('/orders/${widget.orderId}/view-offer');
     } catch (_) {
       // Mất mạng thật — thử lại ngầm vài lần trong vài giây đầu, không ảnh
       // hưởng gì tới đồng hồ đang chạy trên máy tài xế.
@@ -224,23 +226,22 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
 
   @override
   Widget build(BuildContext context) {
-    final progress   = _totalDuration > 0 ? _remaining / _totalDuration : 1.0;
-    final isUrgent   = _remaining <= 5;
-    final bottom     = MediaQuery.of(context).padding.bottom;
-    final top        = MediaQuery.of(context).padding.top;
+    final progress = _totalDuration > 0 ? _remaining / _totalDuration : 1.0;
+    final isUrgent = _remaining <= 5;
+    final bottom = MediaQuery.of(context).padding.bottom;
+    final top = MediaQuery.of(context).padding.top;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(children: [
-
         // ── Gradient header ───────────────────────────────────────────
         OfferHeader(
-          order:     _order,
+          order: _order,
           remaining: _remaining,
-          progress:  progress,
-          isUrgent:  isUrgent,
-          pulse:     _pulseCtrl,
-          topInset:  top,
+          progress: progress,
+          isUrgent: isUrgent,
+          pulse: _pulseCtrl,
+          topInset: top,
         ),
 
         // ── Scrollable body ───────────────────────────────────────────
@@ -253,12 +254,11 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
 
         // ── Actions ───────────────────────────────────────────────────
         OfferActions(
-          accepting:   _accepting,
+          accepting: _accepting,
           bottomInset: bottom,
-          onAccept:    _accept,
-          onDecline:   _decline,
+          onAccept: _accept,
+          onDecline: _decline,
         ),
-
       ]),
     );
   }

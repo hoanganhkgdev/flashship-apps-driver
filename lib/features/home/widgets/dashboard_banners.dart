@@ -28,9 +28,11 @@ Future<bool?> showNotifPrimingDialog(BuildContext context) {
     builder: (_) => AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: const Row(children: [
-        Icon(Icons.notifications_active_rounded, color: Color(0xFFE65100), size: 22),
+        Icon(Icons.notifications_active_rounded,
+            color: Color(0xFFE65100), size: 22),
         SizedBox(width: 10),
-        Text('Bật thông báo', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+        Text('Bật thông báo',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
       ]),
       content: const Text(
         'Flash Driver cần gửi thông báo để báo khi có đơn hàng mới.\n\nKhông có thông báo, bạn sẽ không nhận được đơn.',
@@ -39,11 +41,13 @@ Future<bool?> showNotifPrimingDialog(BuildContext context) {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text('Bỏ qua', style: TextStyle(color: Color(0xFF9E9E9E))),
+          child:
+              const Text('Bỏ qua', style: TextStyle(color: Color(0xFF9E9E9E))),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, true),
-          style: FilledButton.styleFrom(backgroundColor: const Color(0xFFE65100)),
+          style:
+              FilledButton.styleFrom(backgroundColor: const Color(0xFFE65100)),
           child: const Text('Cho phép'),
         ),
       ],
@@ -59,13 +63,15 @@ Future<void> showLocationPermissionGuide(BuildContext context) {
       title: const Row(children: [
         Icon(Icons.location_on_rounded, color: Color(0xFF1565C0), size: 22),
         SizedBox(width: 10),
-        Text('Cấp quyền vị trí', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+        Text('Cấp quyền vị trí',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
       ]),
       content: const Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Làm theo 4 bước sau:', style: TextStyle(fontSize: 15, color: Color(0xFF666666))),
+          Text('Làm theo 4 bước sau:',
+              style: TextStyle(fontSize: 15, color: Color(0xFF666666))),
           SizedBox(height: 12),
           GuideStep(number: '1', text: 'Bấm "Mở cài đặt" bên dưới'),
           SizedBox(height: 8),
@@ -79,11 +85,16 @@ Future<void> showLocationPermissionGuide(BuildContext context) {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Để sau', style: TextStyle(color: Color(0xFF9E9E9E))),
+          child:
+              const Text('Để sau', style: TextStyle(color: Color(0xFF9E9E9E))),
         ),
         FilledButton(
-          onPressed: () { Navigator.pop(context); Geolocator.openAppSettings(); },
-          style: FilledButton.styleFrom(backgroundColor: const Color(0xFF1565C0)),
+          onPressed: () {
+            Navigator.pop(context);
+            Geolocator.openAppSettings();
+          },
+          style:
+              FilledButton.styleFrom(backgroundColor: const Color(0xFF1565C0)),
           child: const Text('Mở cài đặt'),
         ),
       ],
@@ -99,7 +110,8 @@ Future<bool?> showCccdRequiredDialog(BuildContext context) {
       title: const Row(children: [
         Icon(Icons.badge_rounded, color: AppColors.danger, size: 22),
         SizedBox(width: 10),
-        Text('Cần xác minh CCCD', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+        Text('Cần xác minh CCCD',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
       ]),
       content: const Text(
         'Bạn cần tải lên CCCD và chờ admin duyệt trước khi có thể bật online nhận đơn.',
@@ -108,7 +120,8 @@ Future<bool?> showCccdRequiredDialog(BuildContext context) {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text('Để sau', style: TextStyle(color: Color(0xFF9E9E9E))),
+          child:
+              const Text('Để sau', style: TextStyle(color: Color(0xFF9E9E9E))),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, true),
@@ -128,7 +141,8 @@ Future<bool?> showNoShiftRequiredDialog(BuildContext context) {
       title: const Row(children: [
         Icon(Icons.schedule_rounded, color: Color(0xFFE65100), size: 22),
         SizedBox(width: 10),
-        Text('Chưa đăng ký ca', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+        Text('Chưa đăng ký ca',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
       ]),
       content: const Text(
         'Bạn cần đăng ký ca làm việc trước khi có thể bật online nhận đơn.',
@@ -137,11 +151,13 @@ Future<bool?> showNoShiftRequiredDialog(BuildContext context) {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text('Để sau', style: TextStyle(color: Color(0xFF9E9E9E))),
+          child:
+              const Text('Để sau', style: TextStyle(color: Color(0xFF9E9E9E))),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, true),
-          style: FilledButton.styleFrom(backgroundColor: const Color(0xFFE65100)),
+          style:
+              FilledButton.styleFrom(backgroundColor: const Color(0xFFE65100)),
           child: const Text('Đăng ký ca'),
         ),
       ],
@@ -158,7 +174,9 @@ class LocationIssueBanner extends StatelessWidget {
     final isServiceOff = issue == 'service';
     return AlertCard(
       color: const Color(0xFF1565C0),
-      icon: isServiceOff ? Icons.location_off_rounded : Icons.location_disabled_rounded,
+      icon: isServiceOff
+          ? Icons.location_off_rounded
+          : Icons.location_disabled_rounded,
       title: isServiceOff ? 'GPS đang tắt' : 'Chưa cấp quyền vị trí',
       subtitle: 'Hãy bật để nhận đơn',
       buttonLabel: isServiceOff ? 'Bật GPS' : 'Mở cài đặt',
@@ -178,15 +196,18 @@ class NotifDeniedBanner extends StatelessWidget {
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(children: [
-          Icon(Icons.notifications_active_rounded, color: Color(0xFFE65100), size: 22),
+          Icon(Icons.notifications_active_rounded,
+              color: Color(0xFFE65100), size: 22),
           SizedBox(width: 10),
-          Text('Bật thông báo', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+          Text('Bật thông báo',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
         ]),
         content: const Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Làm theo 4 bước sau:', style: TextStyle(fontSize: 15, color: Color(0xFF666666))),
+            Text('Làm theo 4 bước sau:',
+                style: TextStyle(fontSize: 15, color: Color(0xFF666666))),
             SizedBox(height: 12),
             GuideStep(number: '1', text: 'Bấm "Mở cài đặt" bên dưới'),
             SizedBox(height: 8),
@@ -200,11 +221,16 @@ class NotifDeniedBanner extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Để sau', style: TextStyle(color: Color(0xFF9E9E9E))),
+            child: const Text('Để sau',
+                style: TextStyle(color: Color(0xFF9E9E9E))),
           ),
           FilledButton(
-            onPressed: () { Navigator.pop(context); openAppSettings(); },
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFE65100)),
+            onPressed: () {
+              Navigator.pop(context);
+              openAppSettings();
+            },
+            style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFE65100)),
             child: const Text('Mở cài đặt'),
           ),
         ],
@@ -272,7 +298,8 @@ class AlertCard extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(title,
                 style: const TextStyle(
                     fontSize: 15.5,
@@ -329,7 +356,10 @@ class GuideStep extends StatelessWidget {
         ),
         child: Center(
           child: Text(number,
-              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700)),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700)),
         ),
       ),
       const SizedBox(width: 10),

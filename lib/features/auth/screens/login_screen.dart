@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/auth_field.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/auth_chrome.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -17,6 +18,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _phoneCtrl    = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscure = true;
+  bool _loading = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -26,225 +29,156 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _submit() async {
+    if (_loading) return; // tránh gọi lại khi 1 request login còn đang chạy
     if (!_formKey.currentState!.validate()) return;
+    setState(() { _loading = true; _error = null; });
+
     final result = await ref.read(authProvider.notifier).login(
       phone:    _phoneCtrl.text.trim(),
       password: _passwordCtrl.text,
     );
     if (!mounted) return;
-    if (result == 'ok') context.go('/home');
+
+    if (result == 'ok') {
+      context.go('/home');
+      return;
+    }
     if (result == 'pending') {
+      setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Tài khoản đang chờ admin duyệt. Liên hệ hỗ trợ để được duyệt nhanh.'),
         duration: Duration(seconds: 4),
       ));
+      return;
     }
+    setState(() {
+      _loading = false;
+      _error   = ref.read(authProvider).error ?? 'Đăng nhập thất bại';
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final auth   = ref.watch(authProvider);
     final bottom = MediaQuery.of(context).viewInsets.bottom;
 
     return Scaffold(
       backgroundColor: Colors.white,
       resizeToAvoidBottomInset: false,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(24, 0, 24, bottom + 16),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFFFF6F0), Colors.white],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            stops: [0.0, 0.55],
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(24, 0, 24, bottom + 16),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
 
-                const SizedBox(height: 52),
+                  const SizedBox(height: 96),
 
-                // Logo
-                Container(
-                  width: 76, height: 76,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(22),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.28),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
+                  const AuthHeader(
+                    title: 'Flash Ship Tài xế',
+                    subtitle: 'Giao hàng nhanh — Thu nhập ổn định',
+                    titleFontSize: 30,
+                    centered: true,
                   ),
-                  padding: const EdgeInsets.all(15),
-                  child: Image.asset(
-                    'assets/images/logo.png',
-                    color: Colors.white,
-                    fit: BoxFit.contain,
-                  ),
-                ),
 
-                const SizedBox(height: 20),
+                  const SizedBox(height: 40),
 
-                const Text(
-                  'Flash Ship Tài xế',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Giao hàng nhanh — Thu nhập ổn định',
-                  style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-                ),
-
-                const SizedBox(height: 36),
-
-                AuthField(
-                  controller: _phoneCtrl,
-                  hint: 'Số điện thoại',
-                  keyboardType: TextInputType.phone,
-                  textInputAction: TextInputAction.next,
-                  prefixIcon: const Icon(
-                    Icons.phone_outlined,
-                    size: 20,
-                    color: AppColors.textSecondary,
-                  ),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Vui lòng nhập số điện thoại';
-                    if (v.trim().length < 9) return 'Số điện thoại không hợp lệ';
-                    return null;
-                  },
-                ),
-
-                const SizedBox(height: 12),
-
-                AuthField(
-                  controller: _passwordCtrl,
-                  hint: 'Mật khẩu',
-                  obscureText: _obscure,
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => _submit(),
-                  prefixIcon: const Icon(
-                    Icons.lock_outline_rounded,
-                    size: 20,
-                    color: AppColors.textSecondary,
-                  ),
-                  suffixIcon: GestureDetector(
-                    onTap: () => setState(() => _obscure = !_obscure),
-                    child: Icon(
-                      _obscure
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
+                  AuthField(
+                    controller: _phoneCtrl,
+                    hint: 'Số điện thoại',
+                    keyboardType: TextInputType.phone,
+                    textInputAction: TextInputAction.next,
+                    prefixIcon: const Icon(
+                      Icons.phone_outlined,
                       size: 20,
                       color: AppColors.textSecondary,
                     ),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Vui lòng nhập số điện thoại';
+                      if (v.trim().length < 9) return 'Số điện thoại không hợp lệ';
+                      return null;
+                    },
                   ),
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return 'Vui lòng nhập mật khẩu';
-                    if (v.length < 6) return 'Mật khẩu phải tối thiểu 6 ký tự';
-                    return null;
-                  },
-                ),
 
-                const SizedBox(height: 10),
+                  const SizedBox(height: 14),
 
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: GestureDetector(
-                    onTap: () => context.push('/forgot-password'),
-                    child: const Text(
-                      'Quên mật khẩu?',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
+                  AuthField(
+                    controller: _passwordCtrl,
+                    hint: 'Mật khẩu',
+                    obscureText: _obscure,
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _submit(),
+                    prefixIcon: const Icon(
+                      Icons.lock_outline_rounded,
+                      size: 20,
+                      color: AppColors.textSecondary,
+                    ),
+                    suffixIcon: GestureDetector(
+                      onTap: () => setState(() => _obscure = !_obscure),
+                      child: Icon(
+                        _obscure
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        size: 20,
+                        color: AppColors.textSecondary,
                       ),
                     ),
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Vui lòng nhập mật khẩu';
+                      if (v.length < 6) return 'Mật khẩu phải tối thiểu 6 ký tự';
+                      return null;
+                    },
                   ),
-                ),
 
-                if (auth.error != null) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 11),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEF2F2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(children: [
-                      const Icon(Icons.error_outline_rounded,
-                          color: AppColors.danger, size: 17),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          auth.error!,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.danger,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ]),
-                  ),
-                ],
+                  const SizedBox(height: 10),
 
-                const SizedBox(height: 24),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: FilledButton(
-                    onPressed: auth.isLoading ? null : _submit,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      disabledBackgroundColor:
-                          AppColors.primary.withValues(alpha: 0.5),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                      elevation: 0,
-                      textStyle: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w700),
-                    ),
-                    child: auth.isLoading
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2.5, color: Colors.white),
-                          )
-                        : const Text('Đăng nhập'),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      'Chưa có tài khoản? ',
-                      style: TextStyle(
-                          fontSize: 14, color: AppColors.textSecondary),
-                    ),
-                    GestureDetector(
-                      onTap: () => context.go('/register'),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: GestureDetector(
+                      onTap: () => context.push('/forgot-password'),
                       child: const Text(
-                        'Đăng ký ngay',
+                        'Quên mật khẩu?',
                         style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
                           color: AppColors.primary,
                         ),
                       ),
                     ),
+                  ),
+
+                  if (_error != null) ...[
+                    const SizedBox(height: 14),
+                    AuthErrorBanner(message: _error!),
                   ],
-                ),
-              ],
+
+                  const SizedBox(height: 28),
+
+                  AuthPrimaryButton(
+                    label: 'Đăng nhập',
+                    loading: _loading,
+                    onPressed: _submit,
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  AuthFooterLink(
+                    promptText: 'Chưa có tài khoản? ',
+                    actionText: 'Đăng ký ngay',
+                    onTap: () => context.go('/register'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -252,6 +186,3 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 }
-
-// ── Input field ────────────────────────────────────────────────────────────────
-

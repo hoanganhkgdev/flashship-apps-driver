@@ -11,6 +11,7 @@ class DriverModel {
   final int balance;
   final String? profilePhotoUrl;
   final int status; // 0=pending, 1=active, 2=banned
+  final String? cccdStatus; // null=chưa biết/chưa nộp, pending/approved/rejected
 
   const DriverModel({
     required this.id,
@@ -25,6 +26,7 @@ class DriverModel {
     this.balance = 0,
     this.profilePhotoUrl,
     this.status = 0,
+    this.cccdStatus,
   });
 
   factory DriverModel.fromJson(Map<String, dynamic> j) => DriverModel(
@@ -44,6 +46,11 @@ class DriverModel {
     // Default 1 (approved) khi field vắng mặt — chỉ xảy ra với stored data cũ
     // trước khi feature pending được thêm vào. Data mới từ backend luôn có field này.
     status:              (j['status'] as num?)?.toInt() ?? 1,
+    // Chỉ có trong response /driver/profile — response /auth/login và
+    // /auth/verify-otp-register KHÔNG có field này (null ở đây không có
+    // nghĩa là "chưa duyệt", chỉ là "chưa biết", nơi dùng field này phải tự
+    // refreshUser() để lấy dữ liệu mới trước khi kết luận).
+    cccdStatus:          j['cccd_image_status'] as String?,
   );
 
   String get initials {
@@ -58,6 +65,7 @@ class DriverModel {
     bool clearOnlineSince = false,
     int? balance,
     int? status,
+    String? cccdStatus,
   }) => DriverModel(
     id: id, name: name, phone: phone, email: email,
     isOnline:           isOnline           ?? this.isOnline,
@@ -67,5 +75,6 @@ class DriverModel {
     balance:            balance ?? this.balance,
     profilePhotoUrl:    profilePhotoUrl,
     status:             status ?? this.status,
+    cccdStatus:         cccdStatus ?? this.cccdStatus,
   );
 }

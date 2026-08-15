@@ -1,3 +1,5 @@
+import '../../../core/utils/formatters.dart';
+
 class OrderModel {
   final int id;
   final String code;
@@ -159,4 +161,14 @@ class OrderModel {
   };
 
   bool get isLastStep => status == 'processing';
+
+  // Tên hiển thị dịch vụ — logic này bị lặp y hệt ở 5 chỗ trong 3 screen
+  // (active_order/order_offer/history) trước khi gom về đây.
+  String get displayTitle => isShopOrder
+      ? switch (shopServiceType) {
+          'shop_batch'  => 'Đơn gộp',
+          'shop_pickup' => 'Lấy hộ',
+          _             => 'Giao đơn',
+        }
+      : Fmt.serviceLabel(serviceType);
 }

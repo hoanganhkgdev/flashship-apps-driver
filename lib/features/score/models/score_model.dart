@@ -104,7 +104,7 @@ class DriverScoreModel {
     return DriverScoreModel(
       score:    (json['score']     as num?)?.toInt() ?? 100,
       minScore: (json['min_score'] as num?)?.toInt() ?? 0,
-      maxScore: (json['max_score'] as num?)?.toInt() ?? 150,
+      maxScore: (json['max_score'] as num?)?.toInt() ?? 140,
       label:    json['label']      as String? ?? '',
       tips:     (json['tips']      as List?)?.cast<String>() ?? [],
       streak:   streakJson != null ? StreakInfo.fromJson(streakJson) : null,

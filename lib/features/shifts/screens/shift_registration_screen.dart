@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
-import '../models/shift_model.dart';
 import '../providers/shift_provider.dart';
+import '../widgets/pending_banner.dart';
+import '../widgets/rejected_banner.dart';
+import '../widgets/shift_card.dart';
 
 class ShiftRegistrationScreen extends ConsumerStatefulWidget {
   const ShiftRegistrationScreen({super.key});
@@ -117,10 +119,10 @@ class _ShiftRegistrationScreenState extends ConsumerState<ShiftRegistrationScree
                 children: [
 
                   if (hasPending) ...[
-                    _PendingBanner(request: state.changeRequest!, shifts: state.shifts),
+                    PendingBanner(request: state.changeRequest!, shifts: state.shifts),
                     const SizedBox(height: 16),
                   ] else if (state.changeRequest?.isRejected ?? false) ...[
-                    _RejectedBanner(request: state.changeRequest!),
+                    RejectedBanner(request: state.changeRequest!),
                     const SizedBox(height: 16),
                   ],
 
@@ -169,7 +171,7 @@ class _ShiftRegistrationScreenState extends ConsumerState<ShiftRegistrationScree
                   else
                     ...state.shifts.map((s) => Padding(
                           padding: const EdgeInsets.only(bottom: 10),
-                          child: _ShiftCard(
+                          child: ShiftCard(
                             shift:    s,
                             selected: _selectedIds.contains(s.id),
                             icon:     _iconFor(s.code),
@@ -212,156 +214,6 @@ class _ShiftRegistrationScreenState extends ConsumerState<ShiftRegistrationScree
                 ),
               ),
             ),
-    );
-  }
-}
-
-class _ShiftCard extends StatelessWidget {
-  final ShiftModel shift;
-  final bool selected;
-  final bool enabled;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _ShiftCard({
-    required this.shift, required this.selected, required this.enabled,
-    required this.icon, required this.color, required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: enabled ? onTap : null,
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: selected ? color.withValues(alpha: 0.5) : AppColors.divider,
-              width: selected ? 1.5 : 1,
-            ),
-            color: selected ? color.withValues(alpha: 0.05) : Colors.white,
-          ),
-          child: Row(children: [
-            Container(
-              width: 42, height: 42,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 21),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(shift.name,
-                    style: const TextStyle(
-                        fontSize: 14.5, fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary)),
-                const SizedBox(height: 2),
-                Text(shift.timeRange,
-                    style: const TextStyle(
-                        fontSize: 12.5, color: AppColors.textSecondary)),
-              ]),
-            ),
-            Container(
-              width: 24, height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: selected ? color : Colors.transparent,
-                border: Border.all(
-                    color: selected ? color : AppColors.divider, width: 1.5),
-              ),
-              child: selected
-                  ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
-                  : null,
-            ),
-          ]),
-        ),
-      ),
-    );
-  }
-}
-
-class _PendingBanner extends StatelessWidget {
-  final ShiftChangeRequestModel request;
-  final List<ShiftModel> shifts;
-  const _PendingBanner({required this.request, required this.shifts});
-
-  @override
-  Widget build(BuildContext context) {
-    String? nameFor(int id) {
-      for (final s in shifts) {
-        if (s.id == id) return s.name;
-      }
-      return null;
-    }
-
-    final names = request.shiftIds
-        .map(nameFor)
-        .whereType<String>()
-        .join(', ');
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.warningSoft,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
-      ),
-      child: Row(children: [
-        const Icon(Icons.hourglass_top_rounded, color: AppColors.warning, size: 20),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Yêu cầu đổi ca đang chờ duyệt',
-                style: TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary)),
-            const SizedBox(height: 3),
-            Text(names.isEmpty ? 'Đang xử lý...' : 'Ca yêu cầu: $names',
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-          ]),
-        ),
-      ]),
-    );
-  }
-}
-
-class _RejectedBanner extends StatelessWidget {
-  final ShiftChangeRequestModel request;
-  const _RejectedBanner({required this.request});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.dangerSoft,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
-      ),
-      child: Row(children: [
-        const Icon(Icons.info_outline_rounded, color: AppColors.danger, size: 20),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Yêu cầu đổi ca gần nhất đã bị từ chối',
-                style: TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary)),
-            if (request.adminNote != null && request.adminNote!.isNotEmpty) ...[
-              const SizedBox(height: 3),
-              Text('Lý do: ${request.adminNote}',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-            ],
-          ]),
-        ),
-      ]),
     );
   }
 }

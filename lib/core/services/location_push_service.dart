@@ -8,6 +8,10 @@ import 'package:geolocator/geolocator.dart';
 import 'location_service.dart';
 import 'session_guard_service.dart';
 
+/// Callback khi backend tự chuyển tài xế offline (GPS chết quá 10 phút).
+/// App cần dừng mọi thứ (GPS, offer listener, timer) và sync lại UI.
+typedef ForceOfflineCallback = void Function();
+
 /// Sở hữu TOÀN BỘ việc đẩy vị trí lên Firebase: lấy vị trí lần đầu, nhận
 /// luồng GPS, chống trùng, và đồng hồ giữ nhịp 20s khi tài xế đứng yên.
 ///
@@ -59,6 +63,12 @@ class LocationPushService {
   double?   _lastPushedLng;
   double?   _lastPushedBearing;
   DateTime? _noGoodFixSince;
+  StreamSubscription? _onlineStatusSub;
+
+  /// Backend tự chuyển offline (CloseStaleOnlineSessionsCommand ghi
+  /// is_online=false lên RTDB) → app gọi callback này để dừng mọi thứ
+  /// và cập nhật UI ngay lập tức, thay vì chờ tới lần refreshUser() kế.
+  ForceOfflineCallback? onForceOffline;
 
   /// Tăng mỗi lần start()/stop() — mọi tác vụ bất đồng bộ đều chụp lại giá
   /// trị này lúc bắt đầu và bỏ kết quả nếu đã lệch, để lệnh ghi dở dang của
@@ -90,6 +100,8 @@ class LocationPushService {
     _deviceId ??= await SessionGuardService.getDeviceId();
     if (gen != _generation) return;
 
+    _listenOnlineStatus(driverId, gen);
+
     await _fetchOnce();
     if (gen != _generation) return;
 
@@ -103,12 +115,36 @@ class LocationPushService {
     _generation++;
     _refreshTimer?.cancel();
     _refreshTimer     = null;
+    _onlineStatusSub?.cancel();
+    _onlineStatusSub  = null;
     _driverId         = null;
     _lastPushedLat    = null;
     _lastPushedLng    = null;
     _lastPushedBearing = null;
     _noGoodFixSince   = null;
     LocationService.instance.stop();
+  }
+
+  /// Lắng nghe `locations/driver_{id}/is_online` trên RTDB — backend ghi
+  /// `false` khi CloseStaleOnlineSessionsCommand phát hiện GPS chết quá 10
+  /// phút. App nhận ngay (realtime) → dừng GPS/timer/offer và sync UI.
+  ///
+  /// Chỉ phản ứng với giá trị `false` rõ ràng — bỏ qua `true` (do chính
+  /// app vừa bật online ghi lên) và `null` (node chưa tồn tại).
+  void _listenOnlineStatus(int driverId, int gen) {
+    _onlineStatusSub?.cancel();
+    _onlineStatusSub = FirebaseDatabase.instance
+        .ref('locations/driver_$driverId/is_online')
+        .onValue
+        .listen((event) {
+      if (gen != _generation) return;
+      final val = event.snapshot.value;
+      if (val == false) {
+        debugPrint('[LocationPush] Backend đã tự chuyển offline (GPS chết quá 10p) → dừng mọi thứ');
+        stop();
+        onForceOffline?.call();
+      }
+    });
   }
 
   // ── Nội bộ ──────────────────────────────────────────────────────────────────

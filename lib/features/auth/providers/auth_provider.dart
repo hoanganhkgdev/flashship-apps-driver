@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/utils/api_error.dart';
 import '../../../core/services/location_push_service.dart';
 import '../../../core/services/offer_listener_service.dart';
 import '../../../core/services/session_guard_service.dart';
@@ -30,18 +31,23 @@ class AuthState {
   bool get isAuthenticated => token != null && user != null;
   bool get isPending => isAuthenticated && (user?.status == 0);
 
+  // Sentinel để phân biệt "không truyền error" (giữ nguyên) với "truyền
+  // error: null" (xoá error) — nếu không, mọi copyWith() không nói tới
+  // error sẽ vô tình xoá mất error đang có trong state.
+  static const _unset = Object();
+
   AuthState copyWith({
     DriverModel? user,
     String? token,
     bool? isLoading,
     bool? isInitialized,
-    String? error,
+    Object? error = _unset,
   }) => AuthState(
     user:          user          ?? this.user,
     token:         token         ?? this.token,
     isLoading:     isLoading     ?? this.isLoading,
     isInitialized: isInitialized ?? this.isInitialized,
-    error:         error,
+    error:         identical(error, _unset) ? this.error : error as String?,
   );
 }
 
@@ -114,24 +120,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state = state.copyWith(isLoading: false, error: null);
         return 'pending';
       }
-      final msg = data?['message'] as String? ?? 'Đăng nhập thất bại';
-      state = state.copyWith(isLoading: false, error: msg);
+      state = state.copyWith(
+        isLoading: false,
+        error: parseApiError(e, fallback: 'Đăng nhập thất bại'),
+      );
       return 'error';
     } catch (_) {
       state = state.copyWith(isLoading: false, error: 'Có lỗi xảy ra. Vui lòng thử lại.');
       return 'error';
     }
-  }
-
-  /// Đọc message lỗi an toàn — server có thể trả non-JSON (HTML 502/503),
-  /// truy cập thẳng data['message'] sẽ nổ ngay trong khối catch.
-  static String _dioMsg(DioException e, String fallback) {
-    final data = e.response?.data;
-    if (data is Map) {
-      final msg = data['message'];
-      if (msg is String && msg.isNotEmpty) return msg;
-    }
-    return fallback;
   }
 
   Future<bool> sendOtp(String phone) async {
@@ -142,7 +139,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(isLoading: false);
       return true;
     } on DioException catch (e) {
-      state = state.copyWith(isLoading: false, error: _dioMsg(e, 'Không thể gửi OTP'));
+      state = state.copyWith(
+        isLoading: false,
+        error: parseApiError(e, fallback: 'Không thể gửi OTP'),
+      );
       return false;
     } catch (_) {
       state = state.copyWith(isLoading: false, error: 'Có lỗi xảy ra. Vui lòng thử lại.');
@@ -177,7 +177,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _saveSession(payload);
       return true;
     } on DioException catch (e) {
-      state = state.copyWith(isLoading: false, error: _dioMsg(e, 'Xác thực thất bại'));
+      state = state.copyWith(
+        isLoading: false,
+        error: parseApiError(e, fallback: 'Xác thực thất bại'),
+      );
       return false;
     } catch (_) {
       state = state.copyWith(isLoading: false, error: 'Có lỗi xảy ra. Vui lòng thử lại.');
@@ -265,6 +268,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       latitude: u.latitude, longitude: u.longitude,
       planType: u.planType, balance: u.balance,
       profilePhotoUrl: u.profilePhotoUrl, status: u.status,
+      cccdStatus: u.cccdStatus,
     );
     state = state.copyWith(user: updated);
     await _persistUser(updated);
@@ -276,18 +280,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }) async {
     if (state.user == null) return;
     _toggleInFlight = true;
-    final updated = isOnline
-        ? state.user!.copyWith(
-            isOnline: true,
-            onlineSince: onlineSince ?? DateTime.now(),
-          )
-        : state.user!.copyWith(
-            isOnline: false,
-            clearOnlineSince: true,
-          );
-    state = state.copyWith(user: updated);
-    await _persistUser(updated);
-    _toggleInFlight = false;
+    try {
+      final updated = isOnline
+          ? state.user!.copyWith(
+              isOnline: true,
+              onlineSince: onlineSince ?? DateTime.now(),
+            )
+          : state.user!.copyWith(
+              isOnline: false,
+              clearOnlineSince: true,
+            );
+      state = state.copyWith(user: updated);
+      await _persistUser(updated);
+    } finally {
+      // finally đảm bảo cờ luôn được mở lại kể cả khi _persistUser() (ghi
+      // SharedPreferences) lỗi — thiếu bước này, refreshUser() sẽ bị chặn
+      // vĩnh viễn (điều kiện `|| _toggleInFlight`) cho tới khi restart app.
+      _toggleInFlight = false;
+    }
   }
 
   // Fetch profile từ backend để sync trạng thái thực (is_online, balance...)
@@ -315,6 +325,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       'plan_type': user.planType, 'balance': user.balance,
       'profile_photo_url': user.profilePhotoUrl,
       'status': user.status,
+      'cccd_image_status': user.cccdStatus,
     }));
   }
 

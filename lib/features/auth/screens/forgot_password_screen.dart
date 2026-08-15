@@ -1,11 +1,12 @@
-import 'dart:async';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/api_error.dart';
 import '../../../core/widgets/auth_field.dart';
+import '../widgets/auth_chrome.dart';
+import '../widgets/resend_countdown_link.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -30,12 +31,9 @@ class _ForgotPasswordScreenState
   bool _obscure1 = true;
   bool _obscure2 = true;
   String? _error;
-  int    _resendSeconds = 0;
-  Timer? _resendTimer;
 
   @override
   void dispose() {
-    _resendTimer?.cancel();
     _phoneCtrl.dispose();
     _otpCtrl.dispose();
     _passCtrl.dispose();
@@ -43,34 +41,27 @@ class _ForgotPasswordScreenState
     super.dispose();
   }
 
-  void _startResendTimer() {
-    _resendSeconds = 60;
-    _resendTimer?.cancel();
-    _resendTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() { if (_resendSeconds > 0) _resendSeconds--; });
-    });
-  }
-
-  Future<void> _sendOtp() async {
-    if (_resendSeconds > 0) return;
+  Future<bool> _sendOtp() async {
+    if (_loading) return false; // tránh gọi lại khi 1 request còn đang chạy
     // Bước 2: form phone đã bị unmount, validate trực tiếp từ controller
-    if (!_step2 && !_phoneKey.currentState!.validate()) return;
+    if (!_step2 && !_phoneKey.currentState!.validate()) return false;
     setState(() { _loading = true; _error = null; });
     try {
       await ApiClient(null).post('/auth/forgot-password', data: {
         'phone': _phoneCtrl.text.trim(),
       });
-      setState(() { _step2 = true; });
-      _startResendTimer();
+      if (mounted) setState(() { _step2 = true; });
+      return true;
     } catch (e) {
-      setState(() { _error = _parseError(e); });
+      if (mounted) setState(() { _error = parseApiError(e, fallback: 'Đã xảy ra lỗi, vui lòng thử lại'); });
+      return false;
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _resetPassword() async {
+    if (_loading) return; // tránh gọi lại khi 1 request còn đang chạy
     if (!_resetKey.currentState!.validate()) return;
     setState(() { _loading = true; _error = null; });
     try {
@@ -88,26 +79,10 @@ class _ForgotPasswordScreenState
         context.go('/login');
       }
     } catch (e) {
-      setState(() { _error = _parseError(e); });
+      if (mounted) setState(() { _error = parseApiError(e, fallback: 'Đã xảy ra lỗi, vui lòng thử lại'); });
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
-  }
-
-  String _parseError(Object e) {
-    if (e is DioException) {
-      final data = e.response?.data;
-      if (data is Map) {
-        final msg = data['message'];
-        if (msg is String && msg.isNotEmpty) return msg;
-        final errors = data['errors'];
-        if (errors is Map) {
-          final first = (errors.values.first as List?)?.first;
-          if (first is String) return first;
-        }
-      }
-    }
-    return 'Đã xảy ra lỗi, vui lòng thử lại';
   }
 
   @override
@@ -119,65 +94,33 @@ class _ForgotPasswordScreenState
     return Scaffold(
       backgroundColor: Colors.white,
       resizeToAvoidBottomInset: false,
-      body: SingleChildScrollView(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFFFF6F0), Colors.white],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            stops: [0.0, 0.4],
+          ),
+        ),
+        child: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(24, safeT + 16, 24, bottom + safeB + 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
-            // Back button
-            GestureDetector(
-              onTap: () => Navigator.of(context).maybePop(),
-              child: Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F5F5),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.arrow_back_rounded,
-                    size: 20, color: AppColors.textPrimary),
-              ),
-            ),
+            AuthBackButton(onTap: () => Navigator.of(context).maybePop()),
 
-            const SizedBox(height: 28),
+            const SizedBox(height: 40),
 
-            // Icon
-            Container(
-              width: 52, height: 52,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(
-                _step2
-                    ? Icons.mark_chat_read_outlined
-                    : Icons.lock_reset_rounded,
-                color: AppColors.primary,
-                size: 26,
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            Text(
-              _step2 ? 'Nhập mã OTP' : 'Quên mật khẩu',
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _step2
+            AuthHeader(
+              title: _step2 ? 'Nhập mã OTP' : 'Quên mật khẩu',
+              subtitle: _step2
                   ? 'Nhập mã 6 số vừa gửi tới ${_phoneCtrl.text.trim()}'
                   : 'Nhập số điện thoại để nhận mã xác nhận',
-              style: const TextStyle(
-                  fontSize: 14, color: AppColors.textSecondary, height: 1.5),
             ),
 
-            const SizedBox(height: 28),
+            const SizedBox(height: 32),
 
             // ── Step 1: Phone ──────────────────────────────────────────
             if (!_step2)
@@ -222,7 +165,7 @@ class _ForgotPasswordScreenState
                       return null;
                     },
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   AuthField(
                     controller: _passCtrl,
                     hint: 'Mật khẩu mới',
@@ -246,7 +189,7 @@ class _ForgotPasswordScreenState
                       return null;
                     },
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   AuthField(
                     controller: _confCtrl,
                     hint: 'Xác nhận mật khẩu mới',
@@ -273,108 +216,36 @@ class _ForgotPasswordScreenState
               ),
 
             if (_error != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.danger.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                      color: AppColors.danger.withValues(alpha: 0.2)),
-                ),
-                child: Row(children: [
-                  const Icon(Icons.error_outline_rounded,
-                      size: 16, color: AppColors.danger),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(_error!,
-                        style: const TextStyle(
-                            fontSize: 13, color: AppColors.danger)),
-                  ),
-                ]),
+              const SizedBox(height: 14),
+              AuthErrorBanner(message: _error!),
+            ],
+
+            const SizedBox(height: 28),
+
+            AuthPrimaryButton(
+              label: _step2 ? 'Đặt lại mật khẩu' : 'Gửi mã OTP',
+              loading: _loading,
+              onPressed: _step2 ? _resetPassword : _sendOtp,
+            ),
+
+            if (_step2) ...[
+              const SizedBox(height: 18),
+              ResendCountdownLink(
+                onResend: _sendOtp,
               ),
             ],
 
             const SizedBox(height: 24),
 
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: FilledButton(
-                onPressed: _loading
-                    ? null
-                    : (_step2 ? _resetPassword : _sendOtp),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  disabledBackgroundColor:
-                      AppColors.primary.withValues(alpha: 0.5),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                  elevation: 0,
-                  textStyle: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w700),
-                ),
-                child: _loading
-                    ? const SizedBox(
-                        width: 22, height: 22,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : Text(_step2 ? 'Đặt lại mật khẩu' : 'Gửi mã OTP'),
-              ),
+            AuthFooterLink(
+              promptText: 'Đã nhớ mật khẩu? ',
+              actionText: 'Đăng nhập',
+              onTap: () => context.go('/login'),
             ),
-
-            if (_step2) ...[
-              const SizedBox(height: 14),
-              Center(
-                child: _resendSeconds > 0
-                    ? Text.rich(
-                        TextSpan(children: [
-                          const TextSpan(text: 'Gửi lại sau '),
-                          TextSpan(
-                            text: '${_resendSeconds}s',
-                            style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),
-                          ),
-                        ]),
-                        style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
-                      )
-                    : GestureDetector(
-                        onTap: _loading ? null : _sendOtp,
-                        child: Text(
-                          'Gửi lại mã OTP',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: _loading ? AppColors.textSecondary : AppColors.primary,
-                          ),
-                        ),
-                      ),
-              ),
-            ],
-
-            const SizedBox(height: 20),
-
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              const Text('Đã nhớ mật khẩu? ',
-                  style: TextStyle(
-                      fontSize: 14, color: AppColors.textSecondary)),
-              GestureDetector(
-                onTap: () => context.go('/login'),
-                child: const Text(
-                  'Đăng nhập',
-                  style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary),
-                ),
-              ),
-            ]),
           ],
+        ),
         ),
       ),
     );
   }
 }
-
-// ── Input field ────────────────────────────────────────────────────────────────
-

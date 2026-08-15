@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/launch_utils.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/pending_widgets.dart';
 
 const _kSupportPhone = '0981483284';
 
@@ -53,14 +54,21 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
   Future<void> _login() async {
     setState(() => _loggingIn = true);
     await ref.read(authProvider.notifier).refreshUser();
-    // Router tự redirect về /home khi isPending = false
-    if (mounted) setState(() => _loggingIn = false);
+    if (!mounted) return;
+    setState(() => _loggingIn = false);
+    // Router tự redirect về /home khi isPending = false. refreshUser() nuốt
+    // lỗi mạng âm thầm (đúng cho các lần gọi nền khác) — riêng lần tài xế
+    // chủ động bấm nút này thì cần báo khi vẫn còn pending sau khi gọi xong,
+    // không thì nút chỉ tắt loading rồi im lặng, tài xế không hiểu vì sao.
+    if (ref.read(authProvider).isPending) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Không thể kết nối. Vui lòng thử lại.'),
+        backgroundColor: AppColors.danger,
+      ));
+    }
   }
 
-  Future<void> _callSupport() async {
-    final uri = Uri.parse('tel:$_kSupportPhone');
-    if (await canLaunchUrl(uri)) launchUrl(uri);
-  }
+  Future<void> _callSupport() => launchPhoneCall(_kSupportPhone);
 
   @override
   Widget build(BuildContext context) {
@@ -98,36 +106,16 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
                   const Spacer(),
 
                   // ── Illustration ──────────────────────────────────────────
-                  Center(
-                    child: Container(
-                      width: 108,
-                      height: 108,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.08),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppColors.primary.withValues(alpha: 0.2),
-                          width: 4,
-                        ),
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.pending_actions_rounded,
-                          size: 48,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                  ),
+                  const PendingIllustration(),
                   const SizedBox(height: 24),
 
                   const Text(
                     'Đang chờ xét duyệt',
                     style: TextStyle(
-                      fontSize: 26,
+                      fontSize: 30,
                       fontWeight: FontWeight.w900,
                       color: AppColors.textPrimary,
-                      letterSpacing: -0.5,
+                      letterSpacing: -0.8,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -135,15 +123,15 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
                     'Hồ sơ đăng ký của bạn đã được gửi lên hệ thống. Ban quản trị sẽ kiểm duyệt thông tin trong vòng 24h làm việc.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 16,
                       color: AppColors.textSecondary,
                       height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 36),
 
                   // ── Steps Timeline ─────────────────────────────────────────
-                  _StepCard(
+                  StepCard(
                     icon: Icons.check_circle_outline_rounded,
                     color: AppColors.success,
                     title: 'Đăng ký thành công',
@@ -151,8 +139,8 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
                     done: true,
                     isActive: false,
                   ),
-                  const SizedBox(height: 12),
-                  _StepCard(
+                  const SizedBox(height: 14),
+                  StepCard(
                     icon: Icons.hourglass_empty_rounded,
                     color: AppColors.warning,
                     title: 'Admin đang xét duyệt',
@@ -160,8 +148,8 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
                     done: _approved,
                     isActive: !_approved,
                   ),
-                  const SizedBox(height: 12),
-                  _StepCard(
+                  const SizedBox(height: 14),
+                  StepCard(
                     icon: Icons.local_shipping_outlined,
                     color: AppColors.info,
                     title: 'Bắt đầu nhận đơn',
@@ -170,268 +158,25 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
                     isActive: _approved,
                   ),
 
-                  const SizedBox(height: 36),
+                  const SizedBox(height: 40),
 
                   // ── Contact Support ───────────────────────────────────────
-                  Card(
-                    elevation: 0,
-                    color: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      side: BorderSide(color: Colors.grey.shade100, width: 1.5),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.headset_mic_rounded,
-                              color: AppColors.primary,
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Cần hỗ trợ gấp?',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                SizedBox(height: 2),
-                                Text(
-                                  'Liên hệ ngay để được duyệt nhanh',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: TextButton(
-                              onPressed: _callSupport,
-                              style: TextButton.styleFrom(
-                                foregroundColor: AppColors.primary,
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: const Text(
-                                'Gọi ngay',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  PendingSupportCard(onCallSupport: _callSupport),
 
                   const Spacer(),
 
                   // ── Action Status Button ──────────────────────────────────
-                  Container(
-                    width: double.infinity,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(26),
-                      gradient: const LinearGradient(
-                        colors: [AppColors.primary, Color(0xFFFF9E59)],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.24),
-                          blurRadius: 14,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: ElevatedButton(
-                      onPressed: (_approved && !_loggingIn) ? _login : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        disabledBackgroundColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(26),
-                        ),
-                      ),
-                      child: _loggingIn
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(
-                              _approved ? 'Đăng nhập' : 'Chờ admin duyệt...',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white.withValues(
-                                    alpha: _approved ? 1.0 : 0.5),
-                              ),
-                            ),
-                    ),
+                  PendingActionButton(
+                    approved: _approved,
+                    loggingIn: _loggingIn,
+                    onLogin: _login,
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _StepCard extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String title;
-  final String subtitle;
-  final bool done;
-  final bool isActive;
-
-  const _StepCard({
-    required this.icon,
-    required this.color,
-    required this.title,
-    required this.subtitle,
-    required this.done,
-    required this.isActive,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: done
-            ? color.withValues(alpha: 0.04)
-            : isActive
-                ? Colors.white
-                : Colors.grey.shade50.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: done
-              ? color.withValues(alpha: 0.25)
-              : isActive
-                  ? AppColors.primary.withValues(alpha: 0.4)
-                  : Colors.grey.shade100,
-          width: isActive ? 1.5 : 1,
-        ),
-        boxShadow: isActive
-            ? [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                )
-              ]
-            : null,
-      ),
-      child: Row(
-        children: [
-          // Step Icon
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: done
-                  ? color.withValues(alpha: 0.12)
-                  : isActive
-                      ? AppColors.primary.withValues(alpha: 0.1)
-                      : Colors.grey.shade100,
-              shape: BoxShape.circle,
-            ),
-            child: isActive
-                ? const Center(
-                    child: SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  )
-                : Icon(
-                    done ? Icons.check_rounded : icon,
-                    color: done
-                        ? color
-                        : isActive
-                            ? AppColors.primary
-                            : Colors.grey.shade400,
-                    size: 20,
-                  ),
-          ),
-          const SizedBox(width: 14),
-          // Step Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: done
-                        ? AppColors.textPrimary
-                        : isActive
-                            ? AppColors.primary
-                            : AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: done
-                        ? AppColors.textSecondary
-                        : isActive
-                            ? AppColors.textPrimary.withValues(alpha: 0.7)
-                            : AppColors.textSecondary.withValues(alpha: 0.7),
-                    fontWeight: isActive ? FontWeight.w500 : FontWeight.normal,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (done)
-            const Icon(
-              Icons.check_circle_rounded,
-              color: AppColors.success,
-              size: 20,
-            ),
-        ],
       ),
     );
   }

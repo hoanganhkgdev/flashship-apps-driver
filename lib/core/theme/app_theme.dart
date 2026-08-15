@@ -44,7 +44,7 @@ class AppTheme {
       error: AppColors.danger,
     );
 
-    final textTheme = GoogleFonts.beVietnamProTextTheme(
+    final textTheme = GoogleFonts.robotoCondensedTextTheme(
       ThemeData(colorScheme: colorScheme).textTheme,
     ).apply(
       bodyColor: AppColors.textPrimary,
@@ -54,7 +54,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      fontFamily: GoogleFonts.beVietnamPro().fontFamily,
+      fontFamily: GoogleFonts.robotoCondensed().fontFamily,
       textTheme: textTheme,
       scaffoldBackgroundColor: AppColors.background,
       dividerColor: AppColors.divider,
@@ -74,7 +74,7 @@ class AppTheme {
           statusBarIconBrightness: Brightness.dark,
           statusBarBrightness: Brightness.light,
         ),
-        titleTextStyle: GoogleFonts.beVietnamPro(
+        titleTextStyle: GoogleFonts.robotoCondensed(
           fontSize: 17,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
@@ -99,7 +99,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppRadius.md)),
           minimumSize: const Size(double.infinity, 50),
-          textStyle: GoogleFonts.beVietnamPro(
+          textStyle: GoogleFonts.robotoCondensed(
               fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
@@ -110,7 +110,7 @@ class AppTheme {
           side: const BorderSide(color: AppColors.primary),
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppRadius.md)),
-          textStyle: GoogleFonts.beVietnamPro(
+          textStyle: GoogleFonts.robotoCondensed(
               fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
@@ -118,7 +118,7 @@ class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.primary,
-          textStyle: GoogleFonts.beVietnamPro(
+          textStyle: GoogleFonts.robotoCondensed(
               fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
@@ -164,7 +164,7 @@ class AppTheme {
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: const Color(0xFF1F2937),
-        contentTextStyle: GoogleFonts.beVietnamPro(
+        contentTextStyle: GoogleFonts.robotoCondensed(
             fontSize: 14, color: Colors.white),
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md)),

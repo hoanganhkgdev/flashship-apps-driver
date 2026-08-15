@@ -43,7 +43,7 @@ class AuthField extends StatelessWidget {
         onFieldSubmitted: onFieldSubmitted,
         inputFormatters: inputFormatters,
         style: const TextStyle(
-          fontSize: 15,
+          fontSize: 17,
           fontWeight: FontWeight.w500,
           color: AppColors.textPrimary,
         ),
@@ -51,10 +51,10 @@ class AuthField extends StatelessWidget {
           hintText: hint,
           hintStyle: const TextStyle(
             color: AppColors.textSecondary,
-            fontSize: 15,
+            fontSize: 17,
             fontWeight: FontWeight.w400,
           ),
-          errorStyle: const TextStyle(fontSize: 12),
+          errorStyle: const TextStyle(fontSize: 14),
           prefixIcon: prefixIcon != null
               ? Padding(
                   padding: const EdgeInsets.only(left: 14, right: 10),
@@ -72,29 +72,29 @@ class AuthField extends StatelessWidget {
           suffixIconConstraints:
               const BoxConstraints(minWidth: 40, minHeight: 40),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: AppColors.surfaceAlt,
           contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none,
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none,
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: AppColors.primary, width: 1.8),
           ),
           errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: AppColors.danger),
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: AppColors.danger, width: 1.5),
           ),
           focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(14),
             borderSide:
-                const BorderSide(color: AppColors.danger, width: 1.5),
+                const BorderSide(color: AppColors.danger, width: 1.8),
           ),
         ),
         validator: validator,

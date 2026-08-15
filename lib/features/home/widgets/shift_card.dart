@@ -56,7 +56,7 @@ class ShiftCard extends StatelessWidget {
                             ),
                             child: Text('${s.name} · ${s.timeRange}',
                                 style: const TextStyle(
-                                  fontSize: 13.5,
+                                  fontSize: 12.5,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.primary,
                                 )),
@@ -73,7 +73,7 @@ class ShiftCard extends StatelessWidget {
                   ),
                   child: const Text('Chưa đăng ký',
                       style: TextStyle(
-                        fontSize: 13.5,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w800,
                         color: AppColors.warning,
                       )),
@@ -81,7 +81,7 @@ class ShiftCard extends StatelessWidget {
                 const SizedBox(height: 5),
                 const Text('Bấm để đăng ký ca làm việc',
                     style: TextStyle(
-                        fontSize: 13.5, color: AppColors.textSecondary)),
+                        fontSize: 12.5, color: AppColors.textSecondary)),
               ],
             ]),
           ),

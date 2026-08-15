@@ -4,8 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/widgets/gradient_header_shell.dart';
-import '../../../core/widgets/info_chip.dart';
 import '../models/wallet_model.dart';
 import '../providers/wallet_provider.dart';
 import '../../orders/models/order_model.dart';
@@ -76,8 +74,10 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
+        // Header giờ nền trắng (trước là gradient cam) — icon status bar
+        // phải đổi sang màu đen mới nhìn thấy được.
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
       ),
       child: Scaffold(
         backgroundColor: AppColors.background,
@@ -90,9 +90,17 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
               SliverToBoxAdapter(
                 child: _Header(
                   period: _period,
-                  summary: summary,
-                  loading: wallet.loading,
                   onPeriod: (p) => setState(() => _period = p),
+                ),
+              ),
+
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  child: _TotalEarningsCard(
+                    summary: summary,
+                    loading: wallet.loading,
+                  ),
                 ),
               ),
 
@@ -130,16 +138,9 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
 
 class _Header extends StatelessWidget {
   final int period;
-  final EarningsSummary summary;
-  final bool loading;
   final ValueChanged<int> onPeriod;
 
-  const _Header({
-    required this.period,
-    required this.summary,
-    required this.loading,
-    required this.onPeriod,
-  });
+  const _Header({required this.period, required this.onPeriod});
 
   static const _labels = ['Hôm nay', 'Tuần này', 'Tháng này'];
 
@@ -147,159 +148,163 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final top = MediaQuery.of(context).padding.top;
 
-    return GradientHeaderShell(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return Container(
+      color: AppColors.surface,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         SizedBox(height: top),
 
         // Topbar
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: SizedBox(
-            height: 48,
-            child: Row(children: [
-              const Text('Thu nhập',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    letterSpacing: -0.3,
-                  )),
-              const Spacer(),
-              GestureDetector(
-                onTap: () => context.push('/wallet'),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.account_balance_wallet_rounded,
-                        size: 14, color: Colors.white),
-                    const SizedBox(width: 6),
-                    const Text('Xem ví',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        )),
-                  ]),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+          child: Row(children: [
+            const Text('Thu nhập',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.3,
+                )),
+            const Spacer(),
+            GestureDetector(
+              onTap: () => context.push('/wallet'),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.divider),
                 ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.account_balance_wallet_rounded,
+                      size: 14, color: AppColors.primary),
+                  const SizedBox(width: 6),
+                  const Text('Xem ví',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
+                      )),
+                ]),
               ),
-            ]),
-          ),
+            ),
+          ]),
         ),
 
-        const SizedBox(height: 20),
+        const SizedBox(height: 14),
 
-        // Period selector
+        // Period tabs — gạch chân cam thay vì pill nổi trên nền cam
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Container(
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: List.generate(_labels.length, (i) {
-                final active = i == period;
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () => onPeriod(i),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        color: active ? Colors.white : Colors.transparent,
-                        borderRadius: BorderRadius.circular(9),
-                        boxShadow: active
-                            ? [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 1),
-                                )
-                              ]
-                            : null,
-                      ),
-                      child: Text(
-                        _labels[i],
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight:
-                              active ? FontWeight.w700 : FontWeight.w500,
-                          color: active ? AppColors.primary : Colors.white,
+          child: Row(
+            children: List.generate(_labels.length, (i) {
+              final active = i == period;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => onPeriod(i),
+                  behavior: HitTestBehavior.opaque,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: active ? AppColors.primary : AppColors.divider,
+                          width: active ? 2 : 1,
                         ),
                       ),
                     ),
-                  ),
-                );
-              }),
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 24),
-
-        // Hero amount
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: loading
-              ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Container(
-                    height: 16,
-                    width: 100,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.25),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Container(
-                    height: 42,
-                    width: 200,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ])
-              : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Tổng thu nhập',
+                    child: Text(
+                      _labels[i],
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.white.withValues(alpha: 0.75),
-                      )),
-                  const SizedBox(height: 6),
-                  Text(
-                    Fmt.currency(summary.total),
-                    style: const TextStyle(
-                      fontSize: 38,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      letterSpacing: -1,
+                        fontWeight: active ? FontWeight.w800 : FontWeight.w500,
+                        color: active
+                            ? AppColors.primary
+                            : AppColors.textSecondary,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Row(children: [
-                    InfoChip(
-                      icon: Icons.check_circle_rounded,
-                      label: '${summary.orders} đơn hoàn thành',
-                      borderAlpha: 0.3,
-                    ),
-                  ]),
-                ]),
+                ),
+              );
+            }),
+          ),
         ),
+      ]),
+    );
+  }
+}
 
-        const SizedBox(height: 24),
-      ],
+// ── Total earnings card ──────────────────────────────────────────────────────
+
+class _TotalEarningsCard extends StatelessWidget {
+  final EarningsSummary summary;
+  final bool loading;
+  const _TotalEarningsCard({required this.summary, required this.loading});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+      decoration: BoxDecoration(
+        color: AppColors.successSoft,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: loading
+          ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                height: 14,
+                width: 90,
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                height: 36,
+                width: 180,
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ])
+          : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Tổng thu nhập',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.success,
+                  )),
+              const SizedBox(height: 6),
+              Text(
+                Fmt.currency(summary.total),
+                style: const TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.success,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text('${summary.orders} đơn hoàn thành',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.success,
+                    )),
+              ),
+            ]),
     );
   }
 }
@@ -323,8 +328,6 @@ class _StatsRow extends StatelessWidget {
           Expanded(
             child: _StatCard(
               icon: Icons.trending_up_rounded,
-              iconColor: const Color(0xFF8B5CF6),
-              iconBg: const Color(0xFFF3EEFF),
               label: 'Trung bình/đơn',
               value: Fmt.currency(_avgPerOrder),
             ),
@@ -333,8 +336,6 @@ class _StatsRow extends StatelessWidget {
           Expanded(
             child: _StatCard(
               icon: Icons.account_balance_wallet_rounded,
-              iconColor: AppColors.primary,
-              iconBg: const Color(0xFFFEF3EB),
               label: 'Số dư ví',
               value: Fmt.currency(balance),
             ),
@@ -347,12 +348,9 @@ class _StatsRow extends StatelessWidget {
 
 class _StatCard extends StatelessWidget {
   final IconData icon;
-  final Color iconColor, iconBg;
   final String label, value;
   const _StatCard({
     required this.icon,
-    required this.iconColor,
-    required this.iconBg,
     required this.label,
     required this.value,
   });
@@ -361,25 +359,18 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surfaceAlt,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: iconBg,
+              color: AppColors.primarySoft,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: iconColor, size: 20),
+            child: Icon(icon, color: AppColors.primary, size: 20),
           ),
           const SizedBox(height: 12),
           Text(label,
@@ -576,27 +567,27 @@ class _EmptyEarnings extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 40),
+        padding: const EdgeInsets.symmetric(vertical: 20),
         child: Center(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(
-              width: 64,
-              height: 64,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
               child: Icon(Icons.bar_chart_rounded,
-                  color: AppColors.primary.withValues(alpha: 0.5), size: 32),
+                  color: AppColors.primary.withValues(alpha: 0.5), size: 22),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             const Text('Chưa có thu nhập',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13.5,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textSecondary,
                 )),
-            const SizedBox(height: 4),
+            const SizedBox(height: 3),
             const Text('Hoàn thành đơn để tích lũy thu nhập',
                 style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
           ]),

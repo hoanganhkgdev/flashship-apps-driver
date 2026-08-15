@@ -55,7 +55,7 @@ class EarningsCard extends StatelessWidget {
               child: Text(
                 Fmt.currency(todayEarnings),
                 style: const TextStyle(
-                  fontSize: 32,
+                  fontSize: 30,
                   fontWeight: FontWeight.w900,
                   color: AppColors.success,
                   letterSpacing: -0.5,
@@ -110,7 +110,7 @@ class EarningsCard extends StatelessWidget {
             const SizedBox(width: 4),
             Text(label,
                 style: const TextStyle(
-                    fontSize: 13, color: AppColors.textTertiary)),
+                    fontSize: 12, color: AppColors.textTertiary)),
           ]),
           const SizedBox(height: 3),
           Text(value,
@@ -165,20 +165,20 @@ class _WeeklyEarningsChartState extends State<_WeeklyEarningsChart> {
       Row(children: [
         const Text('Thu nhập tuần này',
             style: TextStyle(
-              fontSize: 13.5,
+              fontSize: 12.5,
               fontWeight: FontWeight.w600,
               color: AppColors.textTertiary,
             )),
         const Spacer(),
         Text(
           isSelectedToday ? 'Hôm nay' : _weekdayFull[dates[_selected].weekday],
-          style: const TextStyle(fontSize: 13.5, color: AppColors.textTertiary),
+          style: const TextStyle(fontSize: 12.5, color: AppColors.textTertiary),
         ),
         const SizedBox(width: 6),
         Text(
           isSelectedFuture ? 'Chưa tới' : Fmt.currency(values[_selected]),
           style: const TextStyle(
-            fontSize: 13.5,
+            fontSize: 12.5,
             fontWeight: FontWeight.w800,
             color: AppColors.primary,
           ),
@@ -228,7 +228,7 @@ class _WeeklyEarningsChartState extends State<_WeeklyEarningsChart> {
                   Text(
                     _weekdayShort[dates[i].weekday],
                     style: TextStyle(
-                      fontSize: 12.5,
+                      fontSize: 11.5,
                       fontWeight:
                           isSelected ? FontWeight.w800 : FontWeight.w500,
                       color: isFuture

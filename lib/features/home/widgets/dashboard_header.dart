@@ -220,7 +220,7 @@ class DashboardHeader extends StatelessWidget {
                               Text(
                                 'Xin chào 👋',
                                 style: TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                   letterSpacing: 0.3,
                                   color: Colors.white.withValues(alpha: 0.8),
@@ -230,7 +230,7 @@ class DashboardHeader extends StatelessWidget {
                               Text(
                                 user?.name ?? 'Tài xế',
                                 style: TextStyle(
-                                  fontSize: 23,
+                                  fontSize: 21,
                                   fontWeight: FontWeight.w800,
                                   color: Colors.white,
                                   letterSpacing: -0.4,
@@ -404,7 +404,7 @@ class DashboardHeader extends StatelessWidget {
                                       ),
                                     ]),
                                     style: TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 13,
                                       color:
                                           Colors.white.withValues(alpha: 0.92),
                                     ),
@@ -414,7 +414,7 @@ class DashboardHeader extends StatelessWidget {
                                 : Text(
                                     'Chưa vào ca hôm nay',
                                     style: TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.w700,
                                       color:
                                           Colors.white.withValues(alpha: 0.92),

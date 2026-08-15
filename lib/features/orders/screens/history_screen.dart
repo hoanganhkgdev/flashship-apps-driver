@@ -9,6 +9,35 @@ import '../widgets/history_header.dart';
 import '../widgets/order_cards.dart';
 import '../../wallet/providers/wallet_provider.dart';
 import '../../home/widgets/bottom_nav.dart';
+import '../../shifts/models/shift_model.dart';
+import '../../shifts/providers/shift_provider.dart';
+
+// Có đang trong khung giờ của 1 ca đã đăng ký ngay lúc này không — bản rút
+// gọn (chỉ trả bool) của cùng logic ở DashboardHeader._activeShift(), viết
+// độc lập ở đây để không đụng vào file đó (đang hoạt động ổn định).
+bool _isOnShiftNow(List<ShiftModel> shifts, List<int> currentShiftIds) {
+  final now = DateTime.now();
+  DateTime todayAt(String hms) {
+    final parts = hms.split(':');
+    final h = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 0;
+    final m = int.tryParse(parts.length > 1 ? parts[1] : '') ?? 0;
+    return DateTime(now.year, now.month, now.day, h, m);
+  }
+
+  for (final s in shifts) {
+    if (!currentShiftIds.contains(s.id)) continue;
+    final start = todayAt(s.startTime);
+    var end = todayAt(s.endTime);
+    if (!end.isAfter(start)) end = end.add(const Duration(days: 1));
+    if (now.isAfter(start) && now.isBefore(end)) return true;
+    final startYesterday = start.subtract(const Duration(days: 1));
+    final endYesterday = end.subtract(const Duration(days: 1));
+    if (now.isAfter(startYesterday) && now.isBefore(endYesterday)) {
+      return true;
+    }
+  }
+  return false;
+}
 
 class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
@@ -84,8 +113,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     final historyState = ref.watch(orderHistoryProvider);
     final activeState = ref.watch(activeOrderProvider);
     final walletBalance = ref.watch(walletProvider).balance;
+    final shiftState = ref.watch(shiftProvider);
     final allOrders = historyState.orders;
     final activeOrders = activeState.orders;
+    final isOnShift =
+        _isOnShiftNow(shiftState.shifts, shiftState.currentShiftIds);
 
     final now = DateTime.now();
     final allCompleted = allOrders.where((o) => o.isCompleted);
@@ -95,6 +127,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     }).toList();
     final todayEarnings =
         todayOrders.fold<int>(0, (s, o) => s + o.driverEarning);
+    // "Hôm nay" = đơn đã hoàn thành hôm nay + đơn đang xử lý (luôn tính là
+    // việc của "hôm nay" vì tối đa chỉ giữ active trong ngày) — trước đây
+    // chỉ đếm đơn hoàn thành, khiến hiện "0 đơn" dù đang có đơn active thật.
+    final todayOrderCount = todayOrders.length + activeOrders.length;
 
     final completedOrders = allOrders.where((o) => o.isCompleted).toList();
     final items = _buildItems(completedOrders);
@@ -103,12 +139,24 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     final isLoading = isActiveTab ? activeState.loading : historyState.loading;
     final isEmpty =
         isActiveTab ? activeOrders.isEmpty : completedOrders.isEmpty;
+    // Đơn ưu tiên xử lý trước: đơn đã "processing" (đã lấy hàng, đang giao)
+    // luôn gấp hơn đơn còn "assigned" (chưa lấy) — nếu chưa đơn nào processing
+    // thì đơn đầu danh sách (thứ tự backend trả) là đơn tới lượt kế tiếp.
+    final priorityIndex = activeOrders.isEmpty
+        ? -1
+        : (() {
+            final idx =
+                activeOrders.indexWhere((o) => o.status == 'processing');
+            return idx >= 0 ? idx : 0;
+          })();
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
+        // Header giờ nền trắng (trước là gradient cam) — icon status bar phải
+        // đổi sang màu đen mới nhìn thấy được, không còn dùng icon trắng nữa.
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
       ),
       child: Scaffold(
         backgroundColor: AppColors.background,
@@ -126,10 +174,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             slivers: [
               SliverToBoxAdapter(
                 child: HistoryHeader(
-                  todayCount: todayOrders.length,
+                  todayCount: todayOrderCount,
                   todayEarnings: todayEarnings,
                   walletBalance: walletBalance,
                   tabIndex: _tabIndex,
+                  isOnShift: isOnShift,
                   onTab: (i) => setState(() => _tabIndex = i),
                 ),
               ),
@@ -165,53 +214,33 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 ),
 
               // ── Tab: Đang nhận ─────────────────────────────────────
-              if (isActiveTab) ...[
-                if (activeOrders.isNotEmpty)
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (_, i) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: ActiveOrderCard(
-                            order: activeOrders[i],
-                            orderIndex: i,
-                          ),
-                        ),
-                        childCount: activeOrders.length,
-                      ),
-                    ),
-                  ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 11),
-                      decoration: BoxDecoration(
-                        color: AppColors.infoSoft,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(children: [
-                        const Icon(Icons.info_outline_rounded,
-                            size: 14, color: AppColors.info),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            activeOrders.isEmpty
-                                ? 'Chưa có đơn. Bạn có thể nhận tối đa 2 đơn cùng lúc.'
-                                : 'Bạn có thể nhận tối đa 2 đơn cùng lúc.',
-                            style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.info,
-                                height: 1.4),
-                          ),
-                        ),
-                      ]),
+              // Banner giới hạn đơn gộp làm phần tử CUỐI của cùng 1 SliverList
+              // với các card — nằm liền mạch trong luồng chính, không tách
+              // riêng thành khối trôi nổi cách xa như trước.
+              if (isActiveTab)
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (_, i) {
+                        if (i < activeOrders.length) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: ActiveOrderCard(
+                              order: activeOrders[i],
+                              orderIndex: i,
+                              totalCount: activeOrders.length,
+                              isPriority: i == priorityIndex,
+                            ),
+                          );
+                        }
+                        return MaxOrdersBanner(
+                            activeCount: activeOrders.length);
+                      },
+                      childCount: activeOrders.length + 1,
                     ),
                   ),
                 ),
-              ],
 
               // ── Tab: Hoàn thành ────────────────────────────────────
               if (!isActiveTab && completedOrders.isNotEmpty) ...[

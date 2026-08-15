@@ -82,7 +82,7 @@ class DashboardScoreCard extends StatelessWidget {
           ),
           child: Text(s.label,
               style: TextStyle(
-                  fontSize: 13.5,
+                  fontSize: 12.5,
                   fontWeight: FontWeight.w800,
                   color: tierColor)),
         ),
@@ -94,7 +94,7 @@ class DashboardScoreCard extends StatelessWidget {
       Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
         Text('${s.score}',
             style: TextStyle(
-              fontSize: 30,
+              fontSize: 28,
               fontWeight: FontWeight.w900,
               color: tierColor,
               letterSpacing: -0.5,
@@ -104,7 +104,7 @@ class DashboardScoreCard extends StatelessWidget {
           padding: const EdgeInsets.only(left: 3, bottom: 3),
           child: Text('/ ${s.maxScore} điểm',
               style:
-                  const TextStyle(fontSize: 14, color: AppColors.textTertiary)),
+                  const TextStyle(fontSize: 13, color: AppColors.textTertiary)),
         ),
         const Spacer(),
         if (streakCount > 0)
@@ -115,7 +115,7 @@ class DashboardScoreCard extends StatelessWidget {
               const SizedBox(width: 3),
               Text('$streakCount đơn liên tiếp',
                   style: const TextStyle(
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textSecondary,
                   )),
@@ -148,7 +148,7 @@ class DashboardScoreCard extends StatelessWidget {
           Expanded(
             child: Text(status.$2,
                 style: TextStyle(
-                    fontSize: 13.5,
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w600,
                     color: status.$1,
                     height: 1.3)),
@@ -164,7 +164,7 @@ class DashboardScoreCard extends StatelessWidget {
           Expanded(
             child: Text(s.tips.first,
                 style: const TextStyle(
-                    fontSize: 13.5,
+                    fontSize: 12.5,
                     color: AppColors.textSecondary,
                     height: 1.3)),
           ),

@@ -70,7 +70,7 @@ class FinanceCard extends StatelessWidget {
                       const SizedBox(height: 10),
                       const Text('Ví cá nhân',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 13,
                             fontWeight: FontWeight.w500,
                             color: AppColors.textSecondary,
                           )),
@@ -128,7 +128,7 @@ class FinanceCard extends StatelessWidget {
                             ),
                             child: Text('$debtCount',
                                 style: const TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w800,
                                   color: Colors.white,
                                 )),
@@ -140,7 +140,7 @@ class FinanceCard extends StatelessWidget {
                       const SizedBox(height: 10),
                       const Text('Công nợ',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 13,
                             fontWeight: FontWeight.w500,
                             color: AppColors.textSecondary,
                           )),
@@ -150,7 +150,7 @@ class FinanceCard extends StatelessWidget {
                               ? Fmt.currency(codPending)
                               : 'Không có công nợ',
                           style: TextStyle(
-                            fontSize: hasDebt ? 18 : 15,
+                            fontSize: hasDebt ? 18 : 14,
                             fontWeight: FontWeight.w900,
                             color: debtColor,
                           )),

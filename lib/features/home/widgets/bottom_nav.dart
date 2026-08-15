@@ -88,7 +88,7 @@ class BottomNav extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 12.5,
+                        fontSize: 11.5,
                         fontWeight:
                             selected ? FontWeight.w800 : FontWeight.w500,
                         color: color,

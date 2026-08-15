@@ -24,28 +24,15 @@ class EarningCard extends StatelessWidget {
 
         const SizedBox(height: 14),
 
-        // ── Earning hero ─────────────────────────────────────────────
+        // ── Earning hero (1 card nền xám nhạt duy nhất) ───────────────
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: AppColors.success.withValues(alpha: 0.07),
+            color: AppColors.surfaceAlt,
             borderRadius: BorderRadius.circular(14),
-            border:
-                Border.all(color: AppColors.success.withValues(alpha: 0.18)),
           ),
           child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.success.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.trending_up_rounded,
-                  size: 22, color: AppColors.success),
-            ),
-            const SizedBox(width: 14),
             Expanded(
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -78,28 +65,32 @@ class EarningCard extends StatelessWidget {
                     ],
                   ]),
             ),
-            if (order.isCod)
+            if (order.isCod) ...[
+              const SizedBox(width: 10),
+              // Chỉ mang tính thông báo "đơn này cần thu tiền COD" — không có
+              // hành động bấm riêng (giữ nguyên như bản gốc), chỉ đổi kiểu
+              // hiển thị sang outline nhỏ cho đỡ nổi hơn nút hành động chính.
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                      color: AppColors.warning.withValues(alpha: 0.3)),
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.divider),
                 ),
-                child: Column(children: [
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
                   const Icon(Icons.monetization_on_rounded,
-                      size: 16, color: AppColors.warning),
-                  const SizedBox(height: 2),
+                      size: 15, color: AppColors.primary),
+                  const SizedBox(width: 5),
                   const Text('Thu tiền',
                       style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.warning,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
                       )),
                 ]),
               ),
+            ],
           ]),
         ),
 

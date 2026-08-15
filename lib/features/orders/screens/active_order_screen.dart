@@ -113,7 +113,8 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
       }
       _completing = false;
     } else {
-      final ok = await notifier.updateOrderStatus(order.nextStatus, orderId: order.id);
+      final ok =
+          await notifier.updateOrderStatus(order.nextStatus, orderId: order.id);
       if (mounted && !ok) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Không thể cập nhật trạng thái đơn. Vui lòng thử lại.'),
@@ -169,19 +170,21 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
+        // Header giờ nền trắng (trước là gradient cam) — icon status bar
+        // phải đổi sang màu đen mới nhìn thấy được.
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
       ),
       child: Scaffold(
         backgroundColor: AppColors.background,
         body: Column(children: [
-          // ── Gradient header ────────────────────────────────────────
+          // ── Header ─────────────────────────────────────────────────
           ActiveOrderHeader(order: order, color: color),
 
           // ── Scrollable content ─────────────────────────────────────
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
               children: [
                 // Route or Topup
                 if (isTopup)
@@ -202,7 +205,6 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
                     order: order,
                     isPickup: isPickup,
                     isRide: isRide,
-                    color: color,
                     onCallPickup: isRide
                         ? (order.deliveryPhone.isNotEmpty
                             ? () => _callPhone(order.deliveryPhone)
@@ -262,8 +264,6 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
           // ── Action bar ─────────────────────────────────────────────
           BottomBar(
             order: order,
-            isLast: order.isLastStep,
-            color: color,
             actionLoading: _actionLoading,
             onAction:
                 order.nextAction.isNotEmpty ? () => _handleAction(order) : null,

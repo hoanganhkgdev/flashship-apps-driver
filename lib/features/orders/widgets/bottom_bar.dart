@@ -6,16 +6,12 @@ import 'swipe_button.dart';
 
 class BottomBar extends StatelessWidget {
   final OrderModel order;
-  final bool isLast;
-  final Color color;
   final bool actionLoading;
   final VoidCallback? onAction;
 
   const BottomBar({
     super.key,
     required this.order,
-    required this.isLast,
-    required this.color,
     required this.actionLoading,
     required this.onAction,
   });
@@ -37,9 +33,11 @@ class BottomBar extends StatelessWidget {
           ),
         ],
       ),
+      // Điểm nhấn cam mạnh nhất và duy nhất trên màn hình — luôn cố định
+      // AppColors.primary, không còn đổi theo màu dịch vụ/trạng thái nữa.
       child: SwipeButton(
         label: order.nextAction,
-        color: isLast ? AppColors.success : color,
+        color: AppColors.primary,
         loading: actionLoading,
         onConfirm: onAction,
       ),

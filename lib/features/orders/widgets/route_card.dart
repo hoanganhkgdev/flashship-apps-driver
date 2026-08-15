@@ -8,7 +8,6 @@ class RouteCard extends StatelessWidget {
   final OrderModel order;
   final bool isPickup;
   final bool isRide;
-  final Color color;
   final VoidCallback? onCallPickup;
   final VoidCallback onNavPickup;
   final VoidCallback? onCallDelivery;
@@ -19,7 +18,6 @@ class RouteCard extends StatelessWidget {
     required this.order,
     required this.isPickup,
     required this.isRide,
-    required this.color,
     required this.onCallPickup,
     required this.onNavPickup,
     required this.onCallDelivery,
@@ -61,7 +59,6 @@ class RouteCard extends StatelessWidget {
           isOrigin: true,
           isActive: isPickup,
           isDone: !isPickup,
-          color: color,
           label: _pickupLabel,
           placeName: pickupPlace,
           address: order.pickupAddress,
@@ -90,7 +87,6 @@ class RouteCard extends StatelessWidget {
           isOrigin: false,
           isActive: !isPickup,
           isDone: false,
-          color: color,
           label: _deliveryLabel,
           placeName: deliveryPlace,
           address: order.deliveryAddress,
@@ -107,7 +103,6 @@ class RouteStop extends StatelessWidget {
   final bool isOrigin;
   final bool isActive;
   final bool isDone;
-  final Color color;
   final String label;
   final String? placeName;
   final String address;
@@ -120,7 +115,6 @@ class RouteStop extends StatelessWidget {
     required this.isOrigin,
     required this.isActive,
     required this.isDone,
-    required this.color,
     required this.label,
     this.placeName,
     required this.address,
@@ -129,8 +123,10 @@ class RouteStop extends StatelessWidget {
     required this.onNav,
   });
 
+  // Điểm đang xử lý luôn tô cam (điểm nhấn thương hiệu cố định) — không còn
+  // đổi theo màu loại dịch vụ như trước, để đồng bộ với các màn đã redesign.
   Color get _dotColor {
-    if (isActive) return color;
+    if (isActive) return AppColors.primary;
     if (isDone) return AppColors.success;
     return const Color(0xFFE0E0E0);
   }
@@ -143,13 +139,13 @@ class RouteStop extends StatelessWidget {
         width: 28,
         height: 28,
         decoration: BoxDecoration(
-          color: _dotColor.withValues(alpha: isActive ? 1.0 : 0.12),
+          color: _dotColor.withValues(alpha: isActive || isDone ? 1.0 : 0.12),
           shape: BoxShape.circle,
         ),
         child: Icon(
           isOrigin ? Icons.location_on_rounded : Icons.flag_rounded,
           size: 14,
-          color: isActive ? Colors.white : _dotColor,
+          color: isActive || isDone ? Colors.white : _dotColor,
         ),
       ),
 
@@ -163,21 +159,21 @@ class RouteStop extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: isActive ? color : AppColors.textTertiary,
+                  color: isActive ? AppColors.primary : AppColors.textTertiary,
                 )),
             if (isActive) ...[
               const SizedBox(width: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.10),
+                  color: AppColors.primary.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Text('Đang đến',
+                child: const Text('Đang đến',
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w700,
-                      color: color,
+                      color: AppColors.primary,
                     )),
               ),
             ],
@@ -232,7 +228,8 @@ class RouteStop extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          // Action pill buttons
+          // Action pill buttons — outline xám, chỉ icon có màu, không cạnh
+          // tranh thị giác với nút hành động chính cam đặc ở cuối màn hình.
           Row(children: [
             PillBtn(
               icon: Icons.near_me_rounded,
@@ -258,6 +255,10 @@ class RouteStop extends StatelessWidget {
   }
 }
 
+// Nút phụ outline — nền trong suốt, viền xám, chỉ icon tô màu theo [color],
+// chữ luôn xám đậm. Trước đây nền+viền+chữ đều tô theo [color] (cam/xanh
+// mint đặc), nay chỉ icon giữ màu để nút hành động chính cam ở cuối màn hình
+// vẫn là điểm nhấn mạnh nhất, duy nhất trên màn hình.
 class PillBtn extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -276,18 +277,18 @@ class PillBtn extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.08),
+            color: Colors.transparent,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: color.withValues(alpha: 0.2)),
+            border: Border.all(color: AppColors.divider),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(icon, size: 14, color: color),
             const SizedBox(width: 5),
             Text(label,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: color,
+                  color: AppColors.textSecondary,
                 )),
           ]),
         ),

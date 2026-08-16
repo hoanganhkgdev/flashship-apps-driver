@@ -13,9 +13,14 @@ import '../widgets/order_card_shell.dart';
 import '../widgets/order_note_card.dart';
 import '../widgets/route_card.dart';
 
-/// Xem lại chi tiết 1 đơn đã hoàn thành/huỷ từ tab "Hoàn thành" — chỉ đọc,
+/// Xem lại chi tiết 1 đơn đã hoàn thành từ tab "Hoàn thành" — chỉ đọc,
 /// không có nút hành động (không còn bước nào để làm tiếp), tái dùng lại các
 /// widget đã redesign ở màn đơn active để 2 màn đồng bộ giao diện.
+/// Lưu ý: hiện tại chỉ đơn status == 'completed' mới tới được màn này
+/// (history_screen.dart lọc theo allOrders.where((o) => o.isCompleted)) —
+/// nếu sau này thêm luồng xem lại đơn đã huỷ, cần sửa completed: true
+/// (đang hard-code) thành completed: order.isCompleted và xử lý thêm badge/
+/// timeline riêng cho trường hợp cancelled.
 class CompletedOrderDetailScreen extends StatelessWidget {
   final OrderModel order;
   const CompletedOrderDetailScreen({super.key, required this.order});

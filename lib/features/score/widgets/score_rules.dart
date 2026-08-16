@@ -98,7 +98,6 @@ class _RulesCardState extends ConsumerState<RulesCard> {
                   items: const [
                     ('+1', '3 đơn liên tiếp (streak)'),
                     ('+2', '6 đơn liên tiếp (streak)'),
-                    ('+3', 'Online ≥ 90% thời lượng ca'),
                     ('+4', '10 đơn liên tiếp (streak)'),
                   ],
                 )
@@ -107,12 +106,13 @@ class _RulesCardState extends ConsumerState<RulesCard> {
                       key: const ValueKey('minus'),
                       color: AppColors.danger,
                       items: const [
-                        ('-1',  'Bỏ lỡ 3 đơn không xem (mỗi 3 lần)'),
-                        ('-2',  'Từ chối đơn hàng'),
-                        ('-2',  'Để đơn trôi qua (timeout)'),
-                        ('-5',  'Online 50–69% thời lượng ca'),
-                        ('-10', 'Online dưới 50% thời lượng ca'),
-                        ('-15', 'Không online suốt cả ca'),
+                        ('-2',  'Từ chối đơn'),
+                        ('-2',  'Bỏ lỡ 3 lần liên tiếp không xem thông báo'),
+                        ('-3',  'Mở xem đơn nhưng không phản hồi kịp'),
+                        ('-3',  'Online 70–84% thời lượng ca'),
+                        ('-5',  'Online 60–69% thời lượng ca'),
+                        ('-10', 'Online 50–59% thời lượng ca'),
+                        ('-15', 'Online dưới 50% thời lượng ca'),
                       ],
                     )
                   : _showReset

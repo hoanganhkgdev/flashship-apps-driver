@@ -132,6 +132,14 @@ class EarningCard extends StatelessWidget {
             valueColor: AppColors.success,
           ),
         ],
+        if (order.rainBonusEligible && order.rainBonusConfirmedAmount > 0) ...[
+          const SizedBox(height: 8),
+          FeeRow(
+            label: '🌧️ Thưởng trời mưa',
+            value: '+ ${Fmt.currency(order.rainBonusConfirmedAmount)}',
+            valueColor: AppColors.success,
+          ),
+        ],
 
         // ── Shopping advance ──────────────────────────────────────────
         if (order.serviceType == 'shopping' && (order.codAmount ?? 0) > 0) ...[

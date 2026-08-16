@@ -29,6 +29,12 @@ class OrderModel {
   final int nightSurcharge;
   final bool isRainMode;
   final int rainBonusAmount;
+  // Khác với isRainMode/rainBonusAmount (xem trước lúc CHƯA nhận, ở màn
+  // Offer) — 2 field này là giá trị ĐÃ CHỐT cho đơn đã nhận (rain_bonus_
+  // eligible chốt lúc acceptOrder(), không đổi lại theo trạng thái mưa hiện
+  // tại nữa dù sau đó tắt/bật lại giữa chừng).
+  final bool rainBonusEligible;
+  final int rainBonusConfirmedAmount;
   final int discountAmount;
   final String? voucherCode;
   final String paymentMethod;
@@ -69,6 +75,8 @@ class OrderModel {
     this.nightSurcharge = 0,
     this.isRainMode = false,
     this.rainBonusAmount = 0,
+    this.rainBonusEligible = false,
+    this.rainBonusConfirmedAmount = 0,
     this.discountAmount = 0,
     this.voucherCode,
     required this.paymentMethod,
@@ -118,6 +126,8 @@ class OrderModel {
     nightSurcharge:  (j['night_surcharge'] as num?)?.toInt() ?? 0,
     isRainMode:      j['is_rain_mode'] as bool? ?? false,
     rainBonusAmount: (j['rain_bonus_amount'] as num?)?.toInt() ?? 0,
+    rainBonusEligible:        j['rain_bonus_eligible'] as bool? ?? false,
+    rainBonusConfirmedAmount: (j['rain_bonus_amount'] as num?)?.toInt() ?? 0,
     discountAmount:  (j['discount_amount'] as num?)?.toInt() ?? 0,
     voucherCode:     j['voucher_code'] as String?,
     paymentMethod:   j['payment_method'] as String? ?? 'prepaid',

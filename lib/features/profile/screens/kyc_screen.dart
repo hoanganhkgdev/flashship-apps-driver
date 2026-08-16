@@ -195,8 +195,10 @@ class _KycScreenState extends ConsumerState<KycScreen> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
+        // Header giờ nền trắng (trước là gradient cam) — icon status bar
+        // phải đổi sang màu đen mới nhìn thấy được.
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
       ),
       child: Scaffold(
         backgroundColor: AppColors.background,
@@ -235,135 +237,115 @@ class _KycScreenState extends ConsumerState<KycScreen> {
 
   Widget _buildHeader(double top, int steps) {
     final isDone = steps == 2;
-    return Stack(clipBehavior: Clip.none, children: [
-      Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFCC5A08), Color(0xFFE8720C), Color(0xFFF59E30)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        padding: EdgeInsets.fromLTRB(0, top, 0, 32),
-        child: Column(children: [
+    return Column(children: [
 
-          // Top bar
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-            child: Row(children: [
-              GestureDetector(
-                onTap: () => context.pop(),
-                child: SizedBox(
-                  width: 48, height: 48,
-                  child: Center(
-                    child: Container(
-                      width: 34, height: 34,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.arrow_back_ios_new_rounded,
-                          color: Colors.white, size: 16),
-                    ),
+      // Top bar
+      Container(
+        width: double.infinity,
+        color: Colors.white,
+        padding: EdgeInsets.fromLTRB(16, top + 4, 16, 12),
+        child: Row(children: [
+          GestureDetector(
+            onTap: () => context.pop(),
+            child: SizedBox(
+              width: 40, height: 40,
+              child: Center(
+                child: Container(
+                  width: 34, height: 34,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceAlt,
+                    borderRadius: BorderRadius.circular(10),
                   ),
+                  child: const Icon(Icons.arrow_back_ios_new_rounded,
+                      color: AppColors.textPrimary, size: 16),
                 ),
               ),
-              const Expanded(
-                child: Text('Hồ sơ tài xế',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        letterSpacing: -0.2)),
-              ),
-              const SizedBox(width: 48),
-            ]),
+            ),
           ),
+          const Expanded(
+            child: Text('Hồ sơ tài xế',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.2)),
+          ),
+          const SizedBox(width: 40),
+        ]),
+      ),
 
-          const SizedBox(height: 20),
+      // Summary card
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceAlt,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-          // Shield + info
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(children: [
+            Row(children: [
               Container(
-                width: 54, height: 54,
+                width: 46, height: 46,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(16),
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(13),
                 ),
                 child: Icon(
                   isDone ? Icons.verified_user_rounded : Icons.shield_rounded,
-                  color: Colors.white, size: 26,
+                  color: AppColors.primary, size: 22,
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(
                     isDone ? 'Hồ sơ hoàn thiện' : 'Hoàn thiện hồ sơ',
                     style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white),
+                        fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                   ),
                   const SizedBox(height: 3),
                   Text(
                     isDone
                         ? 'Bạn có thể nhận tất cả loại đơn hàng'
                         : 'Điền đủ thông tin để nhận nhiều đơn hơn',
-                    style: TextStyle(
-                        fontSize: 12, color: Colors.white.withValues(alpha: 0.8)),
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                 ]),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.22),
+                  color: AppColors.primary,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
                 ),
                 child: Text('$steps/2',
                     style: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
+                        fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white)),
               ),
             ]),
-          ),
 
-          const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
-          // Progress bar
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: steps / 2,
-                  minHeight: 6,
-                  backgroundColor: Colors.white.withValues(alpha: 0.2),
-                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: steps / 2,
+                minHeight: 6,
+                backgroundColor: AppColors.divider,
+                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
               ),
-              const SizedBox(height: 8),
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                _StepDot(label: 'CCCD', done: _cccdStatus == 'approved'),
-                _StepDot(label: 'Bằng lái', done: _licenseStatus == 'approved'),
-              ]),
+            ),
+            const SizedBox(height: 10),
+            Row(children: [
+              _StepStatus(label: 'CCCD', done: _cccdStatus == 'approved'),
+              const SizedBox(width: 20),
+              _StepStatus(label: 'Bằng lái', done: _licenseStatus == 'approved'),
             ]),
-          ),
-        ]),
-      ),
-
-      // White curve
-      Positioned(
-        left: 0, right: 0, bottom: 0,
-        child: Container(
-          height: 20,
-          decoration: const BoxDecoration(
-            color: AppColors.background,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
+          ]),
         ),
       ),
     ]);
@@ -429,33 +411,26 @@ class _KycScreenState extends ConsumerState<KycScreen> {
       );
 }
 
-// ── Step dot ──────────────────────────────────────────────────────────────────
+// ── Step status ───────────────────────────────────────────────────────────────
 
-class _StepDot extends StatelessWidget {
+class _StepStatus extends StatelessWidget {
   final String label;
   final bool done;
-  const _StepDot({required this.label, required this.done});
+  const _StepStatus({required this.label, required this.done});
 
   @override
   Widget build(BuildContext context) {
-    return Column(mainAxisSize: MainAxisSize.min, children: [
-      Container(
-        width: 16, height: 16,
-        decoration: BoxDecoration(
-          color: done ? Colors.white : Colors.white.withValues(alpha: 0.3),
-          shape: BoxShape.circle,
-        ),
-        child: done
-            ? const Icon(Icons.check_rounded, size: 10,
-                color: AppColors.primary)
-            : null,
+    final color = done ? AppColors.success : AppColors.textTertiary;
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(
+        done ? Icons.check_circle_rounded : Icons.circle_outlined,
+        size: 14,
+        color: color,
       ),
-      const SizedBox(height: 4),
+      const SizedBox(width: 5),
       Text(label,
           style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-              color: Colors.white.withValues(alpha: done ? 1.0 : 0.6))),
+              fontSize: 11.5, fontWeight: FontWeight.w600, color: color)),
     ]);
   }
 }

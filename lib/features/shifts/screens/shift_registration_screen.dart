@@ -97,6 +97,15 @@ class _ShiftRegistrationScreenState extends ConsumerState<ShiftRegistrationScree
         !hasPending &&
         (!isRegistered || !_sameAsCurrent(state.currentShiftIds));
 
+    String? nameFor(int id) {
+      for (final s in state.shifts) {
+        if (s.id == id) return s.name;
+      }
+      return null;
+    }
+    final currentNames =
+        state.currentShiftIds.map(nameFor).whereType<String>().join(', ');
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -117,6 +126,42 @@ class _ShiftRegistrationScreenState extends ConsumerState<ShiftRegistrationScree
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                 physics: const AlwaysScrollableScrollPhysics(),
                 children: [
+
+                  if (isRegistered && state.currentShiftIds.isNotEmpty) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primarySoft,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(children: [
+                        const Icon(Icons.check_circle_outline_rounded,
+                            color: AppColors.primary, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Đang đăng ký',
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.primary)),
+                                const SizedBox(height: 2),
+                                Text(
+                                  currentNames,
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.textPrimary),
+                                ),
+                              ]),
+                        ),
+                      ]),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
 
                   if (hasPending) ...[
                     PendingBanner(request: state.changeRequest!, shifts: state.shifts),

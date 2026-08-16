@@ -17,7 +17,7 @@ class RejectedBanner extends StatelessWidget {
         border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
       ),
       child: Row(children: [
-        const Icon(Icons.info_outline_rounded, color: AppColors.danger, size: 20),
+        const Icon(Icons.cancel_rounded, color: AppColors.danger, size: 20),
         const SizedBox(width: 10),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

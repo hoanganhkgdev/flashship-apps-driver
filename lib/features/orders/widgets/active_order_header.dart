@@ -78,7 +78,7 @@ class ActiveOrderHeader extends StatelessWidget {
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: Text(
-                    order.isBatch ? 'SHOP•${order.stopsCount}đ' : 'SHOP',
+                    order.isBatch ? 'SHOP•${order.stopsCount} điểm' : 'SHOP',
                     style: const TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w800,

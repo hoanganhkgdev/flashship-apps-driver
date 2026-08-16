@@ -11,6 +11,8 @@ class WalletState {
   final EarningsSummary earningsMonthly;
   final BankAccount bankAccount;
   final List<BankListItem> bankList;
+  final List<DailyEarning> dailyEarnings;
+  final bool dailyEarningsLoading;
   final bool loading;
   // true nếu lần fetch gần nhất không lấy được số dư (lỗi mạng) — để phân
   // biệt với "số dư thật sự bằng 0", tránh tài xế hiểu nhầm.
@@ -25,6 +27,8 @@ class WalletState {
     this.earningsMonthly = const EarningsSummary(),
     this.bankAccount = const BankAccount(),
     this.bankList = const [],
+    this.dailyEarnings = const [],
+    this.dailyEarningsLoading = false,
     this.loading = false,
     this.balanceError = false,
   });
@@ -38,6 +42,8 @@ class WalletState {
     EarningsSummary? earningsMonthly,
     BankAccount? bankAccount,
     List<BankListItem>? bankList,
+    List<DailyEarning>? dailyEarnings,
+    bool? dailyEarningsLoading,
     bool? loading,
     bool? balanceError,
   }) => WalletState(
@@ -49,6 +55,8 @@ class WalletState {
     earningsMonthly: earningsMonthly ?? this.earningsMonthly,
     bankAccount:     bankAccount     ?? this.bankAccount,
     bankList:        bankList        ?? this.bankList,
+    dailyEarnings:        dailyEarnings        ?? this.dailyEarnings,
+    dailyEarningsLoading: dailyEarningsLoading ?? this.dailyEarningsLoading,
     loading:         loading         ?? this.loading,
     balanceError:    balanceError    ?? this.balanceError,
   );
@@ -121,11 +129,32 @@ class WalletNotifier extends StateNotifier<WalletState> {
       bankList: bankListRaw != null
           ? bankListRaw!.map((e) => BankListItem.fromJson(e as Map<String, dynamic>)).toList()
           : state.bankList,
+      // fetch() không đụng tới biểu đồ thu nhập theo ngày — giữ nguyên để
+      // tránh bị xoá mất khi refresh() gọi song song với fetchDailyEarnings().
+      dailyEarnings:        state.dailyEarnings,
+      dailyEarningsLoading: state.dailyEarningsLoading,
       balanceError: balanceFailed,
     );
 
     if (balance != null) {
       _ref.read(authProvider.notifier).updateBalance(balance!);
+    }
+  }
+
+  Future<void> fetchDailyEarnings({required bool monthly}) async {
+    state = state.copyWith(dailyEarningsLoading: true);
+    try {
+      final res  = await _ref.read(apiClientProvider)
+          .get(monthly ? '/earnings/monthly' : '/earnings/weekly');
+      final list = (res.data['data'] ?? res.data) as List? ?? [];
+      state = state.copyWith(
+        dailyEarnings: list
+            .map((e) => DailyEarning.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        dailyEarningsLoading: false,
+      );
+    } catch (_) {
+      state = state.copyWith(dailyEarningsLoading: false);
     }
   }
 

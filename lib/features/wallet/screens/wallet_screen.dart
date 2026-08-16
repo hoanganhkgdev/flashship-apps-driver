@@ -7,6 +7,7 @@ import '../../../core/widgets/bubble.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/wallet_model.dart';
 import '../providers/wallet_provider.dart';
+import 'debt_screen.dart';
 
 class WalletScreen extends ConsumerStatefulWidget {
   const WalletScreen({super.key});
@@ -56,6 +57,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
                   child: Column(
                     children: [
+
+                      _DebtWarningBanner(debts: wallet.debts),
 
                       _TransactionCard(
                         transactions: wallet.transactions,
@@ -272,6 +275,112 @@ class _HeaderBtn extends StatelessWidget {
       );
 }
 
+
+// ── Debt warning banner ───────────────────────────────────────────────────────
+
+class _DebtWarningBanner extends StatelessWidget {
+  final List<DriverDebt> debts;
+  const _DebtWarningBanner({required this.debts});
+
+  String get _subtitle {
+    final count = debts.length;
+    final penalty = debts.where((d) => d.isScorePenalty).toList();
+    // Nợ phạt điểm luôn có hạn 24h cố định — ưu tiên hiện countdown của
+    // khoản gấp nhất. Nợ phí tuần quá hạn thì chỉ "Quá hạn", không có mốc
+    // giờ cụ thể để đếm ngược.
+    if (penalty.isNotEmpty) {
+      final soonest =
+          penalty.reduce((a, b) => a.timeUntilDue < b.timeUntilDue ? a : b);
+      final d = soonest.timeUntilDue;
+      if (d.isNegative) return '$count khoản · Quá hạn thanh toán';
+      if (d.inHours < 1) {
+        return '$count khoản · còn ${d.inMinutes} phút để thanh toán';
+      }
+      return '$count khoản · còn ${d.inHours} giờ để thanh toán';
+    }
+    if (debts.any((d) => d.isOverdue)) {
+      return '$count khoản · Quá hạn thanh toán';
+    }
+    return '$count khoản chưa thanh toán';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (debts.isEmpty) return const SizedBox.shrink();
+
+    final total = debts.fold<int>(0, (s, d) => s + d.remaining);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.danger.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.danger.withValues(alpha: 0.25)),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(Icons.warning_amber_rounded,
+                color: AppColors.danger, size: 17),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text('Bạn đang có công nợ chưa thanh toán',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.danger,
+                  )),
+            ),
+          ]),
+          const SizedBox(height: 10),
+          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            Expanded(
+              child:
+                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(
+                  Fmt.currency(total),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.danger,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(_subtitle,
+                    style: const TextStyle(fontSize: 11.5, color: AppColors.danger)),
+              ]),
+            ),
+            const SizedBox(width: 10),
+            GestureDetector(
+              onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const DebtScreen())),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                decoration: BoxDecoration(
+                  color: AppColors.danger,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Text('Xem công nợ',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      )),
+                  const SizedBox(width: 2),
+                  const Icon(Icons.chevron_right_rounded,
+                      size: 16, color: Colors.white),
+                ]),
+              ),
+            ),
+          ]),
+        ]),
+      ),
+    );
+  }
+}
 
 // ── Transaction card ──────────────────────────────────────────────────────────
 

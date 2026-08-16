@@ -33,6 +33,27 @@ class EarningsSummary {
   );
 }
 
+class DailyEarning {
+  final DateTime date;
+  final int total;
+  final int shipping;
+  final int bonus;
+
+  const DailyEarning({
+    required this.date,
+    required this.total,
+    required this.shipping,
+    required this.bonus,
+  });
+
+  factory DailyEarning.fromJson(Map<String, dynamic> j) => DailyEarning(
+    date:     DateTime.tryParse(j['date'] as String? ?? '') ?? DateTime.now(),
+    total:    ((j['total']    as num?) ?? 0).round(),
+    shipping: ((j['shipping'] as num?) ?? 0).round(),
+    bonus:    ((j['bonus']    as num?) ?? 0).round(),
+  );
+}
+
 class WalletTransaction {
   final int id;
   final String type;
@@ -69,6 +90,7 @@ class DriverDebt {
   final String? note;
   final String? weekStart;
   final String? weekEnd;
+  final String? refId;
   final DateTime createdAt;
 
   const DriverDebt({
@@ -79,6 +101,7 @@ class DriverDebt {
     this.note,
     this.weekStart,
     this.weekEnd,
+    this.refId,
     required this.createdAt,
   });
 
@@ -90,6 +113,7 @@ class DriverDebt {
     note:       j['note'] as String?,
     weekStart:  j['week_start'] as String?,
     weekEnd:    j['week_end'] as String?,
+    refId:      j['ref_id'] as String?,
     createdAt:  j['created_at'] != null
         ? DateTime.tryParse(j['created_at'] as String) ?? DateTime.now()
         : DateTime.now(),
@@ -98,6 +122,15 @@ class DriverDebt {
   int get remaining => amount - paidAmount;
   bool get isPaid => status == 'paid';
   bool get isOverdue => status == 'overdue';
+
+  // Khớp điều kiện lọc trong MarkOverdueDebtsCommand: nợ phạt điểm tuần luôn
+  // có ref_id dạng 'score_penalty_<...>', nợ phí tuần thường thì ref_id null.
+  bool get isScorePenalty => refId != null && refId!.startsWith('score_penalty_');
+  bool get isWeeklyFee => refId == null;
+
+  // Nợ phạt điểm quá hạn sau 24h kể từ lúc tạo (theo MarkOverdueDebtsCommand).
+  Duration get timeUntilDue =>
+      createdAt.add(const Duration(hours: 24)).difference(DateTime.now());
 }
 
 class BankListItem {

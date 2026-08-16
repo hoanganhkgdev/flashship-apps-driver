@@ -59,11 +59,6 @@ class _ScoreScreenState extends ConsumerState<ScoreScreen> {
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
                       child: Column(children: [
 
-                        if (score != null) ...[
-                          StatsCard(score: score),
-                          const SizedBox(height: 12),
-                        ],
-
                         if (score?.streak != null) ...[
                           StreakCard(streak: score!.streak!),
                           const SizedBox(height: 12),

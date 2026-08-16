@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/formatters.dart';
 import '../widgets/avatar_picker_sheet.dart';
 import '../widgets/balance_row.dart';
 import '../widgets/edit_name_sheet.dart';
@@ -20,6 +21,7 @@ import 'change_password_screen.dart';
 import 'legal_page_screen.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../home/widgets/bottom_nav.dart';
+import '../../wallet/models/wallet_model.dart';
 import '../../wallet/screens/debt_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -59,6 +61,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   int? _scorePenaltyAmt;
   int? _scoreStreak;
 
+  List<DriverDebt> _debts = const [];
+
   @override
   void initState() {
     super.initState();
@@ -75,6 +79,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     Map<String, dynamic>? profileData;
     Map<String, dynamic>? statsData;
     Map<String, dynamic>? scoreData;
+    List<dynamic>? debtsRaw;
 
     await Future.wait([
       ref.read(apiClientProvider).get('/driver/profile').then((r) {
@@ -86,6 +91,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       }).catchError((_) {}),
       ref.read(apiClientProvider).get('/driver/score').then((r) {
         scoreData = (r.data['data'] ?? r.data) as Map<String, dynamic>?;
+      }).catchError((_) {}),
+      ref.read(apiClientProvider).get('/debts').then((r) {
+        final d = r.data['data'] ?? r.data;
+        debtsRaw = d is List ? d : <dynamic>[];
       }).catchError((_) {}),
     ]);
 
@@ -128,8 +137,46 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           final streak = sc['streak'] as Map<String, dynamic>?;
           _scoreStreak = (streak?['count'] as num?)?.toInt();
         }
+        if (debtsRaw != null) {
+          _debts = debtsRaw!
+              .map((e) => DriverDebt.fromJson(e as Map<String, dynamic>))
+              .where((d) => !d.isPaid)
+              .toList();
+        }
       });
     }
+  }
+
+  // ── Công nợ trailing ──────────────────────────────────────────────────────
+
+  Widget? _debtTrailing() {
+    if (_debts.isEmpty) {
+      return const Text('Không có nợ',
+          style: TextStyle(fontSize: 12, color: AppColors.textTertiary));
+    }
+    final total = _debts.fold<int>(0, (s, d) => s + d.remaining);
+    final hasOverdue = _debts.any((d) => d.isOverdue);
+    if (hasOverdue) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppColors.dangerSoft,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Text('Cần thanh toán ngay',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.danger,
+            )),
+      );
+    }
+    return Text(Fmt.currency(total),
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: AppColors.primary,
+        ));
   }
 
   @override
@@ -209,8 +256,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 children: [
                   SettingsRow(
                     icon: Icons.schedule_rounded,
-                    iconBg: const Color(0xFF14B8A6).withValues(alpha: 0.12),
-                    iconColor: const Color(0xFF14B8A6),
+                    iconBg: AppColors.primary.withValues(alpha: 0.12),
+                    iconColor: AppColors.primary,
                     label: 'Ca làm việc',
                     onTap: () => context.push('/shifts'),
                   ),
@@ -236,6 +283,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     iconBg: AppColors.danger.withValues(alpha: 0.12),
                     iconColor: AppColors.danger,
                     label: 'Công nợ',
+                    trailing: _debtTrailing(),
                     onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const DebtScreen())),
                   ),
@@ -244,8 +292,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   // Ngân hàng liên kết
                   SettingsRow(
                     icon: Icons.account_balance_rounded,
-                    iconBg: const Color(0xFF0EA5E9).withValues(alpha: 0.12),
-                    iconColor: const Color(0xFF0EA5E9),
+                    iconBg: AppColors.primary.withValues(alpha: 0.12),
+                    iconColor: AppColors.primary,
                     label: 'Tài khoản ngân hàng',
                     trailing: _bankName != null
                         ? Column(
@@ -284,8 +332,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 children: [
                   SettingsRow(
                     icon: Icons.lock_outline_rounded,
-                    iconBg: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
-                    iconColor: const Color(0xFF8B5CF6),
+                    iconBg: AppColors.primary.withValues(alpha: 0.12),
+                    iconColor: AppColors.primary,
                     label: 'Đổi mật khẩu',
                     onTap: () => Navigator.of(context).push(MaterialPageRoute(
                         builder: (_) => const ChangePasswordScreen())),
@@ -301,8 +349,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 children: [
                   SettingsRow(
                     icon: Icons.shield_outlined,
-                    iconBg: const Color(0xFF6366F1).withValues(alpha: 0.12),
-                    iconColor: const Color(0xFF6366F1),
+                    iconBg: AppColors.primary.withValues(alpha: 0.12),
+                    iconColor: AppColors.primary,
                     label: 'Chính sách bảo mật',
                     onTap: () => _showPage(
                         context, 'privacy-policy', 'Chính sách bảo mật'),
@@ -311,8 +359,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       height: 1, indent: 56, color: Color(0xFFF5F5F5)),
                   SettingsRow(
                     icon: Icons.description_outlined,
-                    iconBg: const Color(0xFF64748B).withValues(alpha: 0.12),
-                    iconColor: const Color(0xFF64748B),
+                    iconBg: AppColors.primary.withValues(alpha: 0.12),
+                    iconColor: AppColors.primary,
                     label: 'Điều khoản sử dụng',
                     onTap: () => _showPage(
                         context, 'terms-of-service', 'Điều khoản sử dụng'),
@@ -321,8 +369,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       height: 1, indent: 56, color: Color(0xFFF5F5F5)),
                   SettingsRow(
                     icon: Icons.info_outline_rounded,
-                    iconBg: const Color(0xFF94A3B8).withValues(alpha: 0.12),
-                    iconColor: const Color(0xFF94A3B8),
+                    iconBg: AppColors.primary.withValues(alpha: 0.12),
+                    iconColor: AppColors.primary,
                     label: 'Phiên bản',
                     trailing: Text(
                       _appVersion.isEmpty ? '...' : _appVersion,

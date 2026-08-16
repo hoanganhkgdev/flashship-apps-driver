@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../providers/score_provider.dart';
 import 'score_cards.dart';
 
 class RulesCard extends ConsumerStatefulWidget {
@@ -17,9 +16,6 @@ class _RulesCardState extends ConsumerState<RulesCard> {
   bool _showPlus  = true;
   bool _showMinus = false;
   bool _showReset = false;
-
-  String _fmt(int n) =>
-      n.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]}.');
 
   @override
   Widget build(BuildContext context) {
@@ -100,9 +96,9 @@ class _RulesCardState extends ConsumerState<RulesCard> {
                   key: const ValueKey('plus'),
                   color: AppColors.success,
                   items: const [
-                    ('+1', 'Khách đánh giá 5★'),
                     ('+1', '3 đơn liên tiếp (streak)'),
                     ('+2', '6 đơn liên tiếp (streak)'),
+                    ('+3', 'Online ≥ 90% thời lượng ca'),
                     ('+4', '10 đơn liên tiếp (streak)'),
                   ],
                 )
@@ -111,14 +107,12 @@ class _RulesCardState extends ConsumerState<RulesCard> {
                       key: const ValueKey('minus'),
                       color: AppColors.danger,
                       items: const [
-                        ('-1',  'Khách đánh giá 3★'),
+                        ('-1',  'Bỏ lỡ 3 đơn không xem (mỗi 3 lần)'),
                         ('-2',  'Từ chối đơn hàng'),
                         ('-2',  'Để đơn trôi qua (timeout)'),
-                        ('-3',  'Khách đánh giá 2★'),
-                        ('-5',  'Khách đánh giá 1★'),
-                        ('-5',  'Không giao đơn 1 ngày'),
-                        ('-5',  'Online dưới 8 giờ/ngày'),
-                        ('-10', 'Không giao đơn 2+ ngày'),
+                        ('-5',  'Online 50–69% thời lượng ca'),
+                        ('-10', 'Online dưới 50% thời lượng ca'),
+                        ('-15', 'Không online suốt cả ca'),
                       ],
                     )
                   : _showReset
@@ -132,65 +126,7 @@ class _RulesCardState extends ConsumerState<RulesCard> {
                       : const SizedBox.shrink(key: ValueKey('none')),
         ),
 
-        // Weekly reward summary
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF9F9F9),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(children: [
-              Expanded(
-                child: Row(children: [
-                  Container(
-                    width: 34, height: 34,
-                    decoration: BoxDecoration(
-                      color: AppColors.success.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(9),
-                    ),
-                    child: const Icon(Icons.emoji_events_rounded,
-                        size: 17, color: AppColors.success),
-                  ),
-                  const SizedBox(width: 8),
-                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('≥ ${ref.watch(scoreProvider).score?.week?.bonusAt ?? 130} điểm',
-                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                    Text('+${_fmt(ref.watch(scoreProvider).score?.week?.bonusAmount ?? 50000)}đ',
-                        style: const TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w800,
-                            color: AppColors.success)),
-                  ]),
-                ]),
-              ),
-              Container(width: 1, height: 34, color: const Color(0xFFEEEEEE)),
-              Expanded(
-                child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                  const SizedBox(width: 12),
-                  Container(
-                    width: 34, height: 34,
-                    decoration: BoxDecoration(
-                      color: AppColors.danger.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(9),
-                    ),
-                    child: const Icon(Icons.warning_amber_rounded,
-                        size: 17, color: AppColors.danger),
-                  ),
-                  const SizedBox(width: 8),
-                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('≤ ${ref.watch(scoreProvider).score?.week?.penaltyAt ?? 70} điểm',
-                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                    Text('-${_fmt(ref.watch(scoreProvider).score?.week?.penaltyAmount ?? 50000)}đ',
-                        style: const TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w800,
-                            color: AppColors.danger)),
-                  ]),
-                ]),
-              ),
-            ]),
-          ),
-        ),
+        const SizedBox(height: 8),
 
       ]),
     );

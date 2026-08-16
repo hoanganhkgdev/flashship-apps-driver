@@ -161,7 +161,6 @@ class ScoreHeaderProgressBar extends StatelessWidget {
       const trackH  = 8.0;
       const dotR    = 7.0;
       const trackTop = 18.0;
-      const bubbleW  = 46.0;
       final dotX    = dotFrac * w;
       final penX    = penFrac * w;
       final bonX    = bonFrac * w;
@@ -169,32 +168,6 @@ class ScoreHeaderProgressBar extends StatelessWidget {
       return SizedBox(
         height: 62,
         child: Stack(clipBehavior: Clip.none, children: [
-
-          // Score bubble above dot
-          Positioned(
-            left: (dotX - bubbleW / 2).clamp(0, w - bubbleW),
-            top: 0,
-            child: Container(
-              width: bubbleW,
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(6),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
-                    blurRadius: 6,
-                  ),
-                ],
-              ),
-              child: Text('$score đ',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 9, fontWeight: FontWeight.w800,
-                    color: Color(0xFFE8720C),
-                  )),
-            ),
-          ),
 
           // Track — three zones
           Positioned(

@@ -221,6 +221,7 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
     if (!ok) {
       _showError('Không từ chối được đơn, vui lòng thử lại');
       setState(() => _declining = false);
+      if (_remaining > 0) _startTimer(); // khởi động lại đồng hồ, tránh đứng hình trong lúc chờ bấm lại
       return; // KHÔNG điều hướng về home nếu thất bại — để tài xế có thể bấm lại
     }
     context.go('/home');

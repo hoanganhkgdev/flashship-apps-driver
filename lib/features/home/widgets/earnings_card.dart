@@ -11,10 +11,9 @@ class EarningsCard extends StatelessWidget {
   final double rating;
   final int ratingCount;
   final VoidCallback onTap;
-  // 7 giá trị của tuần này: index 0 = Thứ Hai, index 6 = Chủ Nhật. Xấp xỉ từ
-  // tổng giao dịch "credit" trong /wallet/transactions theo ngày (ví/thưởng
-  // gộp chung, KHÔNG phải breakdown thu nhập đơn hàng thật theo ngày — app
-  // chưa có API đó).
+  // 7 giá trị của tuần này: index 0 = Thứ Hai, index 6 = Chủ Nhật. Lấy từ
+  // earnings/weekly (OrderService::getWeeklyEarnings) — thu nhập đơn hàng
+  // thật theo ngày (field "total"), không còn xấp xỉ từ giao dịch ví.
   final List<int> last7Days;
 
   const EarningsCard({

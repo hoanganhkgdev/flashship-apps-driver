@@ -19,33 +19,11 @@ import '../widgets/shift_card.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../orders/providers/order_provider.dart';
 import '../../wallet/providers/wallet_provider.dart';
-import '../../wallet/models/wallet_model.dart';
 import '../../wallet/screens/debt_screen.dart';
 import '../../profile/screens/kyc_screen.dart';
 import '../../score/providers/score_provider.dart';
 import '../../shifts/providers/shift_provider.dart';
 import '../../shifts/screens/shift_registration_screen.dart';
-
-// Xấp xỉ thu nhập tuần này (Thứ Hai → Chủ Nhật) từ tổng giao dịch "credit"
-// trong ví theo ngày — app chưa có API trả breakdown thu nhập đơn hàng thật
-// theo ngày, đây chỉ để vẽ chart tham khảo, KHÔNG phải số liệu thu nhập
-// chính xác (ví dụ gồm cả thưởng/hoàn tiền, không riêng thu nhập từ đơn).
-// index 0 = Thứ Hai của tuần hiện tại, index 6 = Chủ Nhật.
-List<int> _thisWeekCredits(List<WalletTransaction> tx) {
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  final monday = today.subtract(Duration(days: today.weekday - 1));
-  final days = List.generate(7, (i) => monday.add(Duration(days: i)));
-  return days.map((day) {
-    return tx
-        .where((t) =>
-            t.isCredit &&
-            t.createdAt.toLocal().year == day.year &&
-            t.createdAt.toLocal().month == day.month &&
-            t.createdAt.toLocal().day == day.day)
-        .fold<int>(0, (sum, t) => sum + t.amount);
-  }).toList();
-}
 
 class DashboardPage extends ConsumerStatefulWidget {
   final VoidCallback onGoToWallet;
@@ -61,6 +39,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
   Map<String, dynamic> _stats = {};
   int _todayEarnings = 0;
   int _yesterdayEarnings = 0;
+  // 7 giá trị của tuần này (Thứ Hai → Chủ Nhật), lấy trực tiếp từ
+  // earnings/weekly — thu nhập đơn hàng thật theo ngày, không còn xấp xỉ từ
+  // giao dịch ví.
+  List<int> _last7Days = const [];
   // Tăng mỗi lần backend tự đổi is_online mà KHÔNG qua yêu cầu của chính app
   // (chỉ _handleForceOffline — RTDB báo GPS chết). Lệnh gọi /driver/toggle-
   // status với ý định tắt online chụp lại giá trị này lúc bắt đầu; nếu lệch
@@ -133,6 +115,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
   Future<void> _loadAll() => Future.wait([
         _loadStats(),
         _loadEarnings(),
+        _loadWeeklyEarnings(),
         Future.microtask(() => ref.read(scoreProvider.notifier).fetch()),
         Future.microtask(() => ref.read(shiftProvider.notifier).fetch()),
       ]);
@@ -156,6 +139,29 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
               (data['yesterday']?['total'] as num?)?.toInt() ?? 0;
         });
       }
+    } catch (_) {}
+  }
+
+  Future<void> _loadWeeklyEarnings() async {
+    try {
+      final res = await ref.read(apiClientProvider).get('/earnings/weekly');
+      final list = (res.data['data'] ?? res.data) as List? ?? [];
+      final byDate = <String, int>{
+        for (final e in list)
+          (e as Map<String, dynamic>)['date'] as String:
+              ((e['total'] as num?) ?? 0).round(),
+      };
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final monday = today.subtract(Duration(days: today.weekday - 1));
+      final values = List.generate(7, (i) {
+        final day = monday.add(Duration(days: i));
+        final key = '${day.year.toString().padLeft(4, '0')}-'
+            '${day.month.toString().padLeft(2, '0')}-'
+            '${day.day.toString().padLeft(2, '0')}';
+        return byDate[key] ?? 0;
+      });
+      if (mounted) setState(() => _last7Days = values);
     } catch (_) {}
   }
 
@@ -429,7 +435,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     final todayOrders = ((_stats['today_orders'] as num?) ?? 0).toInt();
     final rating = (_stats['rating'] as num?)?.toDouble() ?? 0.0;
     final ratingCount = ((_stats['rating_count'] as num?) ?? 0).toInt();
-    final last7Days = _thisWeekCredits(wallet.transactions);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -487,7 +492,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                       rating: rating,
                       ratingCount: ratingCount,
                       onTap: widget.onGoToWallet,
-                      last7Days: last7Days,
+                      last7Days: _last7Days,
                     ),
 
                     const SizedBox(height: 16),

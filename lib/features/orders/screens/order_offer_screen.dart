@@ -92,6 +92,7 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
 
   bool _viewedCalled = false;
   bool _accepting = false;
+  bool _declining = false;
 
   // Đồng hồ lạc quan: chuyển ngay khi mở màn hình xem đơn, KHÔNG đợi API trả
   // lời. Server đã cấp sẵn hạn quyết định (APP_DECISION_SECS) từ lúc tài xế
@@ -212,9 +213,17 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
   }
 
   Future<void> _decline() async {
+    if (_declining) return;
+    setState(() => _declining = true);
     _timer?.cancel();
-    await ref.read(activeOrderProvider.notifier).decline(widget.orderId);
-    if (mounted) context.go('/home');
+    final ok = await ref.read(activeOrderProvider.notifier).decline(widget.orderId);
+    if (!mounted) return;
+    if (!ok) {
+      _showError('Không từ chối được đơn, vui lòng thử lại');
+      setState(() => _declining = false);
+      return; // KHÔNG điều hướng về home nếu thất bại — để tài xế có thể bấm lại
+    }
+    context.go('/home');
   }
 
   void _showError(String msg) {
@@ -255,6 +264,7 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
         // ── Actions ───────────────────────────────────────────────────
         OfferActions(
           accepting: _accepting,
+          declining: _declining,
           bottomInset: bottom,
           onAccept: _accept,
           onDecline: _decline,

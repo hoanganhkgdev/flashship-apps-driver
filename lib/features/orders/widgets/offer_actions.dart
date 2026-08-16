@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 
 class OfferActions extends StatelessWidget {
   final bool accepting;
+  final bool declining;
   final double bottomInset;
   final VoidCallback onAccept;
   final VoidCallback onDecline;
@@ -11,6 +12,7 @@ class OfferActions extends StatelessWidget {
   const OfferActions({
     super.key,
     required this.accepting,
+    required this.declining,
     required this.bottomInset,
     required this.onAccept,
     required this.onDecline,
@@ -47,12 +49,22 @@ class OfferActions extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         GestureDetector(
-          onTap: onDecline,
+          onTap: declining ? null : onDecline,
           behavior: HitTestBehavior.opaque,
-          child: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 4),
-            child: Text('Bỏ qua',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: declining
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppColors.textSecondary),
+                  )
+                : const Text('Bỏ qua',
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textSecondary)),
           ),
         ),
       ]),

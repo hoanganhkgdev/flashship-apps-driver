@@ -27,6 +27,8 @@ class OrderModel {
   final int shippingFee;
   final int bonusFee;
   final int nightSurcharge;
+  final bool isRainMode;
+  final int rainBonusAmount;
   final int discountAmount;
   final String? voucherCode;
   final String paymentMethod;
@@ -65,6 +67,8 @@ class OrderModel {
     required this.shippingFee,
     this.bonusFee = 0,
     this.nightSurcharge = 0,
+    this.isRainMode = false,
+    this.rainBonusAmount = 0,
     this.discountAmount = 0,
     this.voucherCode,
     required this.paymentMethod,
@@ -112,6 +116,8 @@ class OrderModel {
     shippingFee:     (j['shipping_fee'] as num?)?.toInt() ?? 0,
     bonusFee:        (j['bonus_fee'] as num?)?.toInt() ?? 0,
     nightSurcharge:  (j['night_surcharge'] as num?)?.toInt() ?? 0,
+    isRainMode:      j['is_rain_mode'] as bool? ?? false,
+    rainBonusAmount: (j['rain_bonus_amount'] as num?)?.toInt() ?? 0,
     discountAmount:  (j['discount_amount'] as num?)?.toInt() ?? 0,
     voucherCode:     j['voucher_code'] as String?,
     paymentMethod:   j['payment_method'] as String? ?? 'prepaid',

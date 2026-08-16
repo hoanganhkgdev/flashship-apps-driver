@@ -150,35 +150,51 @@ class OfferHeader extends StatelessWidget {
                           color: Colors.white.withValues(alpha: 0.6),
                           decoration: TextDecoration.lineThrough,
                           decorationColor: Colors.white.withValues(alpha: 0.6))),
-                Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  Text(Fmt.currency(earning),
-                      style: const TextStyle(
-                          fontSize: 34, fontWeight: FontWeight.w900,
-                          color: Colors.white, letterSpacing: -1)),
-                  if (order.bonusFee > 0) ...[
-                    const SizedBox(width: 8),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 5),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(6),
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.end,
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    Text(Fmt.currency(earning),
+                        style: const TextStyle(
+                            fontSize: 34, fontWeight: FontWeight.w900,
+                            color: Colors.white, letterSpacing: -1)),
+                    // Đặt trước bonus/night — thông tin mới, cần dễ thấy nhất
+                    // lúc tài xế đang cân nhắc nhận/từ chối đơn.
+                    if (order.isRainMode && order.rainBonusAmount > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 5),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text('🌧️ +${Fmt.currency(order.rainBonusAmount)} mưa',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
                         ),
-                        child: Text('+${Fmt.currency(order.bonusFee)} thưởng',
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
                       ),
-                    ),
+                    if (order.bonusFee > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 5),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text('+${Fmt.currency(order.bonusFee)} thưởng',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
+                        ),
+                      ),
+                    if (order.nightSurcharge > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 5),
+                        child: Text('+${Fmt.currency(order.nightSurcharge)} đêm',
+                            style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.8), fontWeight: FontWeight.w600)),
+                      ),
                   ],
-                  if (order.nightSurcharge > 0) ...[
-                    const SizedBox(width: 6),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 5),
-                      child: Text('+${Fmt.currency(order.nightSurcharge)} đêm',
-                          style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.8), fontWeight: FontWeight.w600)),
-                    ),
-                  ],
-                ]),
+                ),
                 if (order.hasDiscount && order.discountAmount > 0) ...[
                   const SizedBox(height: 4),
                   Container(

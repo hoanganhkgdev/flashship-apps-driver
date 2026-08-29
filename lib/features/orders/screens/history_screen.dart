@@ -176,6 +176,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               SliverToBoxAdapter(
                 child: HistoryHeader(
                   todayCount: todayOrderCount,
+                  activeCount: activeOrders.length,
                   todayEarnings: todayEarnings,
                   walletBalance: walletBalance,
                   tabIndex: _tabIndex,

@@ -3,13 +3,14 @@ import 'package:flutter/material.dart';
 import '../../../core/utils/formatters.dart';
 
 class HistoryHeader extends StatelessWidget {
-  final int todayCount, todayEarnings, walletBalance, tabIndex;
+  final int todayCount, activeCount, todayEarnings, walletBalance, tabIndex;
   final bool isOnShift;
   final ValueChanged<int> onTab;
 
   const HistoryHeader(
       {super.key,
       required this.todayCount,
+      required this.activeCount,
       required this.todayEarnings,
       required this.walletBalance,
       required this.tabIndex,
@@ -75,7 +76,7 @@ class HistoryHeader extends StatelessWidget {
           Row(children: [
             _Tab(
                 label: 'Đang nhận',
-                count: todayCount,
+                count: activeCount,
                 active: tabIndex == 0,
                 onTap: () => onTab(0)),
             _Tab(

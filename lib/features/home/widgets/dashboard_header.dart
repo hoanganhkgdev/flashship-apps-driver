@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../auth/models/driver_model.dart';
+
 class DashboardHeader extends StatelessWidget {
-  final dynamic user;
+  final DriverModel? user;
   final bool isOnline;
   final bool toggling;
   final bool locked;
@@ -17,7 +19,16 @@ class DashboardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initials = user?.initials as String? ?? 'TX';
+    final initials = user?.initials ?? 'TX';
+    final vehicleLabel = switch (user?.vehicleType) {
+      'car' => 'Ô tô',
+      'motorbike' => 'Xe máy',
+      _ => 'Chưa cập nhật loại xe',
+    };
+    final plate = user?.licensePlate?.trim().toUpperCase();
+    final vehicleInfo = plate != null && plate.isNotEmpty
+        ? '$plate · $vehicleLabel'
+        : vehicleLabel;
     return Container(
       decoration: const BoxDecoration(
         color: Color(0xFFFFFEFD),
@@ -55,8 +66,10 @@ class DashboardHeader extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF1B1411))),
                 const SizedBox(height: 2),
-                const Text('59-A1 234.56 · Xe máy',
-                    style: TextStyle(
+                Text(vehicleInfo,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                         color: Color(0xFF6A605C))),

@@ -141,9 +141,10 @@ class _Tab extends StatelessWidget {
         decoration: BoxDecoration(
             border: Border(
                 bottom: BorderSide(
-                    color:
-                        active ? const Color(0xFFFF6035) : Colors.transparent,
-                    width: 2))),
+                    color: active
+                        ? const Color(0xFFFF6035)
+                        : const Color(0xFFE5DDD9),
+                    width: active ? 2 : 1))),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Text(label,
               style: TextStyle(

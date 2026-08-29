@@ -74,15 +74,19 @@ class HistoryHeader extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Row(children: [
-            _Tab(
-                label: 'Đang nhận',
-                count: activeCount,
-                active: tabIndex == 0,
-                onTap: () => onTab(0)),
-            _Tab(
-                label: 'Hoàn thành',
-                active: tabIndex == 1,
-                onTap: () => onTab(1)),
+            Expanded(
+              child: _Tab(
+                  label: 'Đang nhận',
+                  count: activeCount,
+                  active: tabIndex == 0,
+                  onTap: () => onTab(0)),
+            ),
+            Expanded(
+              child: _Tab(
+                  label: 'Hoàn thành',
+                  active: tabIndex == 1,
+                  onTap: () => onTab(1)),
+            ),
           ]),
         ]),
       );
@@ -140,7 +144,7 @@ class _Tab extends StatelessWidget {
                     color:
                         active ? const Color(0xFFFF6035) : Colors.transparent,
                     width: 2))),
-        child: Row(children: [
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Text(label,
               style: TextStyle(
                   fontSize: 14,

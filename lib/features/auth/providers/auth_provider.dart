@@ -78,7 +78,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         // trước đây KHÔNG BAO GIỜ ký nhập Firebase — tài xế cập nhật app rồi
         // mở lại (không logout/login) sẽ bị Security Rules chặn ghi GPS âm
         // thầm mãi mãi cho tới lần đăng nhập kế tiếp. Xem điều tra tài xế #107.
-        _reauthenticateFirebase(token);
+        _reauthenticateFirebase(token, user.id);
         return;
       } catch (_) {}
     }
@@ -89,9 +89,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// (không tái dùng được, custom token Firebase chỉ dùng 1 lần) rồi
   /// signInWithCustomToken(). Lỗi ở đây không chặn đăng nhập — Sanctum token
   /// vẫn hoạt động độc lập; tự thử lại ở lần mở app kế tiếp nếu thất bại.
-  Future<void> _reauthenticateFirebase(String token) async {
+  Future<void> _reauthenticateFirebase(String token, int driverId) async {
     try {
       final deviceId = await SessionGuardService.getDeviceId();
+      final expectedUid = 'driver_${driverId}_$deviceId';
+      // Firebase Auth tự lưu và refresh phiên giữa các lần mở app. Nếu UID
+      // hiện tại đã đúng tài xế + thiết bị thì không xin custom token mới;
+      // tránh tốn API và chạm rate limit khi hot restart/mở app liên tục.
+      if (FirebaseAuth.instance.currentUser?.uid == expectedUid) return;
+
       final res = await ApiClient(token).post('/auth/firebase-token', data: {
         'device_id': deviceId,
       });

@@ -7,7 +7,6 @@ import '../../../core/services/offer_listener_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../features/auth/providers/auth_provider.dart';
-import '../../home/providers/home_providers.dart';
 import '../models/order_model.dart';
 import '../providers/order_provider.dart';
 import '../widgets/offer_actions.dart';
@@ -230,8 +229,10 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
       _syncRemainingWithServerDeadline();
       return;
     }
-    ref.read(homeTabProvider.notifier).state = 1;
-    context.go('/home');
+    context.go(
+      '/order/active',
+      extra: {'orderId': widget.orderId},
+    );
   }
 
   Future<void> _decline() async {

@@ -186,7 +186,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _showVehicleEditor() async {
     var selectedType = _vehicleType ?? 'motorbike';
     var saving = false;
-    final plateController = TextEditingController(text: _licensePlate ?? '');
+    var plateInput = _licensePlate ?? '';
 
     await showModalBottomSheet<void>(
       context: context,
@@ -249,8 +249,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             setSheetState(() => selectedType = value.first),
                   ),
                   const SizedBox(height: 16),
-                  TextField(
-                    controller: plateController,
+                  TextFormField(
+                    initialValue: plateInput,
+                    onChanged: (value) => plateInput = value,
                     enabled: !saving,
                     textCapitalization: TextCapitalization.characters,
                     maxLength: 20,
@@ -271,8 +272,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       onPressed: saving
                           ? null
                           : () async {
-                              final plate =
-                                  plateController.text.trim().toUpperCase();
+                              final plate = plateInput.trim().toUpperCase();
                               if (plate.isEmpty) {
                                 _toast(
                                     sheetContext, 'Vui lòng nhập biển số xe');
@@ -336,7 +336,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         },
       ),
     );
-    plateController.dispose();
   }
 
   @override

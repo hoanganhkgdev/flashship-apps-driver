@@ -188,11 +188,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: const Color(0xFFFFF8F5),
         body: RefreshIndicator(
           color: AppColors.primary,
           onRefresh: _loadData,
@@ -609,8 +609,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         title: const Text('Xóa tài khoản',
             style: TextStyle(fontWeight: FontWeight.w700)),
         content: const Text(
-          'Tài khoản và toàn bộ dữ liệu của bạn sẽ bị xóa vĩnh viễn sau khi xác nhận.\n\n'
-          'Hành động này không thể hoàn tác. Bạn sẽ bị đăng xuất ngay lập tức.',
+          'Yêu cầu xóa chỉ được tiếp nhận khi bạn không còn đơn đang giao, công nợ, số dư ví hoặc lệnh rút tiền chờ xử lý.\n\n'
+          'Trong thời gian chờ xử lý, bạn có thể hủy yêu cầu tại trang này.',
         ),
         actions: [
           TextButton(
@@ -624,8 +624,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     .read(apiClientProvider)
                     .post('/driver/delete-account/request');
                 if (mounted) setState(() => _deleteRequested = true);
-                await ref.read(authProvider.notifier).logout();
-                if (context.mounted) context.go('/login');
+                await ref.read(authProvider.notifier).refreshUser();
               } catch (_) {
                 // Request thất bại thì không logout — tài xế tưởng đã gửi yêu
                 // cầu xóa nhưng thực ra chưa, để họ biết mà thử lại.
@@ -664,6 +663,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 await ref
                     .read(apiClientProvider)
                     .post('/driver/delete-account/cancel');
+                await ref.read(authProvider.notifier).refreshUser();
                 if (!mounted) return;
                 setState(() => _deleteRequested = false);
                 messenger.showSnackBar(const SnackBar(

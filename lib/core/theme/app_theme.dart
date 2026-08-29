@@ -3,36 +3,35 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
-  static const primary = Color(0xFFE8720C);
-  static const primaryDark = Color(0xFFCC5A08);
-  static const primarySoft = Color(0xFFFDF0E3);
-  static const background = Color(0xFFF5F6F8);
-  static const surface = Colors.white;
-  static const surfaceAlt = Color(0xFFF3F4F6);
-  static const textPrimary = Color(0xFF111827);
-  static const textSecondary = Color(0xFF6B7280);
-  static const textTertiary = Color(0xFF9CA3AF);
-  static const divider = Color(0xFFE5E7EB);
-  static const success = Color(0xFF10B981);
+  static const primary = Color(0xFFFF6035);
+  static const primaryDark = Color(0xFFD83A05);
+  static const primarySoft = Color(0xFFFFEAE3);
+  static const accent2 = Color(0xFF008F92);
+  static const accent2Soft = Color(0xFFE3F5F4);
+  static const background = Color(0xFFFFF8F5);
+  static const surface = Color(0xFFFFFEFD);
+  static const surfaceAlt = Color(0xFFF5F5F5);
+  static const textPrimary = Color(0xFF1B1411);
+  static const textSecondary = Color(0xFF6A605C);
+  static const textTertiary = Color(0xFFA99F9A);
+  static const divider = Color(0xFFE5DDD9);
+  static const success = Color(0xFF229650);
   static const successSoft = Color(0xFFE7F8F1);
-  static const danger = Color(0xFFEF4444);
-  static const dangerSoft = Color(0xFFFEF2F2);
-  static const warning = Color(0xFFF59E0B);
-  static const warningSoft = Color(0xFFFEF7E8);
+  static const danger = Color(0xFFD52E36);
+  static const dangerSoft = Color(0xFFFFE5E2);
+  static const warning = Color(0xFFBE7900);
+  static const warningSoft = Color(0xFFFFF1CC);
   static const info = Color(0xFF3B82F6);
   static const infoSoft = Color(0xFFEFF5FF);
-
-  static const List<BoxShadow> cardShadow = [
-    BoxShadow(color: Color(0x14111827), blurRadius: 12, offset: Offset(0, 3)),
-  ];
 }
 
 class AppRadius {
-  static const sm = 8.0;
-  static const md = 12.0;
-  static const lg = 16.0;
-  static const xl = 20.0;
-  static const card = 16.0;
+  static const sm = 10.0;
+  static const md = 16.0;
+  static const lg = 20.0;
+  static const xl = 24.0;
+  static const card = 20.0;
+  static const full = 999.0;
 }
 
 class AppTheme {
@@ -44,7 +43,7 @@ class AppTheme {
       error: AppColors.danger,
     );
 
-    final textTheme = GoogleFonts.beVietnamProTextTheme(
+    final textTheme = GoogleFonts.robotoCondensedTextTheme(
       ThemeData(colorScheme: colorScheme).textTheme,
     ).apply(
       bodyColor: AppColors.textPrimary,
@@ -54,7 +53,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      fontFamily: GoogleFonts.beVietnamPro().fontFamily,
+      fontFamily: GoogleFonts.robotoCondensed().fontFamily,
       textTheme: textTheme,
       scaffoldBackgroundColor: AppColors.background,
       dividerColor: AppColors.divider,
@@ -73,7 +72,7 @@ class AppTheme {
           statusBarIconBrightness: Brightness.dark,
           statusBarBrightness: Brightness.light,
         ),
-        titleTextStyle: GoogleFonts.beVietnamPro(
+        titleTextStyle: GoogleFonts.robotoCondensed(
           fontSize: 17,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
@@ -93,10 +92,9 @@ class AppTheme {
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.4),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.md)),
+          shape: const StadiumBorder(),
           minimumSize: const Size(double.infinity, 50),
-          textStyle: GoogleFonts.beVietnamPro(
+          textStyle: GoogleFonts.robotoCondensed(
               fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
@@ -104,16 +102,15 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
           side: const BorderSide(color: AppColors.primary),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.md)),
-          textStyle: GoogleFonts.beVietnamPro(
+          shape: const StadiumBorder(),
+          textStyle: GoogleFonts.robotoCondensed(
               fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.primary,
-          textStyle: GoogleFonts.beVietnamPro(
+          textStyle: GoogleFonts.robotoCondensed(
               fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
@@ -156,7 +153,7 @@ class AppTheme {
         behavior: SnackBarBehavior.floating,
         backgroundColor: const Color(0xFF1F2937),
         contentTextStyle:
-            GoogleFonts.beVietnamPro(fontSize: 14, color: Colors.white),
+            GoogleFonts.robotoCondensed(fontSize: 14, color: Colors.white),
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md)),
       ),

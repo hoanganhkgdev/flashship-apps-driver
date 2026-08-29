@@ -11,8 +11,14 @@ import 'order_card_shell.dart';
 
 class BatchStopsCard extends ConsumerStatefulWidget {
   final OrderModel order;
-  final VoidCallback? onCompleted;
-  const BatchStopsCard({super.key, required this.order, this.onCompleted});
+  final Future<void> Function()? onCompleted;
+  final ValueChanged<bool>? onCompletionStateChanged;
+  const BatchStopsCard({
+    super.key,
+    required this.order,
+    this.onCompleted,
+    this.onCompletionStateChanged,
+  });
 
   @override
   ConsumerState<BatchStopsCard> createState() => _BatchStopsCardState();
@@ -23,6 +29,12 @@ class _BatchStopsCardState extends ConsumerState<BatchStopsCard> {
 
   Future<void> _deliverStop(int seq) async {
     if (_delivering.contains(seq)) return;
+    final pendingStops = widget.order.stops
+        .where((stop) => stop['delivered_at'] == null)
+        .toList();
+    final isFinalStop = pendingStops.length == 1 &&
+        (pendingStops.single['seq'] as int? ?? seq) == seq;
+    if (isFinalStop) widget.onCompletionStateChanged?.call(true);
     setState(() => _delivering.add(seq));
     try {
       final res = await ref
@@ -31,12 +43,17 @@ class _BatchStopsCardState extends ConsumerState<BatchStopsCard> {
       final completed = res.data['completed'] as bool? ?? false;
       if (!mounted) return;
       setState(() => _delivering.remove(seq));
-      // Đợi fetch xong rồi mới điều hướng — tránh Home render lúc state
-      // active order còn cũ nếu request refresh bị chậm/lỗi.
+      if (completed) {
+        // Báo cho màn hình cha đánh dấu trạng thái hoàn thành trước khi refresh.
+        // Nếu refresh trước, đơn biến mất khỏi danh sách active sẽ bị hiểu nhầm
+        // là khách đã huỷ đơn.
+        await widget.onCompleted?.call();
+        return;
+      }
+      if (isFinalStop) widget.onCompletionStateChanged?.call(false);
       await ref.read(activeOrderProvider.notifier).fetch();
-      if (!mounted) return;
-      if (completed) widget.onCompleted?.call();
     } catch (e) {
+      if (isFinalStop) widget.onCompletionStateChanged?.call(false);
       if (mounted) {
         setState(() => _delivering.remove(seq));
         ScaffoldMessenger.of(context).showSnackBar(

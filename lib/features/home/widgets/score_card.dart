@@ -29,16 +29,6 @@ class DashboardScoreCard extends StatelessWidget {
     );
   }
 
-  // Không có chu kỳ tuần active (week == null) → không có ngưỡng thật để so,
-  // dùng màu trung tính thay vì bịa ngưỡng cố định.
-  Color _tierColor(DriverScoreModel s) {
-    final week = s.week;
-    if (week == null) return AppColors.primary;
-    if (s.score < week.penaltyAt) return AppColors.danger;
-    if (s.score >= week.bonusAt) return AppColors.success;
-    return AppColors.primary;
-  }
-
   (Color, String)? _weekStatus(DriverScoreModel s) {
     final week = s.week;
     if (week == null) return null;
@@ -61,77 +51,30 @@ class DashboardScoreCard extends StatelessWidget {
   }
 
   Widget _content(DriverScoreModel s) {
-    final tierColor = _tierColor(s);
     final status = _weekStatus(s);
-    final streakCount = s.streak?.count ?? 0;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        const Text('Điểm tích lũy',
+        const Text('Điểm số tuần',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
             )),
         const Spacer(),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-          decoration: BoxDecoration(
-            color: tierColor.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(s.label,
-              style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w800,
-                  color: tierColor)),
-        ),
+        Text('${s.score} / ${s.maxScore}',
+            style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFFFF6035))),
       ]),
-
       const SizedBox(height: 12),
-
-      // Điểm số lớn + streak
-      Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-        Text('${s.score}',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w900,
-              color: tierColor,
-              letterSpacing: -0.5,
-              height: 1,
-            )),
-        Padding(
-          padding: const EdgeInsets.only(left: 3, bottom: 3),
-          child: Text('/ ${s.maxScore} điểm',
-              style:
-                  const TextStyle(fontSize: 13, color: AppColors.textTertiary)),
-        ),
-        const Spacer(),
-        if (streakCount > 0)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Row(children: [
-              const Text('🔥', style: TextStyle(fontSize: 13)),
-              const SizedBox(width: 3),
-              Text('$streakCount đơn liên tiếp',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                  )),
-            ]),
-          ),
-      ]),
-
-      const SizedBox(height: 10),
-
       _ScoreZoneBar(
         score: s.score,
         maxScore: s.maxScore,
         bonusAt: s.week?.bonusAt,
         penaltyAt: s.week?.penaltyAt,
       ),
-
       if (status != null) ...[
         const SizedBox(height: 10),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -155,7 +98,6 @@ class DashboardScoreCard extends StatelessWidget {
           ),
         ]),
       ],
-
       if (s.tips.isNotEmpty) ...[
         const SizedBox(height: 8),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [

@@ -43,26 +43,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
   // earnings/weekly — thu nhập đơn hàng thật theo ngày, không còn xấp xỉ từ
   // giao dịch ví.
   List<int> _last7Days = const [];
-  // Tăng mỗi lần backend tự đổi is_online mà KHÔNG qua yêu cầu của chính app
-  // (chỉ _handleForceOffline — RTDB báo GPS chết). Lệnh gọi /driver/toggle-
-  // status với ý định tắt online chụp lại giá trị này lúc bắt đầu; nếu lệch
-  // đi sau khi có phản hồi, biết mình vừa trúng race: is_online phía backend
-  // đã đổi âm thầm ngay trước lúc request tới, khiến "toggle" bị đảo ngược
-  // thành online — ngược hẳn ý định ban đầu.
-  int _externalOfflineEpoch = 0;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadAll();
-    // Gán 1 lần, không điều kiện — 2 service này không tự đụng vào field
-    // callback trong start()/stop(), nên nếu chỉ gán lúc đang online tại thời
-    // điểm mount thì tài xế bật online sau đó (qua nút) sẽ không có callback
-    // nào được wire, khiến force-offline từ backend không cập nhật được UI.
     OfferListenerService.instance.onOfferDismissed =
         () => ref.read(homeTabProvider.notifier).state = 0;
-    LocationPushService.instance.onForceOffline = _handleForceOffline;
     Future.microtask(() {
       _syncOnlineServices();
       final uid = ref.read(authProvider).user?.id;
@@ -84,31 +71,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     LocationPushService.instance.start(driver.id);
   }
 
-  /// Backend tự chuyển tài xế offline (GPS chết quá 10 phút) — RTDB bắn
-  /// is_online=false → LocationPushService nhận, gọi callback này.
-  /// Dừng mọi thứ và cập nhật UI giống hệt tắt online bình thường.
-  void _handleForceOffline() {
-    debugPrint('[HomeScreen] Nhận force-offline từ backend → dừng mọi thứ');
-    _externalOfflineEpoch++;
-    OfferListenerService.instance.stop();
-    // LocationPushService đã tự stop() trước khi gọi callback
-    ref.read(authProvider.notifier).updateOnlineStatus(false);
-    if (mounted) {
-      setState(() {});
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text(
-            'Bạn đã bị tự động tắt online do mất tín hiệu GPS quá lâu. Bật lại GPS rồi bấm Online nhé!'),
-        backgroundColor: Color(0xFFE65100),
-        duration: Duration(seconds: 6),
-      ));
-    }
-  }
-
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     OfferListenerService.instance.onOfferDismissed = null;
-    LocationPushService.instance.onForceOffline = null;
     super.dispose();
   }
 
@@ -241,27 +207,16 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     return false;
   }
 
-  /// Gọi /driver/toggle-status với Ý ĐỊNH tắt online, tự phát hiện và sửa nếu
-  /// trúng race với _handleForceOffline() (RTDB báo GPS chết) đúng lúc request
-  /// đang bay — lúc đó backend đã tự set is_online=false NGAY TRƯỚC khi
-  /// request này tới, "toggle" liền đảo ngược lại thành true, ngược hẳn ý
-  /// định tắt online. Gọi lại 1 lần nữa để đưa về đúng trạng thái mong muốn.
-  Future<(bool, DateTime?)> _postToggleOffline() async {
-    final epochAtStart = _externalOfflineEpoch;
-    var res = await ref.read(apiClientProvider).post('/driver/toggle-status');
-    var isOnline = res.data['is_online'] == true || res.data['is_online'] == 1;
-    var onlineSince = res.data['online_since'] != null
+  Future<(bool, DateTime?)> _setOnlineStatus(bool desiredOnline) async {
+    final res = await ref.read(apiClientProvider).post(
+      '/driver/toggle-status',
+      data: {'is_online': desiredOnline},
+    );
+    final isOnline =
+        res.data['is_online'] == true || res.data['is_online'] == 1;
+    final onlineSince = res.data['online_since'] != null
         ? DateTime.tryParse(res.data['online_since'] as String)
         : null;
-    if (isOnline && _externalOfflineEpoch != epochAtStart) {
-      debugPrint(
-          '[HomeScreen] toggle-status trúng race với force-offline (GPS chết) → gọi lại để đưa về đúng ý định tắt online');
-      res = await ref.read(apiClientProvider).post('/driver/toggle-status');
-      isOnline = res.data['is_online'] == true || res.data['is_online'] == 1;
-      onlineSince = res.data['online_since'] != null
-          ? DateTime.tryParse(res.data['online_since'] as String)
-          : null;
-    }
     return (isOnline, onlineSince);
   }
 
@@ -275,7 +230,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     LocationPushService.instance.stop();
     OfferListenerService.instance.stop();
     try {
-      final (nowOnline, onlineSince) = await _postToggleOffline();
+      final (nowOnline, onlineSince) = await _setOnlineStatus(false);
       await ref.read(authProvider.notifier).updateOnlineStatus(
             nowOnline,
             onlineSince: onlineSince,
@@ -327,16 +282,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       bool isOnline;
       DateTime? onlineSince;
       if (currentlyOnline) {
-        // Ý định tắt online — dùng bản tự phát hiện/sửa race với
-        // _handleForceOffline() (xem doc của _postToggleOffline()).
-        (isOnline, onlineSince) = await _postToggleOffline();
+        (isOnline, onlineSince) = await _setOnlineStatus(false);
       } else {
-        final res =
-            await ref.read(apiClientProvider).post('/driver/toggle-status');
-        isOnline = res.data['is_online'] == true || res.data['is_online'] == 1;
-        onlineSince = res.data['online_since'] != null
-            ? DateTime.tryParse(res.data['online_since'] as String)
-            : null;
+        (isOnline, onlineSince) = await _setOnlineStatus(true);
       }
       await ref.read(authProvider.notifier).updateOnlineStatus(
             isOnline,
@@ -360,6 +308,31 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         }
       }
     } on DioException catch (e) {
+      // Request có thể đã được backend xử lý nhưng response bị mất giữa
+      // đường (timeout/mạng chập chờn). Đối chiếu lại trạng thái thật trước
+      // khi báo thất bại, tránh server đã online nhưng app vẫn báo lỗi.
+      await ref.read(authProvider.notifier).refreshUser();
+      if (!mounted) return;
+      final desiredOnline = !currentlyOnline;
+      final serverOnline = ref.read(authProvider).user?.isOnline;
+      if (serverOnline == desiredOnline) {
+        final uid = ref.read(authProvider).user?.id;
+        if (uid != null) {
+          if (serverOnline == true) {
+            LocationPushService.instance.start(uid);
+            OfferListenerService.instance.start(uid);
+          } else {
+            LocationPushService.instance.stop();
+            OfferListenerService.instance.stop();
+            FirebaseDatabase.instance
+                .ref('locations/driver_$uid')
+                .remove()
+                .ignore();
+          }
+        }
+        setState(() => _togglingOnline = false);
+        return;
+      }
       if (mounted) {
         // Body có thể không phải Map (HTML 500, string...) → cast an toàn
         final data = e.response?.data;
@@ -409,14 +382,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       if (!hadOverdue && hasOverdue) _forceOffline();
     });
 
-    // GPS bị tắt hoặc quyền vị trí bị thu hồi giữa lúc đang online (tắt GPS
-    // service bắt được ngay qua stream ở _HomeScreenState; thu hồi quyền chỉ
-    // phát hiện được lúc app resume — cả 2 đều đổ về locationIssueProvider)
-    // → tự tắt online ngay, không đợi backend phát hiện sau 10 phút, tránh
-    // tài xế "treo online" bằng cách tắt định vị để né nhận đơn.
-    ref.listen<String?>(locationIssueProvider, (prev, next) {
-      if (prev == null && next != null) _forceOffline();
-    });
+    // GPS bị tắt/thu hồi quyền không còn đổi "ý định Online" thành
+    // Offline. Dispatch tự loại vị trí cũ và backend chỉ cộng giờ cho
+    // các khoảng GPS hợp lệ. Banner từ locationIssueProvider vẫn cảnh báo
+    // để tài xế bật lại GPS; khi có fix mới, nhận đơn/tính giờ tự phục hồi.
 
     // Đơn active giảm (hoàn tất / huỷ) → làm mới thu nhập, số đơn + ví/công nợ
     ref.listen<ActiveOrderState>(activeOrderProvider, (prev, next) {
@@ -439,8 +408,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
       ),
       child: RefreshIndicator(
         color: AppColors.primary,
@@ -450,17 +419,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── Gradient header + toggle ─────────────────────────────
+              // ── Header + toggle ────────────────────────────────────────
               DashboardHeader(
                 user: user,
                 isOnline: isOnline,
                 toggling: _togglingOnline,
                 locked: hasOverdueDebt,
                 onToggle: _toggleOnline,
-                shifts: shiftState.shifts,
-                currentShiftIds: shiftState.currentShiftIds,
-                onShiftTap: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => const ShiftRegistrationScreen())),
               ),
 
               // ── Location / GPS banner ─────────────────────────────────
@@ -480,7 +445,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
 
               // ── Content cards ────────────────────────────────────────
               Padding(
-                padding: EdgeInsets.fromLTRB(16, 16, 16, navClearance),
+                padding: EdgeInsets.fromLTRB(16, 16, 16, navClearance + 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [

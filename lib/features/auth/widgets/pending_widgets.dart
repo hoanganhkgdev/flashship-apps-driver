@@ -12,18 +12,18 @@ class PendingIllustration extends StatelessWidget {
           width: 108,
           height: 108,
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.08),
+            color: const Color(0xFFFFF1EA),
             shape: BoxShape.circle,
             border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.2),
+              color: const Color(0xFFFFD1C2),
               width: 4,
             ),
           ),
           child: const Center(
             child: Icon(
-              Icons.pending_actions_rounded,
-              size: 48,
-              color: AppColors.primary,
+              Icons.hourglass_empty_rounded,
+              size: 42,
+              color: Color(0xFF17110F),
             ),
           ),
         ),
@@ -54,17 +54,17 @@ class StepCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: done
-            ? color.withValues(alpha: 0.04)
+            ? const Color(0xFFFAFDFB)
             : isActive
                 ? Colors.white
-                : AppColors.surfaceAlt.withValues(alpha: 0.5),
+                : const Color(0xFFFCF8F6),
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(
           color: done
-              ? color.withValues(alpha: 0.25)
+              ? const Color(0xFFBFE2CB)
               : isActive
-                  ? AppColors.primary.withValues(alpha: 0.4)
-                  : AppColors.divider,
+                  ? const Color(0xFFFFB8A2)
+                  : const Color(0xFFE5DDD9),
           width: isActive ? 1.5 : 1,
         ),
         boxShadow: isActive
@@ -87,8 +87,8 @@ class StepCard extends StatelessWidget {
               color: done
                   ? color.withValues(alpha: 0.12)
                   : isActive
-                      ? AppColors.primary.withValues(alpha: 0.1)
-                      : AppColors.divider,
+                      ? const Color(0xFFFFECE6)
+                      : const Color(0xFFE8E0DC),
               shape: BoxShape.circle,
             ),
             child: isActive
@@ -98,7 +98,7 @@ class StepCard extends StatelessWidget {
                       height: 16,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: AppColors.primary,
+                        color: Color(0xFFFF6035),
                       ),
                     ),
                   )
@@ -107,7 +107,7 @@ class StepCard extends StatelessWidget {
                     color: done
                         ? color
                         : isActive
-                            ? AppColors.primary
+                            ? const Color(0xFFFF6035)
                             : AppColors.textTertiary,
                     size: 20,
                   ),
@@ -126,7 +126,7 @@ class StepCard extends StatelessWidget {
                     color: done
                         ? AppColors.textPrimary
                         : isActive
-                            ? AppColors.primary
+                            ? const Color(0xFFFF6035)
                             : AppColors.textSecondary,
                   ),
                 ),
@@ -168,7 +168,7 @@ class PendingSupportCard extends StatelessWidget {
         color: Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.xl),
-          side: const BorderSide(color: AppColors.divider, width: 1.5),
+          side: const BorderSide(color: Color(0xFFE5DDD9), width: 1),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -178,12 +178,12 @@ class PendingSupportCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
+                  color: const Color(0xFFFFF1EA),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: const Icon(
                   Icons.headset_mic_rounded,
-                  color: AppColors.primary,
+                  color: Color(0xFF17110F),
                   size: 20,
                 ),
               ),
@@ -213,14 +213,14 @@ class PendingSupportCard extends StatelessWidget {
               ),
               Container(
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
+                  color: const Color(0xFFFFE9E1),
                 ),
                 child: TextButton(
                   onPressed: onCallSupport,
                   style: TextButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    foregroundColor: const Color(0xFFFF6035),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),

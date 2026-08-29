@@ -3,6 +3,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/widgets.dart';
 import '../router/app_router.dart';
 import 'notification_service.dart';
+import 'offer_ack_service.dart';
 
 /// Lắng nghe RTDB path dispatch/driver_{id}/offer.
 /// Khi backend ghi offer → navigate tới màn hình offer.
@@ -98,12 +99,28 @@ class OfferListenerService {
     final remaining = expiresAt - DateTime.now().millisecondsSinceEpoch ~/ 1000;
     if (remaining <= 0) {
       _cancelOfferBanner();
-      _clearOffer();
+      // Không remove node từ client. Offer là dữ liệu do backend sở hữu;
+      // một lệnh remove bất đồng bộ của offer A có thể chạy sau khi backend
+      // đã thay bằng offer B và xoá nhầm luôn B.
+      if (_visibleOrderId == orderId) {
+        _visibleOrderId = null;
+        _navigateHome();
+      }
       return;
     }
 
     if (_visibleOrderId != orderId) {
       _visibleOrderId = orderId;
+      // RTDB có thể tiếp tục callback khi app đang nền. Chỉ ACK
+      // nhánh này khi app foreground; background phải do FCM handler
+      // xác nhận kèm trạng thái quyền thông báo, tránh phạt oan
+      // khi RTDB tới nhưng OS đang chặn banner/chuông.
+      if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+        unawaited(OfferAckService.received(
+          orderId,
+          receiptUrl: offer['receipt_url']?.toString(),
+        ));
+      }
       _navigateToOffer(offer, orderId);
     }
   }
@@ -137,14 +154,5 @@ class OfferListenerService {
     if (router != null) {
       router.go('/home');
     }
-  }
-
-  Future<void> _clearOffer() async {
-    if (_driverId == null) return;
-    try {
-      await FirebaseDatabase.instance
-          .ref('dispatch/driver_$_driverId/offer')
-          .remove();
-    } catch (_) {}
   }
 }

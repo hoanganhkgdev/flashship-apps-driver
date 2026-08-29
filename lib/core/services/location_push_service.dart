@@ -8,12 +8,10 @@ import 'package:geolocator/geolocator.dart';
 import 'location_service.dart';
 import 'session_guard_service.dart';
 
-/// Callback khi backend tự chuyển tài xế offline (GPS chết quá 10 phút).
-/// App cần dừng mọi thứ (GPS, offer listener, timer) và sync lại UI.
-typedef ForceOfflineCallback = void Function();
-
 /// Sở hữu TOÀN BỘ việc đẩy vị trí lên Firebase: lấy vị trí lần đầu, nhận
-/// luồng GPS, chống trùng, và đồng hồ giữ nhịp 20s khi tài xế đứng yên.
+/// luồng GPS, chống trùng, và đồng hồ xác minh GPS 20s/lần khi
+/// tài xế đứng yên. Mỗi heartbeat phải lấy được fix thật; không
+/// bao giờ lấy toạ độ cũ trong RAM rồi bump updated_at.
 ///
 /// Trước đây toàn bộ phần này nằm trong `_DashboardPageState` (widget UI).
 /// Khi widget bị huỷ mà đang có 1 lệnh ghi Firebase dở dang, lúc lệnh đó
@@ -29,7 +27,8 @@ typedef ForceOfflineCallback = void Function();
 /// Ghi thô 1 điểm vị trí — mặc định là Firebase thật, test thay bằng hàm giả
 /// lập để điều khiển chính xác thời điểm "mạng trả lời" mà không cần thiết bị
 /// thật, GPS thật, hay build app thật.
-typedef LocationRawWriter = Future<void> Function(int driverId, Map<String, dynamic> data);
+typedef LocationRawWriter = Future<void> Function(
+    int driverId, Map<String, dynamic> data);
 
 class LocationPushService {
   static final LocationPushService instance = LocationPushService._();
@@ -44,31 +43,27 @@ class LocationPushService {
 
   LocationRawWriter _rawWrite = _defaultRawWrite;
 
-  static Future<void> _defaultRawWrite(int driverId, Map<String, dynamic> data) {
-    return FirebaseDatabase.instance.ref('locations/driver_$driverId').update(data);
+  static Future<void> _defaultRawWrite(
+      int driverId, Map<String, dynamic> data) {
+    return FirebaseDatabase.instance
+        .ref('locations/driver_$driverId')
+        .update(data);
   }
 
-  static const _refreshInterval  = Duration(seconds: 20);
+  static const _refreshInterval = Duration(seconds: 20);
   static const _accuracyMaxMeter = 50.0;
 
   /// Quá lâu không có fix nào đủ chính xác (hầm gửi xe, nhà cao tầng, máy cũ)
   /// thì chấp nhận dùng tạm fix kém — vị trí lệch vài trăm mét vẫn hơn hẳn
   /// việc tài xế "tàng hình" hoàn toàn với hệ thống phát đơn.
-  static const _degradedAfter    = Duration(seconds: 60);
+  static const _degradedAfter = Duration(seconds: 60);
 
-  int?      _driverId;
-  String?   _deviceId;
-  Timer?    _refreshTimer;
-  double?   _lastPushedLat;
-  double?   _lastPushedLng;
-  double?   _lastPushedBearing;
+  int? _driverId;
+  String? _deviceId;
+  Timer? _refreshTimer;
+  double? _lastPushedLat;
+  double? _lastPushedLng;
   DateTime? _noGoodFixSince;
-  StreamSubscription? _onlineStatusSub;
-
-  /// Backend tự chuyển offline (CloseStaleOnlineSessionsCommand ghi
-  /// is_online=false lên RTDB) → app gọi callback này để dừng mọi thứ
-  /// và cập nhật UI ngay lập tức, thay vì chờ tới lần refreshUser() kế.
-  ForceOfflineCallback? onForceOffline;
 
   /// Tăng mỗi lần start()/stop() — mọi tác vụ bất đồng bộ đều chụp lại giá
   /// trị này lúc bắt đầu và bỏ kết quả nếu đã lệch, để lệnh ghi dở dang của
@@ -85,7 +80,8 @@ class LocationPushService {
   /// Chỉ dùng trong test — gọi thẳng logic ghi (giống hệt production dùng),
   /// không qua luồng GPS thật.
   @visibleForTesting
-  Future<void> debugPush(double lat, double lng, double bearing, {bool force = false}) =>
+  Future<void> debugPush(double lat, double lng, double bearing,
+          {bool force = false}) =>
       _push(lat, lng, bearing, force: force);
 
   /// Chỉ dùng trong test — xem đồng hồ giữ nhịp có đang tồn tại không, để
@@ -100,8 +96,6 @@ class LocationPushService {
     _deviceId ??= await SessionGuardService.getDeviceId();
     if (gen != _generation) return;
 
-    _listenOnlineStatus(driverId, gen);
-
     await _fetchOnce();
     if (gen != _generation) return;
 
@@ -114,37 +108,12 @@ class LocationPushService {
   void stop() {
     _generation++;
     _refreshTimer?.cancel();
-    _refreshTimer     = null;
-    _onlineStatusSub?.cancel();
-    _onlineStatusSub  = null;
-    _driverId         = null;
-    _lastPushedLat    = null;
-    _lastPushedLng    = null;
-    _lastPushedBearing = null;
-    _noGoodFixSince   = null;
+    _refreshTimer = null;
+    _driverId = null;
+    _lastPushedLat = null;
+    _lastPushedLng = null;
+    _noGoodFixSince = null;
     LocationService.instance.stop();
-  }
-
-  /// Lắng nghe `locations/driver_{id}/is_online` trên RTDB — backend ghi
-  /// `false` khi CloseStaleOnlineSessionsCommand phát hiện GPS chết quá 10
-  /// phút. App nhận ngay (realtime) → dừng GPS/timer/offer và sync UI.
-  ///
-  /// Chỉ phản ứng với giá trị `false` rõ ràng — bỏ qua `true` (do chính
-  /// app vừa bật online ghi lên) và `null` (node chưa tồn tại).
-  void _listenOnlineStatus(int driverId, int gen) {
-    _onlineStatusSub?.cancel();
-    _onlineStatusSub = FirebaseDatabase.instance
-        .ref('locations/driver_$driverId/is_online')
-        .onValue
-        .listen((event) {
-      if (gen != _generation) return;
-      final val = event.snapshot.value;
-      if (val == false) {
-        debugPrint('[LocationPush] Backend đã tự chuyển offline (GPS chết quá 10p) → dừng mọi thứ');
-        stop();
-        onForceOffline?.call();
-      }
-    });
   }
 
   // ── Nội bộ ──────────────────────────────────────────────────────────────────
@@ -152,20 +121,22 @@ class LocationPushService {
   /// Fix đủ chính xác → đẩy ngay. Fix kém → chỉ đẩy nếu đã quá [_degradedAfter]
   /// mà vẫn chưa có fix nào tốt, và tối đa 1 lần mỗi chu kỳ đó (vẫn luôn ưu
   /// tiên fix tốt ngay khi có lại).
-  void _onFix(double lat, double lng, double bearing, double accuracy) {
+  Future<void> _onFix(double lat, double lng, double bearing, double accuracy,
+      {bool force = false}) async {
     if (accuracy <= _accuracyMaxMeter) {
       _noGoodFixSince = null;
-      _push(lat, lng, bearing);
+      await _push(lat, lng, bearing, force: force);
       return;
     }
 
     final now = DateTime.now();
     _noGoodFixSince ??= now;
     if (now.difference(_noGoodFixSince!) >= _degradedAfter) {
-      debugPrint('[LocationPush] ${_degradedAfter.inSeconds}s không có fix ≤${_accuracyMaxMeter}m '
+      debugPrint(
+          '[LocationPush] ${_degradedAfter.inSeconds}s không có fix ≤${_accuracyMaxMeter}m '
           '→ đẩy tạm fix accuracy=${accuracy.round()}m để không bị tàng hình');
       _noGoodFixSince = now; // đặt lại đồng hồ, tránh spam fix kém liên tục
-      _push(lat, lng, bearing);
+      await _push(lat, lng, bearing, force: force);
     }
   }
 
@@ -174,18 +145,54 @@ class LocationPushService {
   Future<void> _fetchOnce() async {
     try {
       final perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) return;
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        return;
+      }
       final pos = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 6), // tránh treo khi GPS chưa bắt được tín hiệu
+          timeLimit:
+              Duration(seconds: 6), // tránh treo khi GPS chưa bắt được tín hiệu
         ),
       );
       // Đi chung đường với luồng GPS để dùng chung luật lọc/dự phòng độ chính
       // xác, không tự lọc riêng một kiểu như trước.
-      _onFix(pos.latitude, pos.longitude, pos.heading < 0 ? 0.0 : pos.heading, pos.accuracy);
+      await _onFix(pos.latitude, pos.longitude,
+          pos.heading < 0 ? 0.0 : pos.heading, pos.accuracy);
     } catch (e) {
-      debugPrint('[LocationPush] getCurrentPosition failed: $e'); // hết giờ/không có GPS → luồng sẽ tự cập nhật
+      debugPrint(
+          '[LocationPush] getCurrentPosition failed: $e'); // hết giờ/không có GPS → luồng sẽ tự cập nhật
+    }
+  }
+
+  /// Lấy một fix GPS THẬT cho heartbeat. GPS tắt, mất quyền hoặc
+  /// timeout thì không ghi gì lên Firebase; backend sẽ tự thấy
+  /// updated_at cũ và ngừng phát đơn/tính giờ.
+  Future<void> _refreshFromGps(int gen) async {
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) return;
+      final perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 6),
+        ),
+      );
+      if (gen != _generation || _driverId == null) return;
+      await _onFix(
+        pos.latitude,
+        pos.longitude,
+        pos.heading < 0 ? 0.0 : pos.heading,
+        pos.accuracy,
+        force: true,
+      );
+    } catch (e) {
+      debugPrint('[LocationPush] Không lấy được GPS heartbeat: $e');
     }
   }
 
@@ -197,20 +204,21 @@ class LocationPushService {
     _refreshTimer?.cancel();
     if (_driverId == null) return;
     final gen = _generation;
-    _refreshTimer = Timer(_refreshInterval, () {
+    _refreshTimer = Timer(_refreshInterval, () async {
+      _refreshTimer = null;
       if (gen != _generation || _driverId == null) return;
-      if (_lastPushedLat != null && _lastPushedLng != null) {
-        debugPrint('[LocationPush] Đứng yên đủ 20s → đẩy lại toạ độ đang có (force)');
-        _push(_lastPushedLat!, _lastPushedLng!, _lastPushedBearing ?? 0, force: true);
-      } else {
-        // Chưa từng đẩy được lần nào (fetch-once lẫn luồng đều chưa xong) —
-        // chưa có gì để đẩy lại, thử kiểm tra tiếp sau 20s nữa.
+      await _refreshFromGps(gen);
+      // _push() thành công/thất bại đã tự hẹn lại. Nếu không
+      // có fix để gọi _push(), vẫn thử lại sau 20 giây nhưng
+      // tuyệt đối không bump updated_at bằng dữ liệu cũ.
+      if (gen == _generation && _driverId != null && _refreshTimer == null) {
         _scheduleRefresh();
       }
     });
   }
 
-  Future<void> _push(double lat, double lng, double bearing, {bool force = false}) async {
+  Future<void> _push(double lat, double lng, double bearing,
+      {bool force = false}) async {
     final driverId = _driverId;
     if (driverId == null) return;
     // Toạ độ y hệt lần đẩy gần nhất (luồng vẫn có thể bắn lại dù chưa đổi
@@ -242,9 +250,8 @@ class LocationPushService {
       // ghi lại trạng thái và KHÔNG hẹn đồng hồ (đây chính là chỗ sinh ra
       // đồng hồ "ma" ở bản cũ khi phần này còn nằm trong widget).
       if (gen != _generation) return;
-      _lastPushedLat     = lat;
-      _lastPushedLng     = lng;
-      _lastPushedBearing = bearing;
+      _lastPushedLat = lat;
+      _lastPushedLng = lng;
     } on FirebaseException catch (e) {
       // Security Rules từ chối = thiết bị này không còn là phiên hiện hành
       // (máy khác vừa đăng nhập đè). Đây là câu trả lời CHẮC CHẮN từ máy chủ,
@@ -258,12 +265,14 @@ class LocationPushService {
         //  2. Có đăng nhập Firebase nhưng Rules vẫn từ chối ⇒ session_device
         //     trên máy chủ đã đổi ⇒ đúng là máy khác vừa đăng nhập đè.
         if (FirebaseAuth.instance.currentUser != null) {
-          debugPrint('[LocationPush] Firebase từ chối ghi — thiết bị đã bị đăng nhập đè, tự logout');
+          debugPrint(
+              '[LocationPush] Firebase từ chối ghi — thiết bị đã bị đăng nhập đè, tự logout');
           stop();
           SessionGuardService.instance.onForceLogout?.call();
           return;
         }
-        debugPrint('[LocationPush] Bị từ chối ghi do chưa có phiên Firebase Auth '
+        debugPrint(
+            '[LocationPush] Bị từ chối ghi do chưa có phiên Firebase Auth '
             '(không phải bị đăng nhập đè) — giữ nguyên đăng nhập, sẽ thử lại sau');
       } else {
         debugPrint('[LocationPush] Firebase write failed: $e');

@@ -11,9 +11,8 @@ class RulesCard extends ConsumerStatefulWidget {
   ConsumerState<RulesCard> createState() => _RulesCardState();
 }
 
-
 class _RulesCardState extends ConsumerState<RulesCard> {
-  bool _showPlus  = true;
+  bool _showPlus = true;
   bool _showMinus = false;
   bool _showReset = false;
 
@@ -22,7 +21,6 @@ class _RulesCardState extends ConsumerState<RulesCard> {
     return ScoreSectionCard(
       padding: EdgeInsets.zero,
       child: Column(children: [
-
         // Header
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
@@ -52,35 +50,38 @@ class _RulesCardState extends ConsumerState<RulesCard> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           child: Row(children: [
-            Expanded(child: TabChip(
+            Expanded(
+                child: TabChip(
               label: '+ Cộng điểm',
               active: _showPlus,
               activeColor: AppColors.success,
               onTap: () => setState(() {
-                _showPlus  = !_showPlus;
+                _showPlus = !_showPlus;
                 _showMinus = false;
                 _showReset = false;
               }),
             )),
             const SizedBox(width: 8),
-            Expanded(child: TabChip(
+            Expanded(
+                child: TabChip(
               label: '− Trừ điểm',
               active: _showMinus,
               activeColor: AppColors.danger,
               onTap: () => setState(() {
                 _showMinus = !_showMinus;
-                _showPlus  = false;
+                _showPlus = false;
                 _showReset = false;
               }),
             )),
             const SizedBox(width: 8),
-            Expanded(child: TabChip(
+            Expanded(
+                child: TabChip(
               label: 'Reset',
               active: _showReset,
               activeColor: AppColors.textSecondary,
               onTap: () => setState(() {
                 _showReset = !_showReset;
-                _showPlus  = false;
+                _showPlus = false;
                 _showMinus = false;
               }),
             )),
@@ -106,11 +107,11 @@ class _RulesCardState extends ConsumerState<RulesCard> {
                       key: const ValueKey('minus'),
                       color: AppColors.danger,
                       items: const [
-                        ('-2',  'Từ chối đơn'),
-                        ('-2',  'Bỏ lỡ 3 lần liên tiếp không xem thông báo'),
-                        ('-3',  'Mở xem đơn nhưng không phản hồi kịp'),
-                        ('-3',  'Online 70–84% thời lượng ca'),
-                        ('-5',  'Online 60–69% thời lượng ca'),
+                        ('-2', 'Từ chối đơn'),
+                        ('-2', 'Bỏ lỡ 3 lần liên tiếp không xem thông báo'),
+                        ('-3', 'Mở xem đơn nhưng không phản hồi kịp'),
+                        ('-3', 'Online 70–84% thời lượng ca'),
+                        ('-5', 'Online 60–69% thời lượng ca'),
                         ('-10', 'Online 50–59% thời lượng ca'),
                         ('-15', 'Online dưới 50% thời lượng ca'),
                       ],
@@ -127,12 +128,10 @@ class _RulesCardState extends ConsumerState<RulesCard> {
         ),
 
         const SizedBox(height: 8),
-
       ]),
     );
   }
 }
-
 
 class TabChip extends StatelessWidget {
   final String label;
@@ -141,8 +140,10 @@ class TabChip extends StatelessWidget {
   final VoidCallback onTap;
   const TabChip({
     super.key,
-    required this.label, required this.active,
-    required this.activeColor, required this.onTap,
+    required this.label,
+    required this.active,
+    required this.activeColor,
+    required this.onTap,
   });
 
   @override
@@ -155,7 +156,7 @@ class TabChip extends StatelessWidget {
             color: active
                 ? activeColor.withValues(alpha: 0.1)
                 : const Color(0xFFF5F5F5),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(0),
             border: Border.all(
               color: active
                   ? activeColor.withValues(alpha: 0.35)
@@ -166,14 +167,14 @@ class TabChip extends StatelessWidget {
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w600,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
               color: active ? activeColor : AppColors.textSecondary,
             ),
           ),
         ),
       );
 }
-
 
 class RulesList extends StatelessWidget {
   final Color color;
@@ -191,7 +192,8 @@ class RulesList extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: Row(children: [
               Container(
-                width: 42, height: 30,
+                width: 42,
+                height: 30,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(7),
@@ -199,7 +201,9 @@ class RulesList extends StatelessWidget {
                 alignment: Alignment.center,
                 child: Text(badge,
                     style: TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w800, color: color)),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: color)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -216,4 +220,3 @@ class RulesList extends StatelessWidget {
     );
   }
 }
-

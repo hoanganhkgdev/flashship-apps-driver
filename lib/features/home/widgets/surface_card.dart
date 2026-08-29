@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
-
 Widget surfaceCard(
     {required Widget child,
     EdgeInsetsGeometry padding = const EdgeInsets.all(16)}) {
@@ -9,9 +7,9 @@ Widget surfaceCard(
     width: double.infinity,
     padding: padding,
     decoration: BoxDecoration(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(AppRadius.card),
-      boxShadow: AppColors.cardShadow,
+      color: const Color(0xFFFFFEFD),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: const Color(0xFFE5DDD9)),
     ),
     child: child,
   );

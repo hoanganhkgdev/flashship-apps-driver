@@ -58,12 +58,14 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final isAuth = auth.isAuthenticated;
       final isPending = auth.isPending; // authenticated nhưng status=0
+      final isDeleteRequested = auth.isDeleteRequested;
       final onSplash = location == '/splash';
       final onAuth = location == '/login' ||
           location == '/register' ||
           location == '/otp' ||
           location == '/forgot-password';
       final onPending = location == '/pending';
+      final onDeleteRecovery = location == '/profile';
 
       // Chưa đăng nhập (không có token)
       if (!isAuth) {
@@ -74,6 +76,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Đã đăng nhập nhưng pending (status=0) → luôn về pending
       if (isPending) {
         return onPending ? null : '/pending';
+      }
+
+      // Tài khoản chờ xóa chỉ được vào hồ sơ để hủy yêu cầu hoặc đăng xuất;
+      // không cho màn Home tiếp tục gọi đơn/ví/GPS vốn đã bị backend chặn.
+      if (isDeleteRequested) {
+        return onDeleteRecovery ? null : '/profile';
       }
 
       // Đã duyệt (status=1) → rời khỏi splash/auth/pending về home
@@ -101,8 +109,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/order/offer/:id',
         builder: (_, state) {
           final extra = state.extra as Map<String, dynamic>?;
+          final orderId = int.parse(state.pathParameters['id']!);
           return OrderOfferScreen(
-            orderId: int.parse(state.pathParameters['id']!),
+            // go_router tính pageKey theo pattern route (`/order/offer/:id`),
+            // không theo giá trị :id thật, nên 2 đơn offer khác nhau sẽ bị
+            // Navigator coi là "cùng 1 page" nếu không có Key riêng — Flutter
+            // tái dùng State cũ (chỉ gọi didUpdateWidget, không initState),
+            // khiến `_order` hiển thị vẫn là đơn CŨ dù widget.orderId đã đổi
+            // sang đơn MỚI → bấm "Nhận đơn" accept nhầm đơn khác với đơn đang
+            // hiện trên màn hình.
+            key: ValueKey(orderId),
+            orderId: orderId,
             orderData: extra ?? {},
           );
         },
@@ -110,8 +127,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/order/active',
         builder: (_, state) {
-          final idx = state.extra is int ? state.extra as int : 0;
-          return ActiveOrderScreen(orderIndex: idx);
+          final extra = state.extra;
+          final orderId =
+              extra is Map ? (extra['orderId'] as num?)?.toInt() : null;
+          return ActiveOrderScreen(
+            key: ValueKey(orderId),
+            orderId: orderId,
+          );
         },
       ),
       GoRoute(

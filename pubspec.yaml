@@ -1,7 +1,7 @@
 name: flashship_driver
 description: Flash Driver App - Nhận và hoàn thành đơn giao hàng
 publish_to: 'none'
-version: 10.0.11+112
+version: 10.0.12+113
 
 environment:
   sdk: ^3.6.0

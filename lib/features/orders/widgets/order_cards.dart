@@ -61,7 +61,10 @@ class _ActiveOrderCardState extends ConsumerState<ActiveOrderCard> {
     final canAct = isPriority && order.nextAction.isNotEmpty;
 
     return GestureDetector(
-      onTap: () => context.go('/order/active', extra: widget.orderIndex),
+      onTap: () => context.go(
+        '/order/active',
+        extra: {'orderId': order.id},
+      ),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -328,8 +331,10 @@ class _ActiveOrderCardState extends ConsumerState<ActiveOrderCard> {
               child: SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
-                  onPressed: () =>
-                      context.go('/order/active', extra: widget.orderIndex),
+                  onPressed: () => context.go(
+                    '/order/active',
+                    extra: {'orderId': order.id},
+                  ),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: AppColors.divider),
                     foregroundColor: AppColors.textSecondary,
@@ -371,17 +376,17 @@ class MaxOrdersBanner extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
-          color: AppColors.infoSoft,
-          borderRadius: BorderRadius.circular(12),
+          color: const Color(0xFFFFF1CC),
+          borderRadius: BorderRadius.circular(18),
         ),
         child: Row(children: [
           const Icon(Icons.info_outline_rounded,
-              size: 14, color: AppColors.info),
+              size: 18, color: Color(0xFF17110F)),
           const SizedBox(width: 8),
           Expanded(
             child: Text(_text,
                 style: const TextStyle(
-                    fontSize: 12, color: AppColors.info, height: 1.4)),
+                    fontSize: 12, color: Color(0xFFB77300), height: 1.4)),
           ),
         ]),
       );

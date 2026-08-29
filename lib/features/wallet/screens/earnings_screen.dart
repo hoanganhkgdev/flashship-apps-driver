@@ -11,8 +11,6 @@ import 'debt_screen.dart';
 import '../../orders/models/order_model.dart';
 import '../../orders/providers/order_provider.dart';
 import '../../home/widgets/bottom_nav.dart';
-import '../../score/models/score_model.dart';
-import '../../score/providers/score_provider.dart';
 
 class EarningsScreen extends ConsumerStatefulWidget {
   const EarningsScreen({super.key});
@@ -22,7 +20,7 @@ class EarningsScreen extends ConsumerStatefulWidget {
 }
 
 class _EarningsScreenState extends ConsumerState<EarningsScreen> {
-  int _period = 0; // 0=hôm nay, 1=tuần này, 2=tháng này
+  int _period = 1; // 0=hôm nay, 1=tuần này, 2=tháng này
   int _historyTab = 0; // 0=Đơn hàng, 1=Giao dịch ví
   // Theo dõi loại biểu đồ đã fetch gần nhất — "Hôm nay" và "Tuần này" dùng
   // chung dữ liệu tuần (earnings/weekly), chỉ "Tháng này" mới cần gọi lại
@@ -34,7 +32,6 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
     super.initState();
     Future.microtask(() {
       ref.read(orderHistoryProvider.notifier).fetch(refresh: true);
-      ref.read(scoreProvider.notifier).fetch();
       ref.read(walletProvider.notifier).fetchDailyEarnings(monthly: false);
     });
   }
@@ -82,7 +79,6 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
     await Future.wait([
       ref.read(walletProvider.notifier).fetch(),
       ref.read(orderHistoryProvider.notifier).fetch(refresh: true),
-      ref.read(scoreProvider.notifier).fetch(),
     ]);
   }
 
@@ -106,7 +102,6 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
   Widget build(BuildContext context) {
     final wallet = ref.watch(walletProvider);
     final history = ref.watch(orderHistoryProvider);
-    final score = ref.watch(scoreProvider).score;
     final summary = _summary(wallet);
     final filteredOrders = _filterByPeriod(history.orders);
 
@@ -129,7 +124,7 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
         statusBarBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: const Color(0xFFFFF8F5),
         body: RefreshIndicator(
           color: AppColors.primary,
           onRefresh: _refresh,
@@ -137,6 +132,10 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               const SliverToBoxAdapter(child: _Header()),
+
+              SliverToBoxAdapter(
+                child: _PeriodTabs(period: _period, onPeriod: _onPeriod),
+              ),
 
               if (urgentDebt != null)
                 SliverToBoxAdapter(
@@ -150,30 +149,10 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
                 SliverToBoxAdapter(
                   child: _WeeklyFeeRow(
                     amount: weeklyFeeTotal,
-                    onTap: () => Navigator.push(
-                        context, MaterialPageRoute(builder: (_) => const DebtScreen())),
+                    onTap: () => Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => const DebtScreen())),
                   ),
                 ),
-
-              if (score != null)
-                SliverToBoxAdapter(
-                  child: _ScoreStatusCard(score: score),
-                ),
-
-              // Đường kẻ ngăn cách nội dung cố định theo tuần (phía trên) với
-              // phần thay đổi theo tab kỳ xem (phía dưới) — tab đặt ngay trên
-              // khối Tổng thu nhập để phạm vi ảnh hưởng của tab rõ ràng, tránh
-              // hiểu nhầm Phí tuần/Điểm số tuần là bug khi bấm tab không đổi.
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                  child: Column(children: [
-                    const Divider(height: 1, thickness: 0.6, color: AppColors.divider),
-                    const SizedBox(height: 12),
-                    _PeriodTabs(period: _period, onPeriod: _onPeriod),
-                  ]),
-                ),
-              ),
 
               SliverToBoxAdapter(
                 child: Padding(
@@ -237,20 +216,20 @@ class _Header extends StatelessWidget {
     final top = MediaQuery.of(context).padding.top;
 
     return Container(
-      color: AppColors.surface,
+      color: const Color(0xFFFFF8F5),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SizedBox(height: top),
+        SizedBox(height: top + 16),
 
         // Topbar
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
           child: Row(children: [
             const Text('Thu nhập',
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.3,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF1B1411),
+                  letterSpacing: -0.7,
                 )),
             const Spacer(),
             GestureDetector(
@@ -265,13 +244,13 @@ class _Header extends StatelessWidget {
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   const Icon(Icons.account_balance_wallet_rounded,
-                      size: 14, color: AppColors.primary),
+                      size: 16, color: Color(0xFF17110F)),
                   const SizedBox(width: 6),
                   const Text('Xem ví',
                       style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF6A605C),
                       )),
                 ]),
               ),
@@ -296,38 +275,45 @@ class _PeriodTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: List.generate(_labels.length, (i) {
-        final active = i == period;
-        return Expanded(
-          child: GestureDetector(
-            onTap: () => onPeriod(i),
-            behavior: HitTestBehavior.opaque,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: active ? AppColors.primary : AppColors.divider,
-                    width: active ? 2 : 1,
+    return Container(
+        decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: Color(0xFFE5DDD9)))),
+        child: Row(
+          children: List.generate(_labels.length, (i) {
+            final active = i == period;
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => onPeriod(i),
+                behavior: HitTestBehavior.opaque,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: active
+                            ? const Color(0xFFFF6035)
+                            : Colors.transparent,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    _labels[i],
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: active ? FontWeight.w800 : FontWeight.w500,
+                      color: active
+                          ? const Color(0xFFFF6035)
+                          : const Color(0xFF6A605C),
+                    ),
                   ),
                 ),
               ),
-              child: Text(
-                _labels[i],
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: active ? FontWeight.w800 : FontWeight.w500,
-                  color: active ? AppColors.primary : AppColors.textSecondary,
-                ),
-              ),
-            ),
-          ),
-        );
-      }),
-    );
+            );
+          }),
+        ));
   }
 }
 
@@ -379,7 +365,8 @@ class _UrgentDebtCard extends StatelessWidget {
                   )),
               const SizedBox(height: 2),
               Text(_timeLabel,
-                  style: const TextStyle(fontSize: 12, color: AppColors.danger)),
+                  style:
+                      const TextStyle(fontSize: 12, color: AppColors.danger)),
             ]),
           ),
         ]),
@@ -399,7 +386,8 @@ class _UrgentDebtCard extends StatelessWidget {
             height: 38,
             child: FilledButton.icon(
               onPressed: onPay,
-              icon: const Icon(Icons.qr_code_rounded, size: 16, color: Colors.white),
+              icon: const Icon(Icons.qr_code_rounded,
+                  size: 16, color: Colors.white),
               label: const Text('Thanh toán qua PayOS',
                   style: TextStyle(
                     fontSize: 12.5,
@@ -409,7 +397,8 @@ class _UrgentDebtCard extends StatelessWidget {
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.danger,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
               ),
             ),
           ),
@@ -472,117 +461,6 @@ class _WeeklyFeeRow extends StatelessWidget {
   }
 }
 
-// ── Score status (điểm số tuần) ─────────────────────────────────────────────
-
-class _ScoreStatusCard extends StatelessWidget {
-  final DriverScoreModel score;
-  const _ScoreStatusCard({required this.score});
-
-  @override
-  Widget build(BuildContext context) {
-    final maxScore = score.maxScore > 0 ? score.maxScore : 140;
-    final penaltyAt = score.week?.penaltyAt ?? 70;
-    final bonusAt = score.week?.bonusAt ?? maxScore;
-    final scoreFrac = (score.score / maxScore).clamp(0.0, 1.0);
-    final penaltyFrac = (penaltyAt / maxScore).clamp(0.0, 1.0);
-    final bonusFrac = (bonusAt / maxScore).clamp(0.0, 1.0);
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          const Text('Điểm số tuần',
-              style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
-              )),
-          const Spacer(),
-          Text('${score.score} / $maxScore',
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: AppColors.primary,
-              )),
-        ]),
-        const SizedBox(height: 12),
-        LayoutBuilder(builder: (_, box) {
-          final w = box.maxWidth;
-          const barH = 8.0;
-          final penaltyX = (penaltyFrac * w).clamp(0.0, w - 2);
-          final bonusX = (bonusFrac * w).clamp(0.0, w - 2);
-          return SizedBox(
-            height: barH + 8,
-            child: Stack(children: [
-              Positioned(
-                left: 0,
-                right: 0,
-                top: 4,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: SizedBox(
-                    height: barH,
-                    child: LinearProgressIndicator(
-                      value: scoreFrac,
-                      backgroundColor: AppColors.divider,
-                      valueColor:
-                          const AlwaysStoppedAnimation(AppColors.primary),
-                    ),
-                  ),
-                ),
-              ),
-              // Vạch đỏ — ngưỡng phạt
-              Positioned(
-                left: penaltyX,
-                top: 0,
-                child: Container(width: 2, height: barH + 8, color: AppColors.danger),
-              ),
-              // Vạch xanh — ngưỡng thưởng
-              Positioned(
-                left: bonusX,
-                top: 0,
-                child: Container(width: 2, height: barH + 8, color: AppColors.success),
-              ),
-            ]),
-          );
-        }),
-        const SizedBox(height: 6),
-        Row(children: [
-          Text(
-            '$penaltyAt điểm · -${Fmt.currency(score.week?.penaltyAmount ?? 0)}',
-            style: const TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w600,
-              color: AppColors.danger,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            '$bonusAt điểm · +${Fmt.currency(score.week?.bonusAmount ?? 0)}',
-            style: const TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w600,
-              color: AppColors.success,
-            ),
-          ),
-        ]),
-      ]),
-    );
-  }
-}
-
 // ── Total earnings card ──────────────────────────────────────────────────────
 
 class _TotalEarningsCard extends StatelessWidget {
@@ -594,10 +472,10 @@ class _TotalEarningsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       decoration: BoxDecoration(
-        color: AppColors.successSoft,
-        borderRadius: BorderRadius.circular(12),
+        color: const Color(0xFFD8F4DF),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: loading
           ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -622,9 +500,9 @@ class _TotalEarningsCard extends StatelessWidget {
           : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('Tổng thu nhập',
                   style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.success,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF229650),
                   )),
               const SizedBox(height: 6),
               Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
@@ -632,9 +510,9 @@ class _TotalEarningsCard extends StatelessWidget {
                   child: Text(
                     Fmt.currency(summary.total),
                     style: const TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.success,
+                      fontSize: 31,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF229650),
                       letterSpacing: -0.5,
                     ),
                     maxLines: 1,
@@ -653,7 +531,7 @@ class _TotalEarningsCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.success,
+                        color: Color(0xFF229650),
                       )),
                 ),
               ]),
@@ -712,15 +590,9 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          color: const Color(0xFFFFFEFD),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFE5DDD9)),
         ),
         child: Row(children: [
           Container(
@@ -840,15 +712,17 @@ class _EarningsChart extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: AppColors.cardShadow,
+        color: const Color(0xFFFFFEFD),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5DDD9)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(
-          monthly ? 'Thu nhập theo ngày trong tháng' : 'Thu nhập 7 ngày gần đây',
+          monthly
+              ? 'Thu nhập theo ngày trong tháng'
+              : 'Thu nhập 7 ngày gần đây',
           style: const TextStyle(
-            fontSize: 13,
+            fontSize: 14,
             fontWeight: FontWeight.w800,
             color: AppColors.textPrimary,
           ),
@@ -880,7 +754,8 @@ class _EarningsChart extends StatelessWidget {
           }
           return Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: data.map((d) => _bar(d, maxTotal, width: barWidth)).toList(),
+            children:
+                data.map((d) => _bar(d, maxTotal, width: barWidth)).toList(),
           );
         }),
       ]),
@@ -920,15 +795,9 @@ class _OrderEarningsSection extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          color: const Color(0xFFFFFEFD),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFE5DDD9)),
         ),
         child: Column(children: [
           // Tab underline — chọn nguồn dữ liệu hiện phía dưới
@@ -1096,7 +965,8 @@ class _WalletTransactionItem extends StatelessWidget {
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(
-              tx.description ?? (credit ? 'Cộng tiền vào ví' : 'Trừ tiền từ ví'),
+              tx.description ??
+                  (credit ? 'Cộng tiền vào ví' : 'Trừ tiền từ ví'),
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -1238,7 +1108,8 @@ class _EmptyEarnings extends StatelessWidget {
                 )),
             const SizedBox(height: 3),
             Text(subtitle,
-                style: const TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textTertiary)),
           ]),
         ),
       );

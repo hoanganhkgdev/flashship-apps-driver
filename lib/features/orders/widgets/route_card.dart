@@ -173,7 +173,7 @@ class RouteStop extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
+                      color: Color(0xFFFF6035),
                     )),
               ),
             ],

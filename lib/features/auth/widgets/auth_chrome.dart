@@ -8,16 +8,22 @@ class AuthBackButton extends StatelessWidget {
   const AuthBackButton({super.key, required this.onTap});
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 44, height: 44,
-          decoration: const BoxDecoration(
-            color: AppColors.surfaceAlt,
-            shape: BoxShape.circle,
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        label: 'Quay lại',
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFDFC),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE5DDD9)),
+            ),
+            child: const Icon(Icons.chevron_left_rounded,
+                size: 26, color: Color(0xFF17110F)),
           ),
-          child: const Icon(Icons.arrow_back_rounded,
-              size: 20, color: AppColors.textPrimary),
         ),
       );
 }
@@ -41,7 +47,7 @@ class AuthHeader extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.subtitleSpans,
-    this.titleFontSize = 30,
+    this.titleFontSize = 24,
     this.titleFontWeight = FontWeight.w800,
     this.centered = false,
   }) : assert(subtitle != null || subtitleSpans != null);
@@ -57,17 +63,21 @@ class AuthHeader extends StatelessWidget {
             style: TextStyle(
               fontSize: titleFontSize,
               fontWeight: titleFontWeight,
-              color: AppColors.textPrimary,
-              letterSpacing: -0.8,
+              color: const Color(0xFF1B1411),
+              letterSpacing: -0.7,
+              height: 1.25,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 3),
           subtitleSpans != null
               ? RichText(
                   textAlign: centered ? TextAlign.center : TextAlign.start,
                   text: TextSpan(
                     style: const TextStyle(
-                        fontSize: 16, color: AppColors.textSecondary, height: 1.5),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF6A605C),
+                        height: 1.5),
                     children: subtitleSpans,
                   ),
                 )
@@ -75,7 +85,10 @@ class AuthHeader extends StatelessWidget {
                   subtitle!,
                   textAlign: centered ? TextAlign.center : null,
                   style: const TextStyle(
-                      fontSize: 16, color: AppColors.textSecondary, height: 1.5),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF6A605C),
+                      height: 1.5),
                 ),
         ],
       );
@@ -143,7 +156,8 @@ class AuthFooterLink extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(promptText,
-              style: const TextStyle(fontSize: 16, color: AppColors.textSecondary)),
+              style: const TextStyle(
+                  fontSize: 16, color: AppColors.textSecondary)),
           GestureDetector(
             onTap: onTap,
             child: Text(
@@ -168,6 +182,7 @@ class AuthPrimaryButton extends StatelessWidget {
   // null = pill hoàn toàn (height / 2) — mặc định cho ngôn ngữ nút mới.
   final double? borderRadius;
   final Color color;
+  final double fontSize;
 
   const AuthPrimaryButton({
     super.key,
@@ -177,6 +192,7 @@ class AuthPrimaryButton extends StatelessWidget {
     this.height = 52,
     this.borderRadius,
     this.color = AppColors.primary,
+    this.fontSize = 18,
   });
 
   @override
@@ -189,14 +205,20 @@ class AuthPrimaryButton extends StatelessWidget {
             backgroundColor: color,
             disabledBackgroundColor: color.withValues(alpha: 0.5),
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(borderRadius ?? height / 2)),
+                borderRadius:
+                    BorderRadius.circular(borderRadius ?? height / 2)),
             elevation: 0,
-            textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            textStyle: TextStyle(
+              fontSize: fontSize,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           child: loading
               ? const SizedBox(
-                  width: 22, height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2.5, color: Colors.white),
                 )
               : Text(label),
         ),

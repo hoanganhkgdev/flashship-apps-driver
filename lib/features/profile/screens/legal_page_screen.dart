@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_back_button.dart';
 import '../../auth/providers/auth_provider.dart';
 
 class LegalPageScreen extends ConsumerStatefulWidget {
@@ -28,16 +30,23 @@ class _LegalPageScreenState extends ConsumerState<LegalPageScreen> {
 
   Future<void> _load() async {
     try {
-      final res = await ref.read(apiClientProvider).get('/pages/${widget.slug}');
+      final res =
+          await ref.read(apiClientProvider).get('/pages/${widget.slug}');
       final data = (res.data['data'] ?? res.data) as Map<String, dynamic>?;
       if (mounted) {
         setState(() {
-          _content = data?['content'] as String? ?? data?['body'] as String? ?? '';
+          _content =
+              data?['content'] as String? ?? data?['body'] as String? ?? '';
           _loading = false;
         });
       }
     } catch (_) {
-      if (mounted) setState(() { _loading = false; _error = true; });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = true;
+        });
+      }
     }
   }
 
@@ -46,32 +55,45 @@ class _LegalPageScreenState extends ConsumerState<LegalPageScreen> {
     final top = MediaQuery.of(context).padding.top;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Color(0xFFFF6035),
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
       child: Scaffold(
-        backgroundColor: AppColors.surface,
+        backgroundColor: const Color(0xFFFFFEFD),
         body: Column(children: [
           // ── Header ────────────────────────────────────────────────────────
           Container(
-            color: AppColors.primary,
-            padding: EdgeInsets.fromLTRB(8, top + 8, 16, 16),
+            color: const Color(0xFFFF6035),
+            padding: EdgeInsets.fromLTRB(16, top + 10, 16, 16),
             child: Row(children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-              const SizedBox(width: 4),
-              Text(widget.title,
+              AppBackButton.onColor(onTap: () => Navigator.of(context).pop()),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  widget.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white)),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
             ]),
           ),
 
           // ── Body ──────────────────────────────────────────────────────────
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      color: Color(0xFFFF6035),
+                      strokeWidth: 2,
+                    ),
+                  )
                 : _error
                     ? Center(
                         child: Column(
@@ -81,11 +103,15 @@ class _LegalPageScreenState extends ConsumerState<LegalPageScreen> {
                                 size: 40, color: AppColors.textSecondary),
                             const SizedBox(height: 12),
                             const Text('Không thể tải nội dung',
-                                style: TextStyle(color: AppColors.textSecondary)),
+                                style:
+                                    TextStyle(color: AppColors.textSecondary)),
                             const SizedBox(height: 16),
                             TextButton(
                               onPressed: () {
-                                setState(() { _loading = true; _error = false; });
+                                setState(() {
+                                  _loading = true;
+                                  _error = false;
+                                });
                                 _load();
                               },
                               child: const Text('Thử lại'),
@@ -94,42 +120,46 @@ class _LegalPageScreenState extends ConsumerState<LegalPageScreen> {
                         ),
                       )
                     : SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                        padding: const EdgeInsets.fromLTRB(12, 18, 12, 36),
                         child: Html(
                           data: _content ?? '',
                           style: {
                             'body': Style(
-                              fontSize: FontSize(14),
-                              lineHeight: LineHeight(1.6),
-                              color: AppColors.textPrimary,
+                              fontFamily: GoogleFonts.robotoCondensed().fontFamily,
+                              fontSize: FontSize(15),
+                              lineHeight: LineHeight(1.55),
+                              color: const Color(0xFF1B1411),
                               margin: Margins.zero,
-                              padding: HtmlPaddings.symmetric(horizontal: 12),
+                              padding: HtmlPaddings.symmetric(horizontal: 4),
                             ),
                             'h1': Style(
-                              fontSize: FontSize(20),
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                              margin: Margins.only(top: 16, bottom: 8),
+                              fontSize: FontSize(22),
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF1B1411),
+                              lineHeight: LineHeight(1.25),
+                              margin: Margins.only(top: 10, bottom: 10),
                             ),
                             'h2': Style(
-                              fontSize: FontSize(17),
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
-                              margin: Margins.only(top: 16, bottom: 6),
+                              fontSize: FontSize(18),
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF1B1411),
+                              lineHeight: LineHeight(1.3),
+                              margin: Margins.only(top: 18, bottom: 7),
                             ),
                             'h3': Style(
-                              fontSize: FontSize(15),
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                              margin: Margins.only(top: 12, bottom: 4),
+                              fontSize: FontSize(16),
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF1B1411),
+                              lineHeight: LineHeight(1.3),
+                              margin: Margins.only(top: 14, bottom: 5),
                             ),
                             'p': Style(
-                              margin: Margins.only(bottom: 10),
+                              margin: Margins.only(bottom: 11),
                             ),
                             'li': Style(
-                              margin: Margins.only(bottom: 4),
+                              margin: Margins.only(bottom: 7),
                             ),
-                            'strong': Style(fontWeight: FontWeight.w600),
+                            'strong': Style(fontWeight: FontWeight.w800),
                           },
                         ),
                       ),

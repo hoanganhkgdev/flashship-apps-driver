@@ -9,6 +9,7 @@ import '../../features/auth/providers/auth_provider.dart';
 import '../../features/orders/providers/order_provider.dart';
 import '../../features/wallet/providers/wallet_provider.dart';
 import 'offer_listener_service.dart';
+import 'offer_ack_service.dart';
 
 final _localNotif = FlutterLocalNotificationsPlugin();
 
@@ -58,6 +59,25 @@ void _navigateToOfferFromNotification(Map<String, dynamic> data, WidgetRef ref) 
 @pragma('vm:entry-point')
 Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
+  if (message.data['type'] != 'order_offer') {
+    return;
+  }
+
+  // notification+data ở background được OS hiển. Chỉ ACK khi
+  // quyền thông báo thật sự đang được cấp; payload tới máy nhưng
+  // OS bị chặn quyền không được dùng làm bằng chứng để phạt.
+  final settings = await FirebaseMessaging.instance.getNotificationSettings();
+  final allowed = settings.authorizationStatus == AuthorizationStatus.authorized ||
+      settings.authorizationStatus == AuthorizationStatus.provisional;
+  if (!allowed) return;
+
+  final orderId = int.tryParse('${message.data['order_id'] ?? ''}');
+  if (orderId != null) {
+    await OfferAckService.received(
+      orderId,
+      receiptUrl: message.data['receipt_url'],
+    );
+  }
 }
 
 class NotificationService {
@@ -157,12 +177,22 @@ class NotificationService {
     _tokenRefreshSub = _fcm.onTokenRefresh.listen((_) => _refreshFcmToken(ref));
 
     // Foreground: show local notification + refresh state
-    _onMessageSub = FirebaseMessaging.onMessage.listen((msg) {
+    _onMessageSub = FirebaseMessaging.onMessage.listen((msg) async {
       final type = msg.data['type'];
       if (type == 'order_offer') {
+        final orderId = int.tryParse('${msg.data['order_id'] ?? ''}');
+        if (msg.data['ack_only'] == '1') {
+          if (orderId != null) {
+            await OfferAckService.received(
+              orderId,
+              receiptUrl: msg.data['receipt_url'],
+            );
+          }
+          return;
+        }
         // Foreground: RTDB listener tự navigate, chỉ show notification nhỏ
         final data = msg.data;
-        _localNotif.show(
+        await _localNotif.show(
           (data['order_code'] ?? '').hashCode,
           'Có đơn hàng mới!',
           'Nhấn để xem và nhận đơn hàng',
@@ -184,6 +214,12 @@ class NotificationService {
           // khi tài xế bấm vào banner này lúc app đang mở/nền nhẹ.
           payload: jsonEncode(data),
         );
+        if (orderId != null) {
+          await OfferAckService.received(
+            orderId,
+            receiptUrl: data['receipt_url'],
+          );
+        }
       } else if (type == 'order_status' || type == 'order_assigned_direct') {
         try { ref.read(activeOrderProvider.notifier).fetch(); } catch (_) {}
       } else if (type == 'debt_overdue') {

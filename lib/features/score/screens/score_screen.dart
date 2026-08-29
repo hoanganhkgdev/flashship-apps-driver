@@ -37,7 +37,7 @@ class _ScoreScreenState extends ConsumerState<ScoreScreen> {
         statusBarBrightness: Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: const Color(0xFFFFF8F5),
         body: score == null && state.loading
             ? const Center(
                 child: CircularProgressIndicator(
@@ -52,38 +52,31 @@ class _ScoreScreenState extends ConsumerState<ScoreScreen> {
                   padding: EdgeInsets.zero,
                   physics: const AlwaysScrollableScrollPhysics(),
                   children: [
-
                     ScoreHeader(score: score),
-
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
                       child: Column(children: [
-
                         if (score?.streak != null) ...[
                           StreakCard(streak: score!.streak!),
                           const SizedBox(height: 12),
                         ],
-
                         if (score?.week != null) ...[
                           WeekCard(score: score!),
                           const SizedBox(height: 12),
                         ],
-
                         RulesCard(),
                         const SizedBox(height: 12),
-
                         HistoryCard(
-                          history:     state.history,
-                          loading:     state.historyLoading,
+                          history: state.history,
+                          loading: state.historyLoading,
                           loadingMore: state.historyLoadingMore,
-                          hasMore:     state.historyHasMore,
-                          onLoadMore:  () =>
-                              ref.read(scoreProvider.notifier).loadMoreHistory(),
+                          hasMore: state.historyHasMore,
+                          onLoadMore: () => ref
+                              .read(scoreProvider.notifier)
+                              .loadMoreHistory(),
                         ),
-
                       ]),
                     ),
-
                   ],
                 ),
               ),
@@ -91,4 +84,3 @@ class _ScoreScreenState extends ConsumerState<ScoreScreen> {
     );
   }
 }
-

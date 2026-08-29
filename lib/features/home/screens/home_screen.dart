@@ -4,10 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../core/services/notification_service.dart';
-import '../../../core/services/location_service.dart';
+import '../../../core/services/location_push_service.dart';
 import '../../../core/services/offer_listener_service.dart';
 import '../../../core/services/session_guard_service.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../providers/home_providers.dart';
 import '../widgets/bottom_nav.dart';
@@ -152,7 +151,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      ref.read(authProvider.notifier).refreshUser();
+      _resumeOnlineServices();
       ref.read(activeOrderProvider.notifier).fetch();
       ref.read(walletProvider.notifier).fetch();
       NotificationService.refreshPermissionState(ref).then((notGranted) {
@@ -161,21 +160,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       _checkLocationIssue().then((issue) {
         if (mounted) ref.read(locationIssueProvider.notifier).state = issue;
       });
-      // Đảm bảo location stream còn sống sau khi app về foreground
-      final user = ref.read(authProvider).user;
-      final isOnline = user?.isOnline ?? false;
-      if (isOnline) {
-        LocationService.instance.restart();
-        // Listener nhận đơn có thể đã chết/treo sau thời gian dài ở nền
-        // (Doze, mất mạng, iOS đóng băng socket) — trước đây chỉ GPS được
-        // cứu ở đây, đúng kiểu bất đối xứng đã gây ra bug GPS "chết vĩnh
-        // viễn". Đọc thẳng RTDB 1 lần, có đơn đang chờ thì mở màn hình
-        // ngay thay vì để trôi trong im lặng.
-        if (user != null) {
-          OfferListenerService.instance.ensureOfferVisible(user.id);
-        }
-      }
     }
+  }
+
+  Future<void> _resumeOnlineServices() async {
+    // Chờ profile server trước khi quyết định khởi động dịch vụ. Dùng cache
+    // ngay lập tức từng làm app resume GPS/listener dù backend đã offline,
+    // hoặc ngược lại vẫn không phục hồi dù backend đang online.
+    await ref.read(authProvider.notifier).refreshUser();
+    if (!mounted) return;
+    final user = ref.read(authProvider).user;
+    if (user?.isOnline != true) {
+      LocationPushService.instance.stop();
+      OfferListenerService.instance.stop();
+      return;
+    }
+
+    // Khởi động lại toàn bộ pipeline thay vì chỉ restart stream GPS thấp
+    // tầng: việc này phục hồi cả heartbeat 20s nếu timer đã bị OS đóng băng.
+    await LocationPushService.instance.start(user!.id);
+    if (!mounted || ref.read(authProvider).user?.isOnline != true) return;
+    OfferListenerService.instance.start(user.id);
+    await OfferListenerService.instance.ensureOfferVisible(user.id);
   }
 
   Future<void> _fetchServiceLabels() => Fmt.ensureLabelsLoaded();
@@ -202,7 +208,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     ];
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFFFF8F5),
       // Cho body vẽ tràn xuống phía sau bottomNavigationBar — bắt buộc để
       // hiệu ứng kính mờ (BackdropFilter) của BottomNav có nội dung thật
       // phía sau để làm mờ, thay vì chỉ mờ màu nền phẳng của Scaffold.

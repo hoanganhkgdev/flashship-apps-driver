@@ -32,9 +32,10 @@ class PaymentQrSheet extends ConsumerStatefulWidget {
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFFFEFD),
+      barrierColor: Colors.black.withValues(alpha: 0.38),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) => PaymentQrSheet(
         type: type, amount: amount, debtId: debtId, label: label,
@@ -100,7 +101,12 @@ class _PaymentQrSheetState extends ConsumerState<PaymentQrSheet> {
         final serverMsg = data['message'] as String?;
         if (serverMsg != null && serverMsg.isNotEmpty) msg = serverMsg;
       }
-      if (mounted) setState(() { _loading = false; _error = msg; });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = msg;
+        });
+      }
     }
   }
 
@@ -133,32 +139,42 @@ class _PaymentQrSheetState extends ConsumerState<PaymentQrSheet> {
   Future<void> _openUrl() async {
     if (_checkoutUrl == null) return;
     final uri = Uri.parse(_checkoutUrl!);
-    if (await canLaunchUrl(uri)) launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (await canLaunchUrl(uri)) {
+      launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.fromLTRB(
-          20, 8, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+          20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 8),
+          Container(
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE1D9D5),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 18),
 
           // Title + amount
           Text(widget.label,
               style: const TextStyle(
-                  fontSize: 17,
+                  fontSize: 18,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary)),
+                  color: Color(0xFF1B1411))),
           const SizedBox(height: 4),
           Text(
             Fmt.currency(widget.amount),
             style: const TextStyle(
-                fontSize: 28,
+                fontSize: 29,
                 fontWeight: FontWeight.w900,
-                color: AppColors.primary),
+                color: Color(0xFFFF6035)),
           ),
 
           const SizedBox(height: 20),
@@ -169,14 +185,17 @@ class _PaymentQrSheetState extends ConsumerState<PaymentQrSheet> {
               height: 180,
               child: Center(
                 child: CircularProgressIndicator(
-                    color: AppColors.primary, strokeWidth: 2),
+                    color: Color(0xFFFF6035), strokeWidth: 2),
               ),
             )
           else if (_error != null)
             _ErrorView(
               message: _error!,
               onRetry: () {
-                setState(() { _loading = true; _error = null; });
+                setState(() {
+                  _loading = true;
+                  _error = null;
+                });
                 _createPayment();
               },
             )
@@ -192,8 +211,8 @@ class _PaymentQrSheetState extends ConsumerState<PaymentQrSheet> {
               'Mở app ngân hàng → quét mã QR\nTự động xác nhận sau khi thanh toán',
               textAlign: TextAlign.center,
               style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                  color: Color(0xFF6A605C),
                   height: 1.5),
             ),
 
@@ -205,14 +224,14 @@ class _PaymentQrSheetState extends ConsumerState<PaymentQrSheet> {
             child: OutlinedButton(
               onPressed: () => Navigator.of(context).pop(false),
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.textSecondary,
-                side: const BorderSide(color: AppColors.divider),
+                foregroundColor: const Color(0xFF6A605C),
+                side: const BorderSide(color: Color(0xFFE5DDD9)),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
+                    borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text('Đóng',
                   style: TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w600)),
+                      fontSize: 15, fontWeight: FontWeight.w700)),
             ),
           ),
         ],

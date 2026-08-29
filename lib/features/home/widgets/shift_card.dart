@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../shifts/models/shift_model.dart';
 import 'surface_card.dart';
 
@@ -10,89 +9,70 @@ class ShiftCard extends StatelessWidget {
   final bool hasLoadedOnce;
   final VoidCallback onTap;
 
-  const ShiftCard({
-    super.key,
-    required this.shifts,
-    required this.currentShiftIds,
-    required this.hasLoadedOnce,
-    required this.onTap,
-  });
+  const ShiftCard(
+      {super.key,
+      required this.shifts,
+      required this.currentShiftIds,
+      required this.hasLoadedOnce,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    // Chưa fetch xong lần đầu → ẩn hẳn, tránh nháy sang trạng thái "chưa
-    // đăng ký" sai trong lúc đợi dữ liệu thật.
     if (!hasLoadedOnce) return const SizedBox.shrink();
-
     final registered =
         shifts.where((s) => currentShiftIds.contains(s.id)).toList();
-    final isRegistered = registered.isNotEmpty;
-
     return GestureDetector(
-      onTap: onTap,
-      child: surfaceCard(
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Ca làm việc',
+        onTap: onTap,
+        child: surfaceCard(
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Row(children: [
+              Text('Ca làm việc',
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                  )),
-              const SizedBox(height: 8),
-              if (isRegistered)
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: registered
-                      .map((s) => Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: AppColors.primarySoft,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text('${s.name} · ${s.timeRange}',
-                                style: const TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.primary,
-                                )),
-                          ))
-                      .toList(),
-                )
-              else ...[
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.warningSoft,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text('Chưa đăng ký',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.warning,
-                      )),
-                ),
-                const SizedBox(height: 5),
-                const Text('Bấm để đăng ký ca làm việc',
-                    style: TextStyle(
-                        fontSize: 12.5, color: AppColors.textSecondary)),
-              ],
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1B1411))),
+              Spacer(),
+              Icon(Icons.chevron_right_rounded, color: Color(0xFF17110F)),
             ]),
-          ),
-          const SizedBox(width: 8),
-          const Padding(
-            padding: EdgeInsets.only(top: 2),
-            child: Icon(Icons.chevron_right_rounded,
-                size: 18, color: AppColors.textTertiary),
-          ),
-        ]),
-      ),
-    );
+            const SizedBox(height: 13),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              decoration: BoxDecoration(
+                  color: const Color(0xFFE3F5F4),
+                  borderRadius: BorderRadius.circular(12)),
+              child: Row(children: [
+                const Icon(Icons.schedule_rounded,
+                    size: 18, color: Color(0xFF17110F)),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: Text(
+                        registered.isEmpty
+                            ? 'Chưa đăng ký ca'
+                            : '${registered.first.name} ${registered.first.timeRange}',
+                        style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF008F92)))),
+              ]),
+            ),
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(
+                  child: Text(
+                      'Đã đăng ký ${currentShiftIds.length}/7 ca tuần này',
+                      style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF6A605C)))),
+              const Text('Xem lịch ›',
+                  style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFFFF6035))),
+            ]),
+          ]),
+        ));
   }
 }

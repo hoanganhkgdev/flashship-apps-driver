@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../core/theme/app_theme.dart';
-
 /// 6 ô nhập OTP — TextField ẩn giữ focus/bàn phím số, hiển thị bằng 6 box.
 class OtpInputRow extends StatefulWidget {
   final TextEditingController controller;
@@ -29,8 +27,7 @@ class _OtpInputRowState extends State<OtpInputRow> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) => _focus.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _focus.requestFocus());
   }
 
   @override
@@ -77,7 +74,7 @@ class _OtpInputRowState extends State<OtpInputRow> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: List.generate(6, (i) {
-                final code   = widget.controller.text;
+                final code = widget.controller.text;
                 final filled = i < code.length;
                 final active = i == code.length;
                 return AnimatedScale(
@@ -85,28 +82,27 @@ class _OtpInputRowState extends State<OtpInputRow> {
                   scale: active ? 1.04 : 1.0,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
-                    width: 50,
-                    height: 60,
+                    width: 47,
+                    height: 59,
                     decoration: BoxDecoration(
                       color: filled
-                          ? AppColors.primary.withValues(alpha: 0.06)
-                          : AppColors.surfaceAlt,
-                      borderRadius: BorderRadius.circular(16),
+                          ? const Color(0xFFFCF6F3)
+                          : const Color(0xFFFCF6F3),
+                      borderRadius: BorderRadius.circular(14),
                       border: active
-                          ? Border.all(color: AppColors.primary, width: 1.5)
+                          ? Border.all(color: const Color(0xFFFF6035), width: 1)
                           : filled
                               ? Border.all(
-                                  color: AppColors.primary.withValues(alpha: 0.4),
-                                  width: 1.5)
-                              : null,
+                                  color: const Color(0xFFE5DDD9), width: 1)
+                              : Border.all(color: const Color(0xFFE5DDD9)),
                     ),
                     child: Center(
                       child: Text(
                         filled ? code[i] : '',
                         style: const TextStyle(
-                          fontSize: 26,
+                          fontSize: 23,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
+                          color: Color(0xFF1B1411),
                         ),
                       ),
                     ),

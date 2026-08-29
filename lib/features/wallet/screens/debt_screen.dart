@@ -4,9 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/app_back_button.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/gradient_header_shell.dart';
-import '../../../core/widgets/info_chip.dart';
 import '../models/wallet_model.dart';
 import '../providers/wallet_provider.dart';
 import '../widgets/payment_qr_sheet.dart';
@@ -17,24 +17,24 @@ class DebtScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final wallet = ref.watch(walletProvider);
-    final total  = wallet.debts.fold(0, (s, d) => s + d.remaining);
+    final total = wallet.debts.fold(0, (s, d) => s + d.remaining);
     final overdue = wallet.debts.where((d) => d.isOverdue).length;
     final urgentCount = wallet.debts.where((d) => d.isScorePenalty).length;
 
     // Sắp theo mức khẩn cấp — không sort thẳng wallet.debts để tránh mutate
     // in-place list gốc trong provider state (nhiều widget khác cũng đọc nó).
     final debts = [...wallet.debts]..sort((a, b) {
-      if (a.isScorePenalty != b.isScorePenalty) {
-        return a.isScorePenalty ? -1 : 1;
-      }
-      if (a.isScorePenalty) {
-        // Cùng là phạt điểm — sắp gần hết hạn 24h nhất lên trước.
-        return a.timeUntilDue.compareTo(b.timeUntilDue);
-      }
-      // Cùng là phí tuần — quá hạn trước, rồi tới gần week_end nhất.
-      if (a.isOverdue != b.isOverdue) return a.isOverdue ? -1 : 1;
-      return (a.weekEnd ?? '').compareTo(b.weekEnd ?? '');
-    });
+        if (a.isScorePenalty != b.isScorePenalty) {
+          return a.isScorePenalty ? -1 : 1;
+        }
+        if (a.isScorePenalty) {
+          // Cùng là phạt điểm — sắp gần hết hạn 24h nhất lên trước.
+          return a.timeUntilDue.compareTo(b.timeUntilDue);
+        }
+        // Cùng là phí tuần — quá hạn trước, rồi tới gần week_end nhất.
+        if (a.isOverdue != b.isOverdue) return a.isOverdue ? -1 : 1;
+        return (a.weekEnd ?? '').compareTo(b.weekEnd ?? '');
+      });
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -43,21 +43,20 @@ class DebtScreen extends ConsumerWidget {
         statusBarBrightness: Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: const Color(0xFFFFF8F5),
         body: RefreshIndicator(
           color: AppColors.primary,
           onRefresh: () => ref.read(walletProvider.notifier).fetch(),
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-
               // ── Gradient header ────────────────────────────────────────
               SliverToBoxAdapter(
                 child: _Header(
-                  total:   total,
-                  count:   debts.length,
+                  total: total,
+                  count: debts.length,
                   overdue: overdue,
-                  urgent:  urgentCount,
+                  urgent: urgentCount,
                   loading: wallet.loading,
                 ),
               ),
@@ -65,8 +64,9 @@ class DebtScreen extends ConsumerWidget {
               // ── Body ───────────────────────────────────────────────────
               if (wallet.loading)
                 const SliverFillRemaining(
-                  child: Center(child: CircularProgressIndicator(
-                      color: AppColors.primary, strokeWidth: 2)),
+                  child: Center(
+                      child: CircularProgressIndicator(
+                          color: AppColors.primary, strokeWidth: 2)),
                 )
               else if (debts.isEmpty)
                 SliverFillRemaining(
@@ -80,13 +80,13 @@ class DebtScreen extends ConsumerWidget {
                 )
               else
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (_, i) => Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: _DebtCard(
-                          debt:  debts[i],
+                          debt: debts[i],
                           onPay: () => _payDebt(context, ref, debts[i]),
                         ),
                       ),
@@ -101,7 +101,8 @@ class DebtScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _payDebt(BuildContext context, WidgetRef ref, DriverDebt debt) async {
+  Future<void> _payDebt(
+      BuildContext context, WidgetRef ref, DriverDebt debt) async {
     final paid = await PaymentQrSheet.show(
       context,
       type: 'debt_payment',
@@ -124,8 +125,10 @@ class _Header extends StatelessWidget {
   final int total, count, overdue, urgent;
   final bool loading;
   const _Header({
-    required this.total, required this.count,
-    required this.overdue, required this.urgent,
+    required this.total,
+    required this.count,
+    required this.overdue,
+    required this.urgent,
     required this.loading,
   });
 
@@ -134,114 +137,125 @@ class _Header extends StatelessWidget {
     final top = MediaQuery.of(context).padding.top;
 
     return GradientHeaderShell(
+      colors: const [Color(0xFFFF6035), Color(0xFFFF6035)],
+      showBubbles: false,
+      seamColor: const Color(0xFFFFF8F5),
       children: [
         SizedBox(height: top),
 
-            // Topbar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SizedBox(
-                height: 48,
-                child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                  GestureDetector(
-                    onTap: () => context.pop(),
-                    child: Container(
-                      width: 34, height: 34,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.arrow_back_ios_new_rounded,
-                          color: Colors.white, size: 16),
-                    ),
+        // Topbar
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SizedBox(
+            height: 46,
+            child:
+                Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+              AppBackButton.onColor(onTap: () => context.pop()),
+              const SizedBox(width: 12),
+              const Text('Công nợ',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: -0.2,
+                  )),
+            ]),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Hero summary
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: loading
+              ? Container(
+                  height: 52,
+                  width: 180,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  const SizedBox(width: 12),
-                  const Text('Công nợ',
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tổng công nợ',
                       style: TextStyle(
-                        fontSize: 17, fontWeight: FontWeight.w700,
-                        color: Colors.white, letterSpacing: -0.2,
-                      )),
-                ]),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Hero summary
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: loading
-                  ? Container(
-                      height: 52, width: 180,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
+                        fontSize: 14,
+                        color: Colors.white.withValues(alpha: 0.82),
                       ),
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Tổng công nợ',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.white.withValues(alpha: 0.75),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          Fmt.currency(total),
-                          style: const TextStyle(
-                            fontSize: 38, fontWeight: FontWeight.w900,
-                            color: Colors.white, letterSpacing: -1,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(spacing: 8, runSpacing: 8, children: [
-                          InfoChip(
-                            icon: Icons.receipt_long_rounded,
-                            label: '$count khoản',
-                          ),
-                          if (overdue > 0)
-                            InfoChip(
-                              icon: Icons.warning_amber_rounded,
-                              label: '$overdue quá hạn',
-                              danger: true,
-                            ),
-                          // Nền trắng đặc, chữ đỏ đậm — nổi bật hơn hẳn 2 chip
-                          // nền mờ ở trên để tài xế thấy ngay có khoản gấp.
-                          if (urgent > 0)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                const Icon(Icons.warning_amber_rounded,
-                                    size: 12, color: AppColors.danger),
-                                const SizedBox(width: 5),
-                                Text('$urgent khẩn cấp',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                      color: AppColors.danger,
-                                    )),
-                              ]),
-                            ),
-                        ]),
-                      ],
                     ),
-            ),
+                    const SizedBox(height: 6),
+                    Text(
+                      Fmt.currency(total),
+                      style: const TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: -1,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Wrap(spacing: 8, runSpacing: 8, children: [
+                      _HeroChip(
+                          icon: Icons.receipt_long_rounded,
+                          label: '$count khoản'),
+                      if (overdue > 0)
+                        _HeroChip(
+                            icon: Icons.warning_amber_rounded,
+                            label: '$overdue quá hạn'),
+                      if (urgent > 0)
+                        _HeroChip(
+                          icon: Icons.warning_amber_rounded,
+                          label: '$urgent khẩn cấp',
+                          emphasized: true,
+                        ),
+                    ]),
+                  ],
+                ),
+        ),
 
-        const SizedBox(height: 24),
+        const SizedBox(height: 18),
       ],
     );
   }
 }
 
+class _HeroChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool emphasized;
 
+  const _HeroChip(
+      {required this.icon, required this.label, this.emphasized = false});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: emphasized
+              ? const Color(0xFFFFFEFD)
+              : Colors.white.withValues(alpha: 0.24),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon,
+              size: 13,
+              color: emphasized
+                  ? const Color(0xFFD52E36)
+                  : const Color(0xFF1B1411)),
+          const SizedBox(width: 6),
+          Text(label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: emphasized ? const Color(0xFFD52E36) : Colors.white,
+              )),
+        ]),
+      );
+}
 
 // ── Debt card ─────────────────────────────────────────────────────────────────
 
@@ -275,46 +289,44 @@ class _DebtCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isPenalty   = debt.isScorePenalty;
-    final isOverdue   = debt.isOverdue;
-    final statusColor = isOverdue ? AppColors.danger : AppColors.warning;
+    final isPenalty = debt.isScorePenalty;
+    final isOverdue = debt.isOverdue;
+    final statusColor = isOverdue ? const Color(0xFFD52E36) : AppColors.warning;
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFFFFEFD),
         borderRadius: BorderRadius.circular(16),
         // Nợ phạt điểm luôn cần xử lý gấp hơn — border đỏ đậm bất kể đã quá
         // hạn hay chưa, để nổi bật hơn hẳn card phí tuần thường.
         border: isPenalty
             ? Border.all(color: AppColors.danger, width: 2)
             : (isOverdue
-                ? Border.all(color: AppColors.danger.withValues(alpha: 0.25), width: 1.5)
+                ? Border.all(
+                    color: AppColors.danger.withValues(alpha: 0.25), width: 1.5)
                 : null),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 12, offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: const [],
       ),
       child: Column(children: [
-
         // Card header
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+          padding: const EdgeInsets.fromLTRB(16, 15, 16, 0),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(
               child: Wrap(spacing: 6, runSpacing: 6, children: [
                 // Type tag
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                   decoration: BoxDecoration(
                     color: isPenalty ? AppColors.danger : AppColors.primarySoft,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Icon(
-                      isPenalty ? Icons.bolt_rounded : Icons.receipt_long_rounded,
+                      isPenalty
+                          ? Icons.bolt_rounded
+                          : Icons.receipt_long_rounded,
                       size: 11,
                       color: isPenalty ? Colors.white : AppColors.primary,
                     ),
@@ -322,7 +334,8 @@ class _DebtCard extends StatelessWidget {
                     Text(
                       isPenalty ? 'Phạt điểm tuần' : 'Phí tuần',
                       style: TextStyle(
-                        fontSize: 11, fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
                         color: isPenalty ? Colors.white : AppColors.primary,
                       ),
                     ),
@@ -330,7 +343,8 @@ class _DebtCard extends StatelessWidget {
                 ),
                 // Period chip
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF5F5F5),
                     borderRadius: BorderRadius.circular(20),
@@ -341,7 +355,8 @@ class _DebtCard extends StatelessWidget {
                     const SizedBox(width: 5),
                     Text(_periodLabel,
                         style: const TextStyle(
-                          fontSize: 11, fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
                           color: AppColors.textSecondary,
                         )),
                   ]),
@@ -359,13 +374,15 @@ class _DebtCard extends StatelessWidget {
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(
                   isOverdue ? Icons.error_rounded : Icons.schedule_rounded,
-                  size: 11, color: statusColor,
+                  size: 11,
+                  color: statusColor,
                 ),
                 const SizedBox(width: 5),
                 Text(
                   _statusLabel(isPenalty, isOverdue),
                   style: TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
                     color: statusColor,
                   ),
                 ),
@@ -379,7 +396,11 @@ class _DebtCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
             child: Text(debt.note!,
-                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4)),
+                style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF6A605C),
+                    height: 1.4)),
           ),
 
         const SizedBox(height: 16),
@@ -388,11 +409,20 @@ class _DebtCard extends StatelessWidget {
         // 3-col amounts
         IntrinsicHeight(
           child: Row(children: [
-            _AmountCol(label: 'Tổng phí',      value: Fmt.currency(debt.amount),     color: AppColors.textPrimary),
+            _AmountCol(
+                label: 'Tổng phí',
+                value: Fmt.currency(debt.amount),
+                color: AppColors.textPrimary),
             Container(width: 1, color: const Color(0xFFF5F5F5)),
-            _AmountCol(label: 'Đã thanh toán', value: Fmt.currency(debt.paidAmount), color: AppColors.success),
+            _AmountCol(
+                label: 'Đã thanh toán',
+                value: Fmt.currency(debt.paidAmount),
+                color: AppColors.success),
             Container(width: 1, color: const Color(0xFFF5F5F5)),
-            _AmountCol(label: 'Còn lại',       value: Fmt.currency(debt.remaining),  color: statusColor),
+            _AmountCol(
+                label: 'Còn lại',
+                value: Fmt.currency(debt.remaining),
+                color: statusColor),
           ]),
         ),
 
@@ -401,14 +431,18 @@ class _DebtCard extends StatelessWidget {
         // Progress bar
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               const Text('Tiến độ thanh toán',
-                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                  style: TextStyle(fontSize: 12, color: Color(0xFF6A605C))),
               Text('${(_progress * 100).toStringAsFixed(0)}%',
                   style: TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w700,
-                    color: _progress >= 1 ? AppColors.success : AppColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: _progress >= 1
+                        ? AppColors.success
+                        : AppColors.textSecondary,
                   )),
             ]),
             const SizedBox(height: 8),
@@ -428,24 +462,29 @@ class _DebtCard extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.all(16),
           child: SizedBox(
-            width: double.infinity, height: 46,
+            width: double.infinity,
+            height: 48,
             child: FilledButton.icon(
               // Phòng trường hợp amount_paid đã cập nhật nhưng status chưa kịp
               // đổi thành 'paid' — không cho tạo QR thanh toán 0đ.
               onPressed: debt.remaining > 0 ? onPay : null,
-              icon: const Icon(Icons.qr_code_rounded, size: 18, color: Colors.white),
+              icon: const Icon(Icons.qr_code_rounded,
+                  size: 18, color: Colors.white),
               label: const Text(
                 'Thanh toán qua PayOS',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white),
               ),
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF00B14F),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                backgroundColor: const Color(0xFF00B956),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ),
         ),
-
       ]),
     );
   }
@@ -454,21 +493,26 @@ class _DebtCard extends StatelessWidget {
 class _AmountCol extends StatelessWidget {
   final String label, value;
   final Color color;
-  const _AmountCol({required this.label, required this.value, required this.color});
+  const _AmountCol(
+      {required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) => Expanded(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(label,
                 style: const TextStyle(
-                  fontSize: 10, color: AppColors.textSecondary,
+                  fontSize: 11,
+                  color: Color(0xFF6A605C),
                 )),
             const SizedBox(height: 5),
             Text(value,
                 style: TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.w800, color: color,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: color,
                 )),
           ]),
         ),
@@ -476,4 +520,3 @@ class _AmountCol extends StatelessWidget {
 }
 
 // ── Empty state ───────────────────────────────────────────────────────────────
-

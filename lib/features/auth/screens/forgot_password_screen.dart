@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/api_error.dart';
 import '../../../core/widgets/auth_field.dart';
 import '../widgets/auth_chrome.dart';
+import '../widgets/otp_input_row.dart';
 import '../widgets/resend_countdown_link.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
@@ -16,18 +17,17 @@ class ForgotPasswordScreen extends ConsumerStatefulWidget {
       _ForgotPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState
-    extends ConsumerState<ForgotPasswordScreen> {
+class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final _phoneCtrl = TextEditingController();
-  final _otpCtrl   = TextEditingController();
-  final _passCtrl  = TextEditingController();
-  final _confCtrl  = TextEditingController();
+  final _otpCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
+  final _confCtrl = TextEditingController();
 
   final _phoneKey = GlobalKey<FormState>();
   final _resetKey = GlobalKey<FormState>();
 
-  bool _step2    = false;
-  bool _loading  = false;
+  bool _step2 = false;
+  bool _loading = false;
   bool _obscure1 = true;
   bool _obscure2 = true;
   String? _error;
@@ -44,16 +44,30 @@ class _ForgotPasswordScreenState
   Future<bool> _sendOtp() async {
     if (_loading) return false; // tránh gọi lại khi 1 request còn đang chạy
     // Bước 2: form phone đã bị unmount, validate trực tiếp từ controller
-    if (!_step2 && !_phoneKey.currentState!.validate()) return false;
-    setState(() { _loading = true; _error = null; });
+    if (!_step2 && !_phoneKey.currentState!.validate()) {
+      return false;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       await ApiClient(null).post('/auth/forgot-password', data: {
         'phone': _phoneCtrl.text.trim(),
       });
-      if (mounted) setState(() { _step2 = true; });
+      if (mounted) {
+        setState(() {
+          _step2 = true;
+        });
+      }
       return true;
     } catch (e) {
-      if (mounted) setState(() { _error = parseApiError(e, fallback: 'Đã xảy ra lỗi, vui lòng thử lại'); });
+      if (mounted) {
+        setState(() {
+          _error =
+              parseApiError(e, fallback: 'Đã xảy ra lỗi, vui lòng thử lại');
+        });
+      }
       return false;
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -62,13 +76,20 @@ class _ForgotPasswordScreenState
 
   Future<void> _resetPassword() async {
     if (_loading) return; // tránh gọi lại khi 1 request còn đang chạy
+    if (_otpCtrl.text.trim().length != 6) {
+      setState(() => _error = 'Vui lòng nhập đủ 6 chữ số');
+      return;
+    }
     if (!_resetKey.currentState!.validate()) return;
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       await ApiClient(null).post('/auth/reset-password', data: {
-        'phone':                 _phoneCtrl.text.trim(),
-        'otp':                   _otpCtrl.text.trim(),
-        'password':              _passCtrl.text,
+        'phone': _phoneCtrl.text.trim(),
+        'otp': _otpCtrl.text.trim(),
+        'password': _passCtrl.text,
         'password_confirmation': _confCtrl.text,
       });
       if (mounted) {
@@ -79,7 +100,12 @@ class _ForgotPasswordScreenState
         context.go('/login');
       }
     } catch (e) {
-      if (mounted) setState(() { _error = parseApiError(e, fallback: 'Đã xảy ra lỗi, vui lòng thử lại'); });
+      if (mounted) {
+        setState(() {
+          _error =
+              parseApiError(e, fallback: 'Đã xảy ra lỗi, vui lòng thử lại');
+        });
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -87,40 +113,30 @@ class _ForgotPasswordScreenState
 
   @override
   Widget build(BuildContext context) {
-    final safeT  = MediaQuery.of(context).padding.top;
-    final safeB  = MediaQuery.of(context).padding.bottom;
+    final safeT = MediaQuery.of(context).padding.top;
+    final safeB = MediaQuery.of(context).padding.bottom;
     final bottom = MediaQuery.of(context).viewInsets.bottom;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFFFDFC),
       resizeToAvoidBottomInset: false,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFFFF6F0), Colors.white],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            stops: [0.0, 0.4],
-          ),
-        ),
-        child: SingleChildScrollView(
+      body: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(24, safeT + 16, 24, bottom + safeB + 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             AuthBackButton(onTap: () => Navigator.of(context).maybePop()),
 
-            const SizedBox(height: 40),
+            const SizedBox(height: 24),
 
             AuthHeader(
-              title: _step2 ? 'Nhập mã OTP' : 'Quên mật khẩu',
+              title: _step2 ? 'Đặt lại mật khẩu' : 'Quên mật khẩu',
               subtitle: _step2
                   ? 'Nhập mã 6 số vừa gửi tới ${_phoneCtrl.text.trim()}'
                   : 'Nhập số điện thoại để nhận mã xác nhận',
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
 
             // ── Step 1: Phone ──────────────────────────────────────────
             if (!_step2)
@@ -151,24 +167,18 @@ class _ForgotPasswordScreenState
               Form(
                 key: _resetKey,
                 child: Column(children: [
-                  AuthField(
+                  OtpInputRow(
                     controller: _otpCtrl,
-                    hint: 'Mã OTP (6 chữ số)',
-                    prefixIcon: const Icon(Icons.pin_outlined,
-                        size: 20, color: AppColors.textSecondary),
-                    keyboardType: TextInputType.number,
-                    textInputAction: TextInputAction.next,
-                    validator: (v) {
-                      if (v == null || v.trim().length != 6) {
-                        return 'Mã OTP gồm 6 chữ số';
-                      }
-                      return null;
-                    },
+                    enabled: !_loading,
+                    onFilled: () => setState(() => _error = null),
+                    onChanged: () => setState(() => _error = null),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 18),
+                  const _ResetLabel('Mật khẩu mới'),
+                  const SizedBox(height: 6),
                   AuthField(
                     controller: _passCtrl,
-                    hint: 'Mật khẩu mới',
+                    hint: '••••••••',
                     prefixIcon: const Icon(Icons.lock_outline_rounded,
                         size: 20, color: AppColors.textSecondary),
                     obscureText: _obscure1,
@@ -179,7 +189,8 @@ class _ForgotPasswordScreenState
                         _obscure1
                             ? Icons.visibility_outlined
                             : Icons.visibility_off_outlined,
-                        size: 20, color: AppColors.textSecondary,
+                        size: 20,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                     validator: (v) {
@@ -190,9 +201,11 @@ class _ForgotPasswordScreenState
                     },
                   ),
                   const SizedBox(height: 14),
+                  const _ResetLabel('Xác nhận mật khẩu mới'),
+                  const SizedBox(height: 6),
                   AuthField(
                     controller: _confCtrl,
-                    hint: 'Xác nhận mật khẩu mới',
+                    hint: '••••••••',
                     prefixIcon: const Icon(Icons.lock_outline_rounded,
                         size: 20, color: AppColors.textSecondary),
                     obscureText: _obscure2,
@@ -204,7 +217,8 @@ class _ForgotPasswordScreenState
                         _obscure2
                             ? Icons.visibility_outlined
                             : Icons.visibility_off_outlined,
-                        size: 20, color: AppColors.textSecondary,
+                        size: 20,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                     validator: (v) {
@@ -226,6 +240,9 @@ class _ForgotPasswordScreenState
               label: _step2 ? 'Đặt lại mật khẩu' : 'Gửi mã OTP',
               loading: _loading,
               onPressed: _step2 ? _resetPassword : _sendOtp,
+              height: 54,
+              color: const Color(0xFFFF6035),
+              fontSize: 16,
             ),
 
             if (_step2) ...[
@@ -244,8 +261,20 @@ class _ForgotPasswordScreenState
             ),
           ],
         ),
-        ),
       ),
     );
   }
+}
+
+class _ResetLabel extends StatelessWidget {
+  final String text;
+  const _ResetLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) => Text(text,
+      style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+        color: Color(0xFF655B57),
+      ));
 }

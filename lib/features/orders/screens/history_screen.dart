@@ -6,7 +6,8 @@ import '../../../core/widgets/empty_state.dart';
 import '../models/order_model.dart';
 import '../providers/order_provider.dart';
 import '../widgets/history_header.dart';
-import '../widgets/order_cards.dart';
+import '../widgets/order_cards.dart' hide ActiveOrderCard;
+import '../widgets/history_active_order_card.dart';
 import '../../wallet/providers/wallet_provider.dart';
 import '../../home/widgets/bottom_nav.dart';
 import '../../shifts/models/shift_model.dart';
@@ -159,7 +160,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         statusBarBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: const Color(0xFFFFF8F5),
         body: RefreshIndicator(
           color: AppColors.primary,
           onRefresh: () async {
@@ -219,7 +220,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               // riêng thành khối trôi nổi cách xa như trước.
               if (isActiveTab)
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (_, i) {

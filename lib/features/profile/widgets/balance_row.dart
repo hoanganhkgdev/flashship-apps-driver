@@ -27,23 +27,24 @@ class BalanceRow extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
           child: Row(children: [
             Container(
-              width: 34, height: 34,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(9),
+                color: const Color(0xFFFFEAE3),
+                borderRadius: BorderRadius.circular(11),
               ),
               child: const Icon(Icons.account_balance_wallet_rounded,
-                  size: 18, color: AppColors.primary),
+                  size: 18, color: Color(0xFF17110F)),
             ),
             const SizedBox(width: 13),
             const Expanded(
               child: Text('Số dư ví',
                   style: TextStyle(
                       fontSize: 14.5,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary)),
             ),
             Text(
@@ -51,7 +52,7 @@ class BalanceRow extends StatelessWidget {
               style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  color: amt > 0 ? AppColors.primary : AppColors.textSecondary),
+                  color: const Color(0xFF1B1411)),
             ),
             const SizedBox(width: 6),
             const Icon(Icons.chevron_right_rounded,

@@ -173,12 +173,12 @@ class LocationIssueBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final isServiceOff = issue == 'service';
     return AlertCard(
-      color: const Color(0xFF1565C0),
+      color: const Color(0xFFBE7900),
       icon: isServiceOff
           ? Icons.location_off_rounded
           : Icons.location_disabled_rounded,
-      title: isServiceOff ? 'GPS đang tắt' : 'Chưa cấp quyền vị trí',
-      subtitle: 'Hãy bật để nhận đơn',
+      title: isServiceOff ? 'Định vị GPS đang tắt' : 'Chưa cấp quyền vị trí',
+      subtitle: 'Bật lại để tiếp tục nhận đơn mới',
       buttonLabel: isServiceOff ? 'Bật GPS' : 'Mở cài đặt',
       onTap: () => isServiceOff
           ? Geolocator.openLocationSettings()
@@ -275,16 +275,11 @@ class AlertCard extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: color == const Color(0xFFBE7900)
+            ? const Color(0xFFFFF2CE)
+            : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.20)),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.10),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
         Container(

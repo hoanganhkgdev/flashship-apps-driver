@@ -26,38 +26,37 @@ class CityPickerField extends StatelessWidget {
           GestureDetector(
             onTap: loading ? null : onTap,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
               decoration: BoxDecoration(
-                color: AppColors.surfaceAlt,
-                borderRadius: BorderRadius.circular(14),
-                border: (loadFailed || (hasError && selected == null) || selected != null)
-                    ? Border.all(
-                        color: loadFailed || (hasError && selected == null)
-                            ? AppColors.danger
-                            : AppColors.primary,
-                        width: 1.8,
-                      )
-                    : null,
+                color: const Color(0xFFFCF6F3),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: loadFailed || (hasError && selected == null)
+                      ? AppColors.danger
+                      : selected != null
+                          ? const Color(0xFFFF6035)
+                          : const Color(0xFFE5DDD9),
+                  width: selected != null ? 1.2 : 1,
+                ),
               ),
               child: Row(children: [
                 Icon(
-                  loadFailed ? Icons.refresh_rounded : Icons.location_city_outlined,
-                  size: 20,
-                  color: loadFailed
-                      ? AppColors.danger
-                      : selected != null
-                          ? AppColors.primary
-                          : AppColors.textSecondary,
+                  loadFailed
+                      ? Icons.refresh_rounded
+                      : Icons.location_on_outlined,
+                  size: 21,
+                  color:
+                      loadFailed ? AppColors.danger : const Color(0xFF17110F),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: loading
                       ? Row(children: [
                           SizedBox(
-                            width: 14, height: 14,
+                            width: 14,
+                            height: 14,
                             child: CircularProgressIndicator(
-                                strokeWidth: 1.5,
-                                color: Colors.grey.shade400),
+                                strokeWidth: 1.5, color: Colors.grey.shade400),
                           ),
                           const SizedBox(width: 8),
                           const Text('Đang tải...',
@@ -70,19 +69,24 @@ class CityPickerField extends StatelessWidget {
                               ? 'Không tải được khu vực — Nhấn để thử lại'
                               : selected?.name ?? 'Chọn khu vực',
                           style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: selected != null ? FontWeight.w500 : FontWeight.w400,
+                            fontSize: 16,
+                            fontWeight: selected != null
+                                ? FontWeight.w700
+                                : FontWeight.w500,
                             color: loadFailed
                                 ? AppColors.danger
                                 : selected != null
-                                    ? AppColors.textPrimary
-                                    : AppColors.textSecondary,
+                                    ? const Color(0xFF1B1411)
+                                    : const Color(0xFFA99F9A),
                           ),
                         ),
                 ),
                 if (!loadFailed)
-                  const Icon(Icons.keyboard_arrow_down_rounded,
-                      color: AppColors.textSecondary, size: 20),
+                  const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: Color(0xFF17110F),
+                    size: 22,
+                  ),
               ]),
             ),
           ),

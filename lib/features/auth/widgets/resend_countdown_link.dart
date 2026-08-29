@@ -14,12 +14,14 @@ class ResendCountdownLink extends StatefulWidget {
   // Trả về false thì giữ nguyên trạng thái "có thể gửi lại" để user bấm lại.
   final Future<bool> Function() onResend;
   final String actionLabel;
+  final String promptText;
 
   const ResendCountdownLink({
     super.key,
     this.initialSeconds = 60,
     required this.onResend,
     this.actionLabel = 'Gửi lại mã OTP',
+    this.promptText = 'Chưa nhận được mã? ',
   });
 
   @override
@@ -73,14 +75,17 @@ class _ResendCountdownLinkState extends State<ResendCountdownLink> {
                 text: TextSpan(
                   style: const TextStyle(fontSize: 16),
                   children: [
-                    const TextSpan(
-                      text: 'Gửi lại sau ',
-                      style: TextStyle(color: AppColors.textSecondary),
+                    TextSpan(
+                      text: widget.promptText,
+                      style: const TextStyle(
+                          color: Color(0xFF6A605C),
+                          fontWeight: FontWeight.w500),
                     ),
                     TextSpan(
-                      text: '${_seconds}s',
+                      text: 'Gửi lại sau ${_seconds}s',
                       style: const TextStyle(
-                          color: AppColors.primary, fontWeight: FontWeight.w700),
+                          color: Color(0xFFA99F9A),
+                          fontWeight: FontWeight.w700),
                     ),
                   ],
                 ),
@@ -92,7 +97,8 @@ class _ResendCountdownLinkState extends State<ResendCountdownLink> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: _sending ? AppColors.textSecondary : AppColors.primary,
+                    color:
+                        _sending ? AppColors.textSecondary : AppColors.primary,
                   ),
                 ),
               ),

@@ -78,7 +78,7 @@ class CompletedOrderDetailScreen extends StatelessWidget {
         statusBarBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: const Color(0xFFFFF8F5),
         body: Column(children: [
           ActiveOrderHeader(
             order: order,

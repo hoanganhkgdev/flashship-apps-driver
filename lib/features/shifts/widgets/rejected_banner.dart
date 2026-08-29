@@ -12,23 +12,26 @@ class RejectedBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.dangerSoft,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+        color: const Color(0xFFFFE7E4),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFF3A3A0)),
       ),
       child: Row(children: [
-        const Icon(Icons.cancel_rounded, color: AppColors.danger, size: 20),
+        const Icon(Icons.cancel_outlined, color: Color(0xFF17110F), size: 20),
         const SizedBox(width: 10),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('Yêu cầu đổi ca gần nhất đã bị từ chối',
                 style: TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary)),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1B1411))),
             if (request.adminNote != null && request.adminNote!.isNotEmpty) ...[
               const SizedBox(height: 3),
               Text('Lý do: ${request.adminNote}',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.textSecondary)),
             ],
           ]),
         ),

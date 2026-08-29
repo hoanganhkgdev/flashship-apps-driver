@@ -23,9 +23,10 @@ class EditNameSheet extends StatefulWidget {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFFFEFD),
+      barrierColor: Colors.black.withValues(alpha: 0.38),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) => EditNameSheet(
         currentName: currentName,
@@ -76,55 +77,83 @@ class _EditNameSheetState extends State<EditNameSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(24, 20, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+      padding: EdgeInsets.fromLTRB(
+          24, 12, 24, MediaQuery.of(context).viewInsets.bottom + 24),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const SizedBox(height: 4),
+        Container(
+          width: 36,
+          height: 4,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE1D9D5),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(height: 20),
         const Align(
           alignment: Alignment.centerLeft,
           child: Text('Chỉnh sửa tên',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1B1411))),
         ),
         const SizedBox(height: 4),
         const Align(
           alignment: Alignment.centerLeft,
           child: Text('Tên chỉ được thay đổi một lần.',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+              style: TextStyle(fontSize: 14, color: Color(0xFF6A605C))),
         ),
         const SizedBox(height: 20),
         TextField(
           controller: _ctrl,
           textCapitalization: TextCapitalization.words,
-          autofocus: true,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
+          style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF1B1411)),
           decoration: InputDecoration(
             hintText: 'Họ và tên',
-            hintStyle: const TextStyle(color: AppColors.textSecondary),
+            hintStyle: const TextStyle(color: Color(0xFFA99F9A)),
             filled: true,
-            fillColor: const Color(0xFFF5F5F5),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+            fillColor: const Color(0xFFFFF8F5),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(color: Color(0xFFE5DDD9))),
+            enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: const BorderSide(color: Color(0xFFE5DDD9))),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+              borderRadius: BorderRadius.circular(15),
+              borderSide:
+                  const BorderSide(color: Color(0xFFFF6035), width: 1.5),
             ),
           ),
         ),
         const SizedBox(height: 16),
         SizedBox(
-          width: double.infinity, height: 50,
+          width: double.infinity,
+          height: 52,
           child: FilledButton(
             onPressed: _saving ? null : _submit,
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              backgroundColor: const Color(0xFFFF6035),
+              disabledBackgroundColor:
+                  const Color(0xFFFF6035).withValues(alpha: 0.5),
+              shape: const StadiumBorder(),
             ),
             child: _saving
-                ? const SizedBox(width: 20, height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
                 : const Text('Lưu',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white)),
           ),
         ),
       ]),

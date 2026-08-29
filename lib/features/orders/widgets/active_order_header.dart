@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_back_button.dart';
 import '../models/order_model.dart';
 
 class ActiveOrderHeader extends StatelessWidget {
@@ -27,26 +28,11 @@ class ActiveOrderHeader extends StatelessWidget {
     final stepLabel = order.status == 'assigned' ? 'Bước 1/2' : 'Bước 2/2';
 
     return Container(
-      color: AppColors.surface,
-      padding: EdgeInsets.fromLTRB(16, top + 12, 16, 14),
+      color: const Color(0xFFFFFEFD),
+      padding: EdgeInsets.fromLTRB(16, top + 16, 16, 16),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // Back button
-        GestureDetector(
-          onTap: onBack ?? () => context.go('/home'),
-          child: Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceAlt,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.arrow_back_ios_new_rounded,
-              color: AppColors.textPrimary,
-              size: 16,
-            ),
-          ),
-        ),
+        AppBackButton(onTap: onBack ?? () => context.go('/home')),
 
         const SizedBox(width: 12),
 
@@ -61,7 +47,7 @@ class ActiveOrderHeader extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 17,
+                    fontSize: 18,
                     fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary,
                     letterSpacing: -0.3,
@@ -89,7 +75,7 @@ class ActiveOrderHeader extends StatelessWidget {
             ]),
             const SizedBox(height: 3),
             Text(
-              '#${order.code}',
+              '${order.code.startsWith('#') ? order.code : '#${order.code}'}${completed ? ' · ${order.completedAt?.toLocal().day.toString().padLeft(2, '0')}/${order.completedAt?.toLocal().month.toString().padLeft(2, '0')}/${order.completedAt?.toLocal().year}' : ''}',
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
@@ -103,10 +89,10 @@ class ActiveOrderHeader extends StatelessWidget {
 
         // Step badge / trạng thái hoàn thành
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           decoration: BoxDecoration(
             color: completed ? AppColors.successSoft : AppColors.primarySoft,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(22),
           ),
           child: Text(
             completed ? 'Hoàn thành' : stepLabel,

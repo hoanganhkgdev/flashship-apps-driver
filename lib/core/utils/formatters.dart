@@ -26,8 +26,7 @@ class Fmt {
   static String orderStatus(String status) => switch (status) {
         'pending' => 'Chờ tài xế',
         'assigned' => 'Đã nhận',
-        'processing' => 'Đang lấy hàng',
-        'on_the_way' => 'Đang giao',
+        'processing' => 'Đã lấy hàng',
         'completed' => 'Hoàn thành',
         'cancelled' => 'Đã hủy',
         _ => status,

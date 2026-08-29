@@ -32,6 +32,7 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   int _remaining = 30;
   int _totalDuration = 30;
+  int? _expiresAt;
   Timer? _timer;
   late AnimationController _pulseCtrl;
   late OrderModel _order;
@@ -41,7 +42,7 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
   void initState() {
     super.initState();
     _order = OrderModel.fromJson(widget.orderData.isNotEmpty
-        ? widget.orderData
+        ? <String, dynamic>{...widget.orderData, 'id': widget.orderId}
         : {
             'id': widget.orderId,
             'code': '#---',
@@ -63,6 +64,7 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
     // Tính remaining từ expires_at server timestamp
     final expiresAt = (widget.orderData['expires_at'] as num?)?.toInt() ?? 0;
     if (expiresAt > 0) {
+      _expiresAt = expiresAt;
       final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       final rem = expiresAt - nowSec;
       if (rem <= 0) {
@@ -86,6 +88,7 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      _syncRemainingWithServerDeadline();
       _markOfferViewed();
     }
   }
@@ -94,26 +97,15 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
   bool _accepting = false;
   bool _declining = false;
 
-  // Đồng hồ lạc quan: chuyển ngay khi mở màn hình xem đơn, KHÔNG đợi API trả
-  // lời. Server đã cấp sẵn hạn quyết định (APP_DECISION_SECS) từ lúc tài xế
-  // được offer — app chỉ hiển thị lại, không dùng tốc độ mạng của chính nó để
-  // quyết định khi nào chuyển đồng hồ (tránh race condition: đồng hồ ngắn ban
-  // đầu chạm hết giờ trước khi API "đã xem" kịp trả lời).
+  // Tín hiệu đã xem không được thay đổi deadline. Hạn quyết định do server
+  // cấp trong expires_at là nguồn sự thật duy nhất; reset về 30 giây ở đây
+  // từng làm app hiện offer còn hạn trong khi backend đã thu hồi.
   void _markOfferViewed() {
     if (_viewedCalled) return;
     if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
       return;
     }
     _viewedCalled = true;
-
-    if (mounted) {
-      _timer?.cancel();
-      setState(() {
-        _remaining = 30;
-        _totalDuration = 30;
-      });
-      _startTimer();
-    }
 
     // Tín hiệu "đã xem" gửi nền song song, không chặn đồng hồ/UI — chỉ để
     // server ghi nhận offer_viewed_at (phân biệt từ chối/timeout/bỏ lỡ).
@@ -122,9 +114,17 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
 
   Future<void> _sendViewedSignal([int attempt = 0]) async {
     try {
-      await ref
+      final res = await ref
           .read(apiClientProvider)
           .post('/orders/${widget.orderId}/view-offer');
+      final raw = res.data['data'] ?? res.data;
+      final expiresAt =
+          raw is Map ? (raw['expires_at'] as num?)?.toInt() : null;
+      if (expiresAt != null && mounted) {
+        _expiresAt = expiresAt;
+        _totalDuration = 30;
+        _syncRemainingWithServerDeadline();
+      }
     } catch (_) {
       // Mất mạng thật — thử lại ngầm vài lần trong vài giây đầu, không ảnh
       // hưởng gì tới đồng hồ đang chạy trên máy tài xế.
@@ -157,14 +157,33 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
   }
 
   void _startTimer() {
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (_remaining <= 1) {
+      final expiresAt = _expiresAt;
+      final remaining = expiresAt == null
+          ? _remaining - 1
+          : expiresAt - DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      if (remaining <= 0) {
         t.cancel();
         _handleTimeout();
-      } else {
-        setState(() => _remaining--);
+      } else if (mounted) {
+        setState(() => _remaining = remaining);
       }
     });
+  }
+
+  void _syncRemainingWithServerDeadline() {
+    final expiresAt = _expiresAt;
+    if (!mounted) return;
+    final remaining = expiresAt == null
+        ? _remaining
+        : expiresAt - DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    if (remaining <= 0) {
+      _handleTimeout();
+    } else {
+      setState(() => _remaining = remaining);
+      _startTimer();
+    }
   }
 
   @override
@@ -207,6 +226,9 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
     if (!mounted) return;
     if (error != null) {
       _showError(error);
+      setState(() => _accepting = false);
+      _syncRemainingWithServerDeadline();
+      return;
     }
     ref.read(homeTabProvider.notifier).state = 1;
     context.go('/home');
@@ -216,12 +238,15 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
     if (_declining) return;
     setState(() => _declining = true);
     _timer?.cancel();
-    final ok = await ref.read(activeOrderProvider.notifier).decline(widget.orderId);
+    final ok =
+        await ref.read(activeOrderProvider.notifier).decline(widget.orderId);
     if (!mounted) return;
     if (!ok) {
       _showError('Không từ chối được đơn, vui lòng thử lại');
       setState(() => _declining = false);
-      if (_remaining > 0) _startTimer(); // khởi động lại đồng hồ, tránh đứng hình trong lúc chờ bấm lại
+      if (_remaining > 0) {
+        _startTimer(); // khởi động lại đồng hồ, tránh đứng hình trong lúc chờ bấm lại
+      }
       return; // KHÔNG điều hướng về home nếu thất bại — để tài xế có thể bấm lại
     }
     context.go('/home');
@@ -242,7 +267,7 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
     final top = MediaQuery.of(context).padding.top;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFFFF8F5),
       body: Column(children: [
         // ── Gradient header ───────────────────────────────────────────
         OfferHeader(
@@ -257,8 +282,12 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
         // ── Scrollable body ───────────────────────────────────────────
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: ServiceContent(order: _order),
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+            child: Column(children: [
+              ServiceContent(order: _order),
+              const SizedBox(height: 14),
+              _OfferStats(order: _order),
+            ]),
           ),
         ),
 
@@ -273,4 +302,69 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
       ]),
     );
   }
+}
+
+class _OfferStats extends StatelessWidget {
+  final OrderModel order;
+  const _OfferStats({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    final distance = Fmt.distanceKm(
+        order.pickupLat, order.pickupLng, order.deliveryLat, order.deliveryLng);
+    return Row(children: [
+      _Stat(
+          icon: Icons.payments_outlined,
+          value: Fmt.currency(order.driverEarning),
+          label: 'Phí giao',
+          green: true),
+      const SizedBox(width: 10),
+      _Stat(
+          icon: Icons.account_balance_wallet_outlined,
+          value: order.isCod ? 'COD' : 'Trả trước',
+          label: order.isCod ? 'Người nhận trả' : 'Đã thanh toán'),
+      const SizedBox(width: 10),
+      _Stat(
+          icon: Icons.route_outlined,
+          value: distance ?? '—',
+          label: 'Khoảng cách'),
+    ]);
+  }
+}
+
+class _Stat extends StatelessWidget {
+  final IconData icon;
+  final String value, label;
+  final bool green;
+  const _Stat(
+      {required this.icon,
+      required this.value,
+      required this.label,
+      this.green = false});
+  @override
+  Widget build(BuildContext context) => Expanded(
+          child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 14),
+        decoration: BoxDecoration(
+            color: const Color(0xFFFFFEFD),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE5DDD9))),
+        child: Column(children: [
+          Icon(icon, size: 18, color: const Color(0xFF17110F)),
+          const SizedBox(height: 8),
+          Text(value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  color: green
+                      ? const Color(0xFF229650)
+                      : const Color(0xFF1B1411))),
+          const SizedBox(height: 3),
+          Text(label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 10.5, color: Color(0xFFA99F9A))),
+        ]),
+      ));
 }

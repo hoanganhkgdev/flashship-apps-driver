@@ -16,8 +16,8 @@ class PendingScreen extends ConsumerStatefulWidget {
 }
 
 class _PendingScreenState extends ConsumerState<PendingScreen> {
-  bool   _approved   = false;
-  bool   _loggingIn  = false;
+  bool _approved = false;
+  bool _loggingIn = false;
   Timer? _pollTimer;
 
   @override
@@ -40,7 +40,7 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
   Future<void> _poll() async {
     if (!mounted || _approved) return;
     try {
-      final res  = await ref.read(apiClientProvider).get('/driver/profile');
+      final res = await ref.read(apiClientProvider).get('/driver/profile');
       final data = (res.data['data'] ?? res.data) as Map<String, dynamic>;
       final user = (data['user'] ?? data) as Map<String, dynamic>;
       final status = (user['status'] as num?)?.toInt() ?? 0;
@@ -101,78 +101,78 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
                   ),
                 );
               },
-              child: Column(
-                children: [
-                  const Spacer(),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(top: 16, bottom: 24),
+                child: Column(
+                  children: [
+                    // ── Illustration ──────────────────────────────────────────
+                    const PendingIllustration(),
+                    const SizedBox(height: 24),
 
-                  // ── Illustration ──────────────────────────────────────────
-                  const PendingIllustration(),
-                  const SizedBox(height: 24),
-
-                  const Text(
-                    'Đang chờ xét duyệt',
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.8,
+                    const Text(
+                      'Đang chờ xét duyệt',
+                      style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.8,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Hồ sơ đăng ký của bạn đã được gửi lên hệ thống. Ban quản trị sẽ kiểm duyệt thông tin trong vòng 24h làm việc.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: AppColors.textSecondary,
-                      height: 1.5,
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Hồ sơ đăng ký của bạn đã được gửi lên hệ thống. Ban quản trị sẽ kiểm duyệt thông tin trong vòng 24h làm việc.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: AppColors.textSecondary,
+                        height: 1.5,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 36),
+                    const SizedBox(height: 36),
 
-                  // ── Steps Timeline ─────────────────────────────────────────
-                  StepCard(
-                    icon: Icons.check_circle_outline_rounded,
-                    color: AppColors.success,
-                    title: 'Đăng ký thành công',
-                    subtitle: 'Thông tin đã xác thực qua OTP',
-                    done: true,
-                    isActive: false,
-                  ),
-                  const SizedBox(height: 14),
-                  StepCard(
-                    icon: Icons.hourglass_empty_rounded,
-                    color: AppColors.warning,
-                    title: 'Admin đang xét duyệt',
-                    subtitle: 'Xác minh hồ sơ & CCCD của bạn',
-                    done: _approved,
-                    isActive: !_approved,
-                  ),
-                  const SizedBox(height: 14),
-                  StepCard(
-                    icon: Icons.local_shipping_outlined,
-                    color: AppColors.info,
-                    title: 'Bắt đầu nhận đơn',
-                    subtitle: 'Mở ứng dụng và bắt đầu kiếm tiền',
-                    done: false,
-                    isActive: _approved,
-                  ),
+                    // ── Steps Timeline ─────────────────────────────────────────
+                    StepCard(
+                      icon: Icons.check_circle_outline_rounded,
+                      color: AppColors.success,
+                      title: 'Đăng ký thành công',
+                      subtitle: 'Thông tin đã xác thực qua OTP',
+                      done: true,
+                      isActive: false,
+                    ),
+                    const SizedBox(height: 14),
+                    StepCard(
+                      icon: Icons.hourglass_empty_rounded,
+                      color: AppColors.warning,
+                      title: 'Admin đang xét duyệt',
+                      subtitle: 'Xác minh hồ sơ & CCCD của bạn',
+                      done: _approved,
+                      isActive: !_approved,
+                    ),
+                    const SizedBox(height: 14),
+                    StepCard(
+                      icon: Icons.local_shipping_outlined,
+                      color: AppColors.info,
+                      title: 'Bắt đầu nhận đơn',
+                      subtitle: 'Mở ứng dụng và bắt đầu kiếm tiền',
+                      done: false,
+                      isActive: _approved,
+                    ),
 
-                  const SizedBox(height: 40),
+                    const SizedBox(height: 40),
 
-                  // ── Contact Support ───────────────────────────────────────
-                  PendingSupportCard(onCallSupport: _callSupport),
+                    // ── Contact Support ───────────────────────────────────────
+                    PendingSupportCard(onCallSupport: _callSupport),
 
-                  const Spacer(),
+                    const SizedBox(height: 34),
 
-                  // ── Action Status Button ──────────────────────────────────
-                  PendingActionButton(
-                    approved: _approved,
-                    loggingIn: _loggingIn,
-                    onLogin: _login,
-                  ),
-                  const SizedBox(height: 24),
-                ],
+                    // ── Action Status Button ──────────────────────────────────
+                    PendingActionButton(
+                      approved: _approved,
+                      loggingIn: _loggingIn,
+                      onLogin: _login,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

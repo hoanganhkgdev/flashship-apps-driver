@@ -18,7 +18,7 @@ class OtpScreen extends ConsumerStatefulWidget {
 class _OtpScreenState extends ConsumerState<OtpScreen> {
   final _otpCtrl = TextEditingController();
 
-  bool    _loading = false;
+  bool _loading = false;
   String? _error;
 
   String get _phone => widget.regData['phone'] as String? ?? '';
@@ -40,7 +40,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     final ok = await ref.read(authProvider.notifier).sendOtp(_phone);
     if (!mounted) return ok;
     if (!ok) {
-      setState(() => _error = ref.read(authProvider).error ?? 'Gửi lại mã OTP thất bại');
+      setState(() =>
+          _error = ref.read(authProvider).error ?? 'Gửi lại mã OTP thất bại');
     }
     return ok;
   }
@@ -52,17 +53,20 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       setState(() => _error = 'Vui lòng nhập đủ 6 chữ số');
       return;
     }
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
 
     final data = widget.regData;
-    final ok   = await ref.read(authProvider.notifier).verifyOtpAndRegister(
-      phone:      _phone,
-      otp:        otp,
-      name:       data['name']     as String? ?? '',
-      password:   data['password'] as String? ?? '',
-      cityId:     data['city_id']  as int?,
-      avatarPath: data['avatar']   as String?,
-    );
+    final ok = await ref.read(authProvider.notifier).verifyOtpAndRegister(
+          phone: _phone,
+          otp: otp,
+          name: data['name'] as String? ?? '',
+          password: data['password'] as String? ?? '',
+          cityId: data['city_id'] as int?,
+          avatarPath: data['avatar'] as String?,
+        );
 
     if (!mounted) return;
     if (ok) {
@@ -71,7 +75,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     } else {
       setState(() {
         _loading = false;
-        _error   = ref.read(authProvider).error ?? 'Mã OTP không đúng hoặc đã hết hạn';
+        _error =
+            ref.read(authProvider).error ?? 'Mã OTP không đúng hoặc đã hết hạn';
       });
     }
   }
@@ -81,39 +86,34 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFFFDFC),
       resizeToAvoidBottomInset: false,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFFFF6F0), Colors.white],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            stops: [0.0, 0.4],
-          ),
-        ),
-        child: SafeArea(
+      body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-
             // ── Scrollable content ────────────────────────────────────
             Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(24, 36, 24, bottom + 24),
+                padding: EdgeInsets.fromLTRB(24, 16, 24, bottom + 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    AuthBackButton(
+                        onTap: () => Navigator.of(context).maybePop()),
 
-                    AuthBackButton(onTap: () => Navigator.of(context).maybePop()),
+                    const SizedBox(height: 24),
 
-                    const SizedBox(height: 40),
+                    const _OtpProgress(),
+
+                    const SizedBox(height: 24),
 
                     AuthHeader(
-                      title: 'Nhập mã OTP',
-                      titleFontSize: 28,
+                      title: 'Xác nhận OTP',
+                      titleFontSize: 24,
                       subtitleSpans: [
-                        const TextSpan(text: 'Mã 6 chữ số đã gửi qua Zalo/SMS tới '),
+                        const TextSpan(
+                            text: 'Nhập mã 6 số đã gửi qua Zalo/SMS tới '),
                         TextSpan(
                           text: _maskedPhone,
                           style: const TextStyle(
@@ -124,7 +124,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                       ],
                     ),
 
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 28),
 
                     // OTP boxes
                     OtpInputRow(
@@ -143,32 +143,50 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                       AuthErrorBanner(message: _error!),
                     ],
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 26),
 
                     ResendCountdownLink(
                       onResend: _resend,
-                      actionLabel: 'Không nhận được mã? Gửi lại',
+                      actionLabel: 'Gửi lại mã',
+                      initialSeconds: 38,
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    AuthPrimaryButton(
+                      label: 'Xác nhận',
+                      loading: _loading,
+                      onPressed: _submit,
+                      height: 54,
+                      color: const Color(0xFFFF6035),
+                      fontSize: 16,
                     ),
                   ],
                 ),
               ),
             ),
-
-            // ── Fixed bottom button ───────────────────────────────────
-            Container(
-              color: Colors.white,
-              padding: EdgeInsets.fromLTRB(
-                  24, 8, 24, MediaQuery.of(context).padding.bottom + 20),
-              child: AuthPrimaryButton(
-                label: 'Xác nhận OTP',
-                loading: _loading,
-                onPressed: _submit,
-              ),
-            ),
           ],
-        ),
         ),
       ),
     );
   }
+}
+
+class _OtpProgress extends StatelessWidget {
+  const _OtpProgress();
+
+  @override
+  Widget build(BuildContext context) => Row(children: [
+        Expanded(child: _bar()),
+        const SizedBox(width: 6),
+        Expanded(child: _bar()),
+      ]);
+
+  Widget _bar() => Container(
+        height: 5,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFF6035),
+          borderRadius: BorderRadius.circular(3),
+        ),
+      );
 }

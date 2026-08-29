@@ -12,8 +12,8 @@ class ActiveOrderState {
   final bool isRestored;
 
   const ActiveOrderState({
-    this.orders     = const [],
-    this.loading    = false,
+    this.orders = const [],
+    this.loading = false,
     this.error,
     this.isRestored = false,
   });
@@ -27,16 +27,20 @@ class ActiveOrderState {
     String? error,
     bool? isRestored,
     bool clearOrder = false,
-  }) => ActiveOrderState(
-    orders:     clearOrder ? [] : (orders ?? this.orders),
-    loading:    loading    ?? this.loading,
-    error:      error,
-    isRestored: isRestored ?? this.isRestored,
-  );
+  }) =>
+      ActiveOrderState(
+        orders: clearOrder ? [] : (orders ?? this.orders),
+        loading: loading ?? this.loading,
+        error: error,
+        isRestored: isRestored ?? this.isRestored,
+      );
 }
 
 class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
   final Ref _ref;
+  int _stateRevision = 0;
+  int _fetchRequestId = 0;
+  Future<void> _persistChain = Future.value();
 
   ActiveOrderNotifier(this._ref) : super(const ActiveOrderState()) {
     _restore();
@@ -47,7 +51,9 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
   // ── Persistence ─────────────────────────────────────────────────────────────
 
   Future<void> _restore() async {
+    final revisionAtStart = _stateRevision;
     final prefs = await SharedPreferences.getInstance();
+    if (revisionAtStart != _stateRevision) return;
     final raw = prefs.getString(_kActiveOrder);
     if (raw != null) {
       try {
@@ -63,61 +69,70 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
           if (o.isActive) orders = [o];
         }
         if (orders.isNotEmpty) {
+          if (revisionAtStart != _stateRevision) return;
           state = ActiveOrderState(orders: orders, isRestored: true);
           return;
         }
       } catch (_) {}
     }
-    state = const ActiveOrderState(isRestored: true);
-  }
-
-  Future<void> _persist(List<OrderModel> orders) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (orders.isEmpty) {
-      await prefs.remove(_kActiveOrder);
-    } else {
-      await prefs.setString(_kActiveOrder,
-          jsonEncode(orders.map(_toJson).toList()));
+    if (revisionAtStart == _stateRevision) {
+      state = const ActiveOrderState(isRestored: true);
     }
   }
 
+  Future<void> _persist(List<OrderModel> orders) async {
+    final snapshot = List<OrderModel>.from(orders);
+    _persistChain = _persistChain.then((_) async {
+      final prefs = await SharedPreferences.getInstance();
+      if (snapshot.isEmpty) {
+        await prefs.remove(_kActiveOrder);
+      } else {
+        await prefs.setString(
+            _kActiveOrder, jsonEncode(snapshot.map(_toJson).toList()));
+      }
+    });
+    return _persistChain;
+  }
+
   static Map<String, dynamic> _toJson(OrderModel o) => {
-    'id':                o.id,
-    'code':              o.code,
-    'service_type':      o.serviceType,
-    'status':            o.status,
-    'platform':          o.platform,
-    'shop_service_type': o.shopServiceType,
-    'pickup_name':       o.pickupName,
-    'pickup_address':    o.pickupAddress,
-    'pickup_phone':      o.pickupPhone,
-    'delivery_address':  o.deliveryAddress,
-    'delivery_phone':    o.deliveryPhone,
-    'order_note':        o.orderNote,
-    'shipping_fee':      o.shippingFee,
-    'bonus_fee':         o.bonusFee,
-    'discount_amount':   o.discountAmount,
-    'voucher_code':      o.voucherCode,
-    'payment_method':    o.paymentMethod,
-    'cod_amount':        o.codAmount,
-    'created_at':        o.createdAt.toIso8601String(),
-    'completed_at':      o.completedAt?.toIso8601String(),
-    if (o.customerName != null)
-      'customer': {'name': o.customerName, 'phone': o.customerPhone},
-    'pickup_lat':   o.pickupLat,
-    'pickup_lng':   o.pickupLng,
-    'delivery_lat': o.deliveryLat,
-    'delivery_lng': o.deliveryLng,
-    // Thiếu 3 field này thì restore từ local storage mất dữ liệu batch
-    // (đơn hiện như đơn thường) nếu app bị kill trước khi fetch() kịp chạy.
-    'is_batch':    o.isBatch,
-    'stops_count': o.stopsCount,
-    'stops':       o.stops,
-  };
+        'id': o.id,
+        'code': o.code,
+        'service_type': o.serviceType,
+        'status': o.status,
+        'platform': o.platform,
+        'shop_service_type': o.shopServiceType,
+        'pickup_name': o.pickupName,
+        'pickup_address': o.pickupAddress,
+        'pickup_phone': o.pickupPhone,
+        'delivery_address': o.deliveryAddress,
+        'delivery_phone': o.deliveryPhone,
+        'order_note': o.orderNote,
+        'shipping_fee': o.shippingFee,
+        'bonus_fee': o.bonusFee,
+        'discount_amount': o.discountAmount,
+        'voucher_code': o.voucherCode,
+        'payment_method': o.paymentMethod,
+        'cod_amount': o.codAmount,
+        'created_at': o.createdAt.toIso8601String(),
+        'completed_at': o.completedAt?.toIso8601String(),
+        if (o.customerName != null)
+          'customer': {'name': o.customerName, 'phone': o.customerPhone},
+        'pickup_lat': o.pickupLat,
+        'pickup_lng': o.pickupLng,
+        'delivery_lat': o.deliveryLat,
+        'delivery_lng': o.deliveryLng,
+        // Thiếu 3 field này thì restore từ local storage mất dữ liệu batch
+        // (đơn hiện như đơn thường) nếu app bị kill trước khi fetch() kịp chạy.
+        'is_batch': o.isBatch,
+        'stops_count': o.stopsCount,
+        'stops': o.stops,
+      };
 
   // ── Public API ───────────────────────────────────────────────────────────────
 
   Future<void> fetch() async {
+    final requestId = ++_fetchRequestId;
+    final revisionAtStart = ++_stateRevision;
     state = state.copyWith(loading: true, error: null);
     try {
       final res = await _ref.read(apiClientProvider).get('/orders/my-orders');
@@ -138,47 +153,72 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
           .take(2) // tối đa 2 đơn
           .toList();
 
+      if (requestId != _fetchRequestId || revisionAtStart != _stateRevision) {
+        return;
+      }
       state = ActiveOrderState(orders: active, isRestored: true);
       await _persist(active);
     } catch (e) {
+      if (requestId != _fetchRequestId || revisionAtStart != _stateRevision) {
+        return;
+      }
       state = state.copyWith(loading: false, error: 'Không thể tải đơn hàng');
     }
   }
 
   Future<String?> accept(int orderId, {OrderModel? fallback}) async {
+    _stateRevision++;
     try {
-      final res = await _ref.read(apiClientProvider).post('/orders/$orderId/accept');
+      final res =
+          await _ref.read(apiClientProvider).post('/orders/$orderId/accept');
       final data = (res.data['data'] ?? res.data) as Map<String, dynamic>?;
 
       OrderModel? newOrder;
       if (data?['order'] != null) {
         newOrder = OrderModel.fromJson(data!['order'] as Map<String, dynamic>);
+        if (newOrder.id != orderId) {
+          await fetch();
+          return 'Dữ liệu đơn hàng không khớp. Danh sách đã được làm mới.';
+        }
       } else if (fallback != null) {
         newOrder = OrderModel(
-          id: fallback.id, code: fallback.code,
-          serviceType: fallback.serviceType, status: 'assigned',
+          id: fallback.id,
+          code: fallback.code,
+          serviceType: fallback.serviceType,
+          status: 'assigned',
           platform: fallback.platform,
           shopServiceType: fallback.shopServiceType,
-          pickupName: fallback.pickupName, pickupAddress: fallback.pickupAddress, pickupPhone: fallback.pickupPhone,
+          pickupName: fallback.pickupName,
+          pickupAddress: fallback.pickupAddress,
+          pickupPhone: fallback.pickupPhone,
           deliveryAddress: fallback.deliveryAddress,
-          deliveryPhone: fallback.deliveryPhone, orderNote: fallback.orderNote,
-          shippingFee: fallback.shippingFee, bonusFee: fallback.bonusFee,
+          deliveryPhone: fallback.deliveryPhone,
+          orderNote: fallback.orderNote,
+          shippingFee: fallback.shippingFee,
+          bonusFee: fallback.bonusFee,
           discountAmount: fallback.discountAmount,
           voucherCode: fallback.voucherCode,
-          paymentMethod: fallback.paymentMethod, codAmount: fallback.codAmount,
-          createdAt: fallback.createdAt, completedAt: fallback.completedAt,
-          customerName: fallback.customerName, customerPhone: fallback.customerPhone,
-          pickupLat: fallback.pickupLat, pickupLng: fallback.pickupLng,
-          deliveryLat: fallback.deliveryLat, deliveryLng: fallback.deliveryLng,
+          paymentMethod: fallback.paymentMethod,
+          codAmount: fallback.codAmount,
+          createdAt: fallback.createdAt,
+          completedAt: fallback.completedAt,
+          customerName: fallback.customerName,
+          customerPhone: fallback.customerPhone,
+          pickupLat: fallback.pickupLat,
+          pickupLng: fallback.pickupLng,
+          deliveryLat: fallback.deliveryLat,
+          deliveryLng: fallback.deliveryLng,
           storeName: fallback.storeName,
           pickupPlaceName: fallback.pickupPlaceName,
         );
       }
 
       if (newOrder != null) {
+        _stateRevision++;
         // Thêm vào danh sách, tránh duplicate
-        final existing = state.orders.where((o) => o.id != newOrder!.id).toList();
-        final updated  = [...existing, newOrder];
+        final existing =
+            state.orders.where((o) => o.id != newOrder!.id).toList();
+        final updated = [...existing, newOrder];
         state = ActiveOrderState(orders: updated, isRestored: true);
         await _persist(updated);
       }
@@ -196,6 +236,7 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
   }
 
   Future<bool> decline(int orderId) async {
+    _stateRevision++;
     try {
       await _ref.read(apiClientProvider).post('/orders/$orderId/decline');
       return true;
@@ -205,8 +246,10 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
   }
 
   Future<bool> complete(int orderId) async {
+    _stateRevision++;
     try {
       await _ref.read(apiClientProvider).post('/orders/$orderId/complete');
+      _stateRevision++;
       // Xóa đơn vừa hoàn thành khỏi danh sách
       final remaining = state.orders.where((o) => o.id != orderId).toList();
       state = ActiveOrderState(orders: remaining, isRestored: true);
@@ -218,11 +261,13 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
   }
 
   void clearOrder() {
+    _stateRevision++;
     state = ActiveOrderState(isRestored: state.isRestored);
     _persist([]);
   }
 
   Future<bool> updateOrderStatus(String status, {int? orderId}) async {
+    _stateRevision++;
     // Tìm đơn cần update theo orderId, fallback về đơn đầu tiên
     final o = orderId != null
         ? state.orders.where((x) => x.id == orderId).firstOrNull
@@ -232,7 +277,8 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
     final updated = OrderModel(
       id: o.id, code: o.code, serviceType: o.serviceType,
       status: status,
-      pickupName: o.pickupName, pickupAddress: o.pickupAddress, pickupPhone: o.pickupPhone,
+      pickupName: o.pickupName, pickupAddress: o.pickupAddress,
+      pickupPhone: o.pickupPhone,
       pickupLat: o.pickupLat, pickupLng: o.pickupLng,
       deliveryAddress: o.deliveryAddress, deliveryPhone: o.deliveryPhone,
       deliveryLat: o.deliveryLat, deliveryLng: o.deliveryLng,
@@ -242,21 +288,20 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
       createdAt: o.createdAt, completedAt: o.completedAt,
       customerName: o.customerName, customerPhone: o.customerPhone,
       // batch fields — phải copy để không mất stops khi optimistic update
-      storeName:       o.storeName,
-      platform:        o.platform,
+      storeName: o.storeName,
+      platform: o.platform,
       shopServiceType: o.shopServiceType,
-      cargoType:       o.cargoType,
-      cargoNote:       o.cargoNote,
-      cargoWeight:     o.cargoWeight,
-      isBatch:         o.isBatch,
-      stopsCount:      o.stopsCount,
-      stops:           o.stops,
-      nightSurcharge:  o.nightSurcharge,
-      voucherCode:     o.voucherCode,
+      cargoType: o.cargoType,
+      cargoNote: o.cargoNote,
+      cargoWeight: o.cargoWeight,
+      isBatch: o.isBatch,
+      stopsCount: o.stopsCount,
+      stops: o.stops,
+      nightSurcharge: o.nightSurcharge,
+      voucherCode: o.voucherCode,
     );
-    // Lưu state gốc trước khi optimistic update
-    final originalList = List<OrderModel>.from(state.orders);
-    final updatedList  = state.orders.map((x) => x.id == o.id ? updated : x).toList();
+    final updatedList =
+        state.orders.map((x) => x.id == o.id ? updated : x).toList();
     state = ActiveOrderState(orders: updatedList, isRestored: true);
     await _persist(updatedList);
     try {
@@ -266,9 +311,18 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
       );
       return true;
     } catch (_) {
-      // Rollback về state gốc
-      state = ActiveOrderState(orders: originalList, isRestored: true);
-      await _persist(originalList);
+      // Chỉ rollback đúng đơn vừa thao tác. Không khôi phục nguyên danh sách
+      // vì trong lúc chờ API, đơn khác có thể vừa accept/complete/fetch xong.
+      final current = state.orders;
+      final stillOptimistic =
+          current.any((x) => x.id == o.id && x.status == updated.status);
+      if (stillOptimistic) {
+        _stateRevision++;
+        final rolledBack =
+            current.map((x) => x.id == o.id ? o : x).toList(growable: false);
+        state = ActiveOrderState(orders: rolledBack, isRestored: true);
+        await _persist(rolledBack);
+      }
       return false;
     }
   }
@@ -290,9 +344,10 @@ class OrderHistoryState {
     this.hasMore = true,
   });
 
-  OrderHistoryState copyWith({List<OrderModel>? orders, bool? loading, bool? hasMore}) =>
+  OrderHistoryState copyWith(
+          {List<OrderModel>? orders, bool? loading, bool? hasMore}) =>
       OrderHistoryState(
-        orders:  orders  ?? this.orders,
+        orders: orders ?? this.orders,
         loading: loading ?? this.loading,
         hasMore: hasMore ?? this.hasMore,
       );
@@ -330,7 +385,9 @@ class OrderHistoryNotifier extends StateNotifier<OrderHistoryState> {
       } else if (raw is Map && raw['completed'] is List) {
         list = raw['completed'] as List;
       }
-      final orders = list.map((e) => OrderModel.fromJson(e as Map<String, dynamic>)).toList();
+      final orders = list
+          .map((e) => OrderModel.fromJson(e as Map<String, dynamic>))
+          .toList();
       final hasMore = raw is Map ? raw['has_more'] == true : false;
       _page++;
       final merged = refresh ? orders : [...state.orders, ...orders];
@@ -341,7 +398,7 @@ class OrderHistoryNotifier extends StateNotifier<OrderHistoryState> {
           if (seen.add(o.id)) o
       ];
       state = state.copyWith(
-        orders:  deduped,
+        orders: deduped,
         loading: false,
         hasMore: hasMore,
       );

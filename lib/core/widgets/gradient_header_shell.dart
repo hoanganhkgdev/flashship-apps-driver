@@ -13,6 +13,9 @@ import 'bubble.dart';
 class GradientHeaderShell extends StatelessWidget {
   final List<Widget> children;
   final CrossAxisAlignment crossAxisAlignment;
+  final List<Color>? colors;
+  final bool showBubbles;
+  final Color? seamColor;
 
   final double bubble1Size, bubble1Top, bubble1Right, bubble1Opacity;
   final double bubble2Size, bubble2Top, bubble2Left, bubble2Opacity;
@@ -22,16 +25,29 @@ class GradientHeaderShell extends StatelessWidget {
     super.key,
     required this.children,
     this.crossAxisAlignment = CrossAxisAlignment.center,
-    this.bubble1Size = 150, this.bubble1Top = -40, this.bubble1Right = -40, this.bubble1Opacity = 0.07,
-    this.bubble2Size = 80,  this.bubble2Top = 80,  this.bubble2Left = -30,  this.bubble2Opacity = 0.05,
-    this.bubble3Size = 55,  this.bubble3Bottom = 40, this.bubble3Right = 30, this.bubble3Opacity = 0.04,
+    this.colors,
+    this.showBubbles = true,
+    this.seamColor,
+    this.bubble1Size = 150,
+    this.bubble1Top = -40,
+    this.bubble1Right = -40,
+    this.bubble1Opacity = 0.07,
+    this.bubble2Size = 80,
+    this.bubble2Top = 80,
+    this.bubble2Left = -30,
+    this.bubble2Opacity = 0.05,
+    this.bubble3Size = 55,
+    this.bubble3Bottom = 40,
+    this.bubble3Right = 30,
+    this.bubble3Opacity = 0.04,
   });
 
   @override
   Widget build(BuildContext context) => Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFFCC5A08), Color(0xFFE8720C), Color(0xFFF59E30)],
+            colors: colors ??
+                const [Color(0xFFCC5A08), Color(0xFFE8720C), Color(0xFFF59E30)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -39,14 +55,26 @@ class GradientHeaderShell extends StatelessWidget {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            Positioned(top: bubble1Top, right: bubble1Right, child: Bubble(bubble1Size, bubble1Opacity)),
-            Positioned(top: bubble2Top, left: bubble2Left,   child: Bubble(bubble2Size, bubble2Opacity)),
-            Positioned(bottom: bubble3Bottom, right: bubble3Right, child: Bubble(bubble3Size, bubble3Opacity)),
+            if (showBubbles)
+              Positioned(
+                  top: bubble1Top,
+                  right: bubble1Right,
+                  child: Bubble(bubble1Size, bubble1Opacity)),
+            if (showBubbles)
+              Positioned(
+                  top: bubble2Top,
+                  left: bubble2Left,
+                  child: Bubble(bubble2Size, bubble2Opacity)),
+            if (showBubbles)
+              Positioned(
+                  bottom: bubble3Bottom,
+                  right: bubble3Right,
+                  child: Bubble(bubble3Size, bubble3Opacity)),
             Column(
               crossAxisAlignment: crossAxisAlignment,
               children: [
                 ...children,
-                Container(height: 20, color: AppColors.background),
+                Container(height: 20, color: seamColor ?? AppColors.background),
               ],
             ),
           ],

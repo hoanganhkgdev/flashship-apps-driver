@@ -22,7 +22,6 @@ class OrderNoteCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.card),
           border: Border.all(
               color: const Color(0xFFF59E0B).withValues(alpha: 0.30)),
-          boxShadow: AppColors.cardShadow,
         ),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Icon(Icons.sticky_note_2_outlined,

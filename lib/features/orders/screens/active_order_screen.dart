@@ -19,8 +19,8 @@ import '../widgets/route_card.dart';
 import '../widgets/topup_card.dart';
 
 class ActiveOrderScreen extends ConsumerStatefulWidget {
-  final int orderIndex;
-  const ActiveOrderScreen({super.key, this.orderIndex = 0});
+  final int? orderId;
+  const ActiveOrderScreen({super.key, required this.orderId});
 
   @override
   ConsumerState<ActiveOrderScreen> createState() => _ActiveOrderScreenState();
@@ -40,9 +40,18 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
     WidgetsBinding.instance.addObserver(this);
     Future.microtask(() {
       ref.read(activeOrderProvider.notifier).fetch();
-      final order = ref.read(activeOrderProvider).order;
+      final order = _findOrder(ref.read(activeOrderProvider).orders);
       if (order != null) _startCancelListener(order.code);
     });
+  }
+
+  OrderModel? _findOrder(List<OrderModel> orders) {
+    final id = widget.orderId;
+    if (id == null) return null;
+    for (final order in orders) {
+      if (order.id == id) return order;
+    }
+    return null;
   }
 
   @override
@@ -129,36 +138,27 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
   Widget build(BuildContext context) {
     ref.listen<ActiveOrderState>(activeOrderProvider, (prev, next) {
       final orders = next.orders;
-      if (orders.isNotEmpty) {
-        final watchOrder = orders.length > widget.orderIndex
-            ? orders[widget.orderIndex]
-            : orders.first;
+      final watchOrder = _findOrder(orders);
+      if (watchOrder != null) {
         _startCancelListener(watchOrder.code);
       }
-      if ((prev?.orders.length ?? 0) > 0 &&
-          next.orders.isEmpty &&
-          mounted &&
-          !_completing) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Đơn hàng đã bị huỷ'),
-          backgroundColor: AppColors.danger,
-        ));
+      final hadSelectedOrder = _findOrder(prev?.orders ?? const []) != null;
+      if (hadSelectedOrder && watchOrder == null && mounted && !_completing) {
+        // Việc đơn biến mất khỏi danh sách active không chứng minh đơn bị huỷ:
+        // đơn vừa hoàn thành cũng bị backend loại khỏi danh sách này. Không phát
+        // thông báo huỷ từ tín hiệu mơ hồ để tránh báo sai cho tài xế.
         context.go('/home');
       }
     });
 
     final allOrders = ref.watch(activeOrderProvider).orders;
-    final order = allOrders.length > widget.orderIndex
-        ? allOrders[widget.orderIndex]
-        : allOrders.isNotEmpty
-            ? allOrders.first
-            : null;
+    final order = _findOrder(allOrders);
 
     if (order == null) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: const Color(0xFFFFF8F5),
         appBar: AppBar(title: const Text('Đơn hàng')),
-        body: const Center(child: Text('Không có đơn hàng đang hoạt động')),
+        body: const Center(child: Text('Đơn hàng này không còn hoạt động')),
       );
     }
 
@@ -176,7 +176,7 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
         statusBarBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: const Color(0xFFFFF8F5),
         body: Column(children: [
           // ── Header ─────────────────────────────────────────────────
           ActiveOrderHeader(order: order, color: color),
@@ -240,9 +240,15 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
                   const SizedBox(height: 12),
                   BatchStopsCard(
                     order: order,
-                    onCompleted: () {
-                      setState(() => _completing = true);
+                    onCompletionStateChanged: (completing) {
+                      if (mounted) {
+                        setState(() => _completing = completing);
+                      }
+                    },
+                    onCompleted: () async {
                       if (!mounted) return;
+                      await ref.read(activeOrderProvider.notifier).fetch();
+                      if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Hoàn thành tất cả điểm giao!'),

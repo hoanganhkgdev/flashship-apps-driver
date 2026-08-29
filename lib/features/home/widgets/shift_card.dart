@@ -143,20 +143,14 @@ class _ShiftCardState extends State<ShiftCard> {
               ]),
             ),
             const SizedBox(height: 12),
-            Row(children: [
-              Expanded(
-                  child: Text(
-                      'Đã đăng ký ${widget.currentShiftIds.length}/7 ca tuần này',
-                      style: const TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF6A605C)))),
-              const Text('Xem lịch ›',
+            const Align(
+              alignment: Alignment.centerRight,
+              child: Text('Xem lịch ›',
                   style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w800,
                       color: Color(0xFFFF6035))),
-            ]),
+            ),
           ]),
         ));
   }

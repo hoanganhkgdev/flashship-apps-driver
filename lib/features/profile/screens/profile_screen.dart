@@ -42,6 +42,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   String? _licenseStatus;
   String? _cccdImageStatus;
+  String? _vehicleType;
+  String? _licensePlate;
   bool _deleteRequested = false;
 
   int? _balance;
@@ -109,6 +111,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               : double.tryParse(p['rating'].toString());
           _licenseStatus = p['license_status'] as String?;
           _cccdImageStatus = p['cccd_image_status'] as String?;
+          _vehicleType = p['vehicle_type'] as String?;
+          _licensePlate = p['license_plate'] as String?;
           _balance = (p['balance'] as num?)?.toInt();
           _bankName = p['bank_name'] as String?;
           _bankAccount = p['bank_account'] as String?;
@@ -246,6 +250,53 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     _loadData();
                   },
                 ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // ── Phương tiện ────────────────────────────────────────
+              SettingsSection(
+                header: 'Phương tiện',
+                children: [
+                  SettingsRow(
+                    icon: _vehicleType == 'car'
+                        ? Icons.directions_car_rounded
+                        : Icons.two_wheeler_rounded,
+                    iconBg: AppColors.primary.withValues(alpha: 0.12),
+                    iconColor: AppColors.primary,
+                    label: 'Loại xe',
+                    trailing: Text(
+                      switch (_vehicleType) {
+                        'motorbike' => 'Xe máy',
+                        'car' => 'Ô tô',
+                        _ => 'Chưa cập nhật',
+                      },
+                      style: const TextStyle(
+                          fontSize: 13, color: AppColors.textSecondary),
+                    ),
+                    showChevron: false,
+                    onTap: null,
+                  ),
+                  const Divider(
+                      height: 1, indent: 56, color: Color(0xFFF5F5F5)),
+                  SettingsRow(
+                    icon: Icons.pin_rounded,
+                    iconBg: AppColors.primary.withValues(alpha: 0.12),
+                    iconColor: AppColors.primary,
+                    label: 'Biển số xe',
+                    trailing: Text(
+                      _licensePlate?.trim().isNotEmpty == true
+                          ? _licensePlate!.toUpperCase()
+                          : 'Chưa cập nhật',
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary),
+                    ),
+                    showChevron: false,
+                    onTap: null,
+                  ),
+                ],
               ),
 
               const SizedBox(height: 12),

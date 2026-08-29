@@ -8,6 +8,8 @@ class DriverModel {
   final double? latitude;
   final double? longitude;
   final String? planType;
+  final String? vehicleType;
+  final String? licensePlate;
   final int balance;
   final String? profilePhotoUrl;
   final int status; // 0=pending, 1=active, 2=banned
@@ -25,6 +27,8 @@ class DriverModel {
     this.latitude,
     this.longitude,
     this.planType,
+    this.vehicleType,
+    this.licensePlate,
     this.balance = 0,
     this.profilePhotoUrl,
     this.status = 0,
@@ -48,6 +52,8 @@ class DriverModel {
             ? null
             : double.tryParse(j['longitude'].toString()),
         planType: j['plan_type'] as String?,
+        vehicleType: j['vehicle_type'] as String?,
+        licensePlate: j['license_plate'] as String?,
         balance: (j['balance'] as num?)?.toInt() ?? 0,
         profilePhotoUrl: j['profile_photo_url'] as String?,
         // Default 1 (approved) khi field vắng mặt — chỉ xảy ra với stored data cũ
@@ -89,6 +95,8 @@ class DriverModel {
         latitude: latitude,
         longitude: longitude,
         planType: planType,
+        vehicleType: vehicleType,
+        licensePlate: licensePlate,
         balance: balance ?? this.balance,
         profilePhotoUrl: profilePhotoUrl,
         status: status ?? this.status,

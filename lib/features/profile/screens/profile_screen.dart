@@ -80,6 +80,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     // trắng cả trang, kể cả khi profile/score đã lấy được bình thường.
     Map<String, dynamic>? profileData;
     Map<String, dynamic>? statsData;
+    Map<String, dynamic>? dashboardData;
     Map<String, dynamic>? scoreData;
     List<dynamic>? debtsRaw;
 
@@ -90,6 +91,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       }).catchError((_) {}),
       ref.read(apiClientProvider).get('/driver/stats').then((r) {
         statsData = (r.data['data'] ?? r.data) as Map<String, dynamic>?;
+      }).catchError((_) {}),
+      ref.read(apiClientProvider).get('/orders/dashboard').then((r) {
+        dashboardData = (r.data['data'] ?? r.data) as Map<String, dynamic>?;
       }).catchError((_) {}),
       ref.read(apiClientProvider).get('/driver/score').then((r) {
         scoreData = (r.data['data'] ?? r.data) as Map<String, dynamic>?;
@@ -106,9 +110,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         if (p != null) {
           _cityName = p['city_name'] as String?;
           _photoUrl = p['profile_photo_url'] as String?;
-          _rating = p['rating'] == null
-              ? null
-              : double.tryParse(p['rating'].toString());
           _licenseStatus = p['license_status'] as String?;
           _cccdImageStatus = p['cccd_image_status'] as String?;
           _vehicleType = p['vehicle_type'] as String?;
@@ -127,6 +128,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         if (s != null) {
           _acceptanceRate = s['acceptance_rate'] as int?;
           _completionRate = s['completion_rate'] as int?;
+        }
+        final dashboard = dashboardData;
+        if (dashboard != null) {
+          _rating = (dashboard['rating'] as num?)?.toDouble();
         }
         final sc = scoreData;
         if (sc != null) {

@@ -183,6 +183,140 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ));
   }
 
+  Future<void> _showVehicleEditor() async {
+    var selectedType = _vehicleType ?? 'motorbike';
+    var saving = false;
+    final plateController = TextEditingController(text: _licensePlate ?? '');
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding:
+              EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+          child: Container(
+            padding: EdgeInsets.fromLTRB(
+                20, 12, 20, MediaQuery.paddingOf(context).bottom + 20),
+            decoration: const BoxDecoration(
+              color: Color(0xFFFFFEFD),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: const Color(0xFFD8D0CC),
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+              const SizedBox(height: 18),
+              const Text('Thông tin phương tiện',
+                  style: TextStyle(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary)),
+              const SizedBox(height: 18),
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(
+                      value: 'motorbike',
+                      label: Text('Xe máy'),
+                      icon: Icon(Icons.two_wheeler_rounded)),
+                  ButtonSegment(
+                      value: 'car',
+                      label: Text('Ô tô'),
+                      icon: Icon(Icons.directions_car_rounded)),
+                ],
+                selected: {selectedType},
+                onSelectionChanged: saving
+                    ? null
+                    : (value) =>
+                        setSheetState(() => selectedType = value.first),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: plateController,
+                enabled: !saving,
+                textCapitalization: TextCapitalization.characters,
+                maxLength: 20,
+                decoration: InputDecoration(
+                  labelText: 'Biển số xe',
+                  hintText: 'Ví dụ: 68B1-123.45',
+                  counterText: '',
+                  prefixIcon: const Icon(Icons.pin_rounded),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton(
+                  onPressed: saving
+                      ? null
+                      : () async {
+                          final plate =
+                              plateController.text.trim().toUpperCase();
+                          if (plate.isEmpty) {
+                            _toast(sheetContext, 'Vui lòng nhập biển số xe');
+                            return;
+                          }
+                          setSheetState(() => saving = true);
+                          try {
+                            await ref.read(apiClientProvider).post(
+                              '/driver/profile/update',
+                              data: {
+                                'vehicle_type': selectedType,
+                                'license_plate': plate,
+                              },
+                            );
+                            if (!mounted) return;
+                            setState(() {
+                              _vehicleType = selectedType;
+                              _licensePlate = plate;
+                            });
+                            await ref.read(authProvider.notifier).refreshUser();
+                            if (!sheetContext.mounted) return;
+                            Navigator.pop(sheetContext);
+                            _toast(context, 'Cập nhật phương tiện thành công',
+                                success: true);
+                          } on DioException catch (e) {
+                            final data = e.response?.data;
+                            final message =
+                                data is Map ? data['message'] as String? : null;
+                            if (sheetContext.mounted) {
+                              _toast(sheetContext,
+                                  message ?? 'Không thể cập nhật phương tiện');
+                              setSheetState(() => saving = false);
+                            }
+                          } catch (_) {
+                            if (sheetContext.mounted) {
+                              _toast(sheetContext,
+                                  'Không thể cập nhật phương tiện');
+                              setSheetState(() => saving = false);
+                            }
+                          }
+                        },
+                  child: saving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : const Text('Lưu thông tin'),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+    plateController.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
@@ -274,8 +408,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       style: const TextStyle(
                           fontSize: 13, color: AppColors.textSecondary),
                     ),
-                    showChevron: false,
-                    onTap: null,
+                    onTap: _showVehicleEditor,
                   ),
                   const Divider(
                       height: 1, indent: 56, color: Color(0xFFF5F5F5)),
@@ -293,8 +426,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           fontWeight: FontWeight.w600,
                           color: AppColors.textSecondary),
                     ),
-                    showChevron: false,
-                    onTap: null,
+                    onTap: _showVehicleEditor,
                   ),
                 ],
               ),

@@ -217,6 +217,10 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
     if (_accepting) return;
     setState(() => _accepting = true);
     _timer?.cancel();
+    // Backend xóa node offer ngay khi accept thành công. Đánh dấu màn hình
+    // đang tự xử lý trước khi gọi API để listener RTDB không thấy node mất
+    // rồi điều hướng cạnh tranh về Home trước callback bên dưới.
+    OfferListenerService.instance.markOfferHandled(widget.orderId);
 
     final error = await ref.read(activeOrderProvider.notifier).accept(
           widget.orderId,

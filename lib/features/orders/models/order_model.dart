@@ -164,6 +164,10 @@ class OrderModel {
   // shipping_fee backend đã trừ discount rồi, nên earning = fee net + bonus
   int get driverEarning => shippingFee + bonusFee;
 
+  // Tổng tiền cần thu khách: phí giao sau giảm giá (đã gồm phụ phí đêm)
+  // cộng tiền hàng/COD. Bonus do hệ thống trả nên không tính vào đây.
+  int get customerCollectionAmount => shippingFee + (codAmount ?? 0);
+
   String get nextAction => switch (status) {
         'assigned' => switch (serviceType) {
             'shopping' => 'Đã mua xong',

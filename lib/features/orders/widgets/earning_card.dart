@@ -94,6 +94,57 @@ class EarningCard extends StatelessWidget {
           ]),
         ),
 
+        if (order.isCod) ...[
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.22),
+              ),
+            ),
+            child: Row(children: [
+              const Icon(
+                Icons.payments_rounded,
+                color: AppColors.primary,
+                size: 22,
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Tổng cần thu khách',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              Text(
+                Fmt.currency(order.customerCollectionAmount),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.primary,
+                ),
+              ),
+            ]),
+          ),
+          if (order.nightSurcharge > 0) ...[
+            const SizedBox(height: 5),
+            Text(
+              'Đã gồm ${Fmt.currency(order.nightSurcharge)} phụ phí đêm khuya',
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ],
+
         // ── Fee breakdown ─────────────────────────────────────────────
         const SizedBox(height: 14),
         const Divider(height: 1, color: Color(0xFFF5F5F5)),

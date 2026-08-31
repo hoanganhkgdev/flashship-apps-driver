@@ -326,8 +326,10 @@ class _OfferStats extends StatelessWidget {
       const SizedBox(width: 10),
       _Stat(
           icon: Icons.account_balance_wallet_outlined,
-          value: order.isCod ? 'COD' : 'Trả trước',
-          label: order.isCod ? 'Người nhận trả' : 'Đã thanh toán'),
+          value: order.isCod
+              ? Fmt.currency(order.customerCollectionAmount)
+              : 'Trả trước',
+          label: order.isCod ? 'Tổng cần thu' : 'Đã thanh toán'),
       const SizedBox(width: 10),
       _Stat(
           icon: Icons.route_outlined,

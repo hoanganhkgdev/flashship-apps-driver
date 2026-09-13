@@ -230,6 +230,9 @@ class NotificationService {
         LocationPushService.instance.stop();
         OfferListenerService.instance.stop();
         try {
+          // Cập nhật state cục bộ trước để nút đổi ngay, rồi đối chiếu profile
+          // server nhằm đồng bộ đầy đủ các trường còn lại.
+          await ref.read(authProvider.notifier).updateOnlineStatus(false);
           await ref.read(authProvider.notifier).refreshUser();
         } catch (_) {}
       }

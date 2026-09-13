@@ -8,7 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/orders/providers/order_provider.dart';
 import '../../features/wallet/providers/wallet_provider.dart';
-import 'location_push_service.dart';
 import 'offer_listener_service.dart';
 import 'offer_ack_service.dart';
 
@@ -225,13 +224,6 @@ class NotificationService {
         try { ref.read(activeOrderProvider.notifier).fetch(); } catch (_) {}
       } else if (type == 'debt_overdue') {
         try { ref.read(walletProvider.notifier).fetch(); } catch (_) {}
-      } else if (type == 'driver_auto_offline') {
-        // Backend đã đóng phiên vì Firebase không có vị trí mới quá 2 phút.
-        LocationPushService.instance.stop();
-        OfferListenerService.instance.stop();
-        try {
-          await ref.read(authProvider.notifier).refreshUser();
-        } catch (_) {}
       }
 
       // Foreground: FCM không tự hiện banner — show local notification cho

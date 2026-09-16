@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/app_surface_card.dart';
+import '../../../core/widgets/app_root_header_title.dart';
 import '../models/wallet_model.dart';
 import '../providers/wallet_provider.dart';
 import '../widgets/payment_qr_sheet.dart';
@@ -124,140 +126,99 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
         statusBarBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFFFF8F5),
-        body: RefreshIndicator(
-          color: AppColors.primary,
-          onRefresh: _refresh,
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              const SliverToBoxAdapter(child: _Header()),
-
-              SliverToBoxAdapter(
-                child: _PeriodTabs(period: _period, onPeriod: _onPeriod),
+        backgroundColor: AppColors.background,
+        body: Column(children: [
+          AppRootHeader(
+            title: 'Thu nhập',
+            trailing: TextButton.icon(
+              onPressed: () => context.push('/wallet'),
+              icon: const Icon(
+                Icons.account_balance_wallet_rounded,
+                size: 18,
               ),
-
-              if (urgentDebt != null)
-                SliverToBoxAdapter(
-                  child: _UrgentDebtCard(
-                    debt: urgentDebt,
-                    onPay: () => _payDebt(urgentDebt),
-                  ),
-                ),
-
-              if (weeklyFeeDebts.isNotEmpty)
-                SliverToBoxAdapter(
-                  child: _WeeklyFeeRow(
-                    amount: weeklyFeeTotal,
-                    onTap: () => Navigator.push(context,
-                        MaterialPageRoute(builder: (_) => const DebtScreen())),
-                  ),
-                ),
-
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: _TotalEarningsCard(
-                    summary: summary,
-                    loading: wallet.loading,
-                  ),
-                ),
-              ),
-
-              SliverToBoxAdapter(
-                child: _StatsRow(
-                  summary: summary,
-                  balance: wallet.balance,
-                ),
-              ),
-
-              SliverToBoxAdapter(
-                child: _EarningsChart(
-                  data: wallet.dailyEarnings,
-                  loading: wallet.dailyEarningsLoading,
-                  monthly: _period == 2,
-                ),
-              ),
-
-              SliverToBoxAdapter(
-                child: _OrderEarningsSection(
-                  orders: filteredOrders,
-                  loading: history.loading,
-                  hasMore: history.hasMore,
-                  onLoadMore: () =>
-                      ref.read(orderHistoryProvider.notifier).fetch(),
-                  transactions: wallet.transactions,
-                  transactionsLoading: wallet.loading,
-                  tab: _historyTab,
-                  onTab: (t) => setState(() => _historyTab = t),
-                ),
-              ),
-
-              // Chừa chỗ cho thanh bottom nav nổi (kính mờ, extendBody: true
-              // ở HomeScreen) — không thì phần cuối bị nav che mất.
-              SliverToBoxAdapter(
-                child: SizedBox(height: BottomNav.reservedHeight(context)),
-              ),
-            ],
+              label: const Text('Xem ví'),
+            ),
           ),
-        ),
-      ),
-    );
-  }
-}
+          Expanded(
+            child: RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: _refresh,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: _PeriodTabs(period: _period, onPeriod: _onPeriod),
+                  ),
 
-// ── Header ────────────────────────────────────────────────────────────────────
+                  if (urgentDebt != null)
+                    SliverToBoxAdapter(
+                      child: _UrgentDebtCard(
+                        debt: urgentDebt,
+                        onPay: () => _payDebt(urgentDebt),
+                      ),
+                    ),
 
-class _Header extends StatelessWidget {
-  const _Header();
+                  if (weeklyFeeDebts.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: _WeeklyFeeRow(
+                        amount: weeklyFeeTotal,
+                        onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const DebtScreen())),
+                      ),
+                    ),
 
-  @override
-  Widget build(BuildContext context) {
-    final top = MediaQuery.of(context).padding.top;
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: _TotalEarningsCard(
+                        summary: summary,
+                        loading: wallet.loading,
+                      ),
+                    ),
+                  ),
 
-    return Container(
-      color: const Color(0xFFFFF8F5),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SizedBox(height: top + 16),
+                  SliverToBoxAdapter(
+                    child: _StatsRow(
+                      summary: summary,
+                      balance: wallet.balance,
+                    ),
+                  ),
 
-        // Topbar
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-          child: Row(children: [
-            const Text('Thu nhập',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF1B1411),
-                  letterSpacing: -0.7,
-                )),
-            const Spacer(),
-            GestureDetector(
-              onTap: () => context.push('/wallet'),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.divider),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.account_balance_wallet_rounded,
-                      size: 16, color: Color(0xFF17110F)),
-                  const SizedBox(width: 6),
-                  const Text('Xem ví',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF6A605C),
-                      )),
-                ]),
+                  SliverToBoxAdapter(
+                    child: _EarningsChart(
+                      data: wallet.dailyEarnings,
+                      loading: wallet.dailyEarningsLoading,
+                      monthly: _period == 2,
+                    ),
+                  ),
+
+                  SliverToBoxAdapter(
+                    child: _OrderEarningsSection(
+                      orders: filteredOrders,
+                      loading: history.loading,
+                      hasMore: history.hasMore,
+                      onLoadMore: () =>
+                          ref.read(orderHistoryProvider.notifier).fetch(),
+                      transactions: wallet.transactions,
+                      transactionsLoading: wallet.loading,
+                      tab: _historyTab,
+                      onTab: (t) => setState(() => _historyTab = t),
+                    ),
+                  ),
+
+                  // Chừa chỗ cho thanh bottom nav nổi (kính mờ, extendBody: true
+                  // ở HomeScreen) — không thì phần cuối bị nav che mất.
+                  SliverToBoxAdapter(
+                    child: SizedBox(height: BottomNav.reservedHeight(context)),
+                  ),
+                ],
               ),
             ),
-          ]),
-        ),
-      ]),
+          ),
+        ]),
+      ),
     );
   }
 }
@@ -275,9 +236,19 @@ class _PeriodTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-        decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: Color(0xFFE5DDD9)))),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        0,
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.xs),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceAlt,
+          borderRadius: BorderRadius.circular(AppRadius.full),
+        ),
         child: Row(
           children: List.generate(_labels.length, (i) {
             final active = i == period;
@@ -286,34 +257,29 @@ class _PeriodTabs extends StatelessWidget {
                 onTap: () => onPeriod(i),
                 behavior: HitTestBehavior.opaque,
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  duration: AppDuration.normal,
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                   decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: active
-                            ? const Color(0xFFFF6035)
-                            : Colors.transparent,
-                        width: 2,
-                      ),
-                    ),
+                    color: active ? AppColors.surface : Colors.transparent,
+                    borderRadius: BorderRadius.circular(AppRadius.full),
+                    boxShadow: active ? AppShadows.soft : null,
                   ),
                   child: Text(
                     _labels[i],
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
+                    style: AppTextStyles.label.copyWith(
                       fontWeight: active ? FontWeight.w800 : FontWeight.w500,
-                      color: active
-                          ? const Color(0xFFFF6035)
-                          : const Color(0xFF6A605C),
+                      color:
+                          active ? AppColors.primary : AppColors.textSecondary,
                     ),
                   ),
                 ),
               ),
             );
           }),
-        ));
+        ),
+      ),
+    );
   }
 }
 
@@ -359,7 +325,7 @@ class _UrgentDebtCard extends StatelessWidget {
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('Phạt điểm tuần',
                   style: TextStyle(
-                    fontSize: 13.5,
+                    fontSize: 14,
                     fontWeight: FontWeight.w800,
                     color: AppColors.danger,
                   )),
@@ -390,7 +356,7 @@ class _UrgentDebtCard extends StatelessWidget {
                   size: 16, color: Colors.white),
               label: const Text('Thanh toán qua PayOS',
                   style: TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
                   )),
@@ -441,14 +407,14 @@ class _WeeklyFeeRow extends StatelessWidget {
           const Expanded(
             child: Text('Phí tuần · Hạn Chủ nhật',
                 style: TextStyle(
-                  fontSize: 12.5,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textSecondary,
                 )),
           ),
           Text(Fmt.currency(amount),
               style: const TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary,
               )),
@@ -472,10 +438,21 @@ class _TotalEarningsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
-        color: const Color(0xFFD8F4DF),
-        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF198A49), Color(0xFF2EAA63)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.success.withValues(alpha: .20),
+            blurRadius: 18,
+            offset: const Offset(0, 7),
+          ),
+        ],
       ),
       child: loading
           ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -483,7 +460,7 @@ class _TotalEarningsCard extends StatelessWidget {
                 height: 14,
                 width: 90,
                 decoration: BoxDecoration(
-                  color: AppColors.success.withValues(alpha: 0.15),
+                  color: Colors.white.withValues(alpha: .22),
                   borderRadius: BorderRadius.circular(6),
                 ),
               ),
@@ -492,49 +469,43 @@ class _TotalEarningsCard extends StatelessWidget {
                 height: 36,
                 width: 180,
                 decoration: BoxDecoration(
-                  color: AppColors.success.withValues(alpha: 0.12),
+                  color: Colors.white.withValues(alpha: .18),
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
             ])
           : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Tổng thu nhập',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF229650),
-                  )),
-              const SizedBox(height: 6),
-              Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+              Row(children: [
                 Expanded(
                   child: Text(
-                    Fmt.currency(summary.total),
-                    style: const TextStyle(
-                      fontSize: 31,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF229650),
-                      letterSpacing: -0.5,
+                    'Tổng thu nhập',
+                    style: AppTextStyles.bodyStrong.copyWith(
+                      color: Colors.white.withValues(alpha: .88),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const SizedBox(width: 10),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.xs,
+                  ),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
+                    color: Colors.white.withValues(alpha: .16),
+                    borderRadius: BorderRadius.circular(AppRadius.full),
                   ),
                   child: Text('${summary.orders} đơn hoàn thành',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF229650),
+                      style: AppTextStyles.caption.copyWith(
+                        color: Colors.white,
                       )),
                 ),
               ]),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                Fmt.currency(summary.total),
+                style: AppTextStyles.metricLarge.copyWith(color: Colors.white),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ]),
     );
   }
@@ -554,16 +525,23 @@ class _StatsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: IntrinsicHeight(
+      child: AppSurfaceCard(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
         child: Row(children: [
           Expanded(
             child: _StatCard(
               icon: Icons.trending_up_rounded,
-              label: 'Trung bình/đơn',
+              label: 'Trung bình mỗi đơn',
               value: Fmt.currency(_avgPerOrder),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(
+            height: 42,
+            child: VerticalDivider(width: 1, color: AppColors.divider),
+          ),
           Expanded(
             child: _StatCard(
               icon: Icons.account_balance_wallet_rounded,
@@ -587,22 +565,17 @@ class _StatCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFFEFD),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFE5DDD9)),
-        ),
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
         child: Row(children: [
           Container(
-            width: 34,
-            height: 34,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: AppColors.primarySoft,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
-            child: Icon(icon, color: AppColors.primary, size: 17),
+            child: Icon(icon, color: AppColors.primary, size: 18),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -611,19 +584,14 @@ class _StatCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(label,
-                    style: const TextStyle(
-                      fontSize: 10.5,
-                      color: AppColors.textSecondary,
-                    ),
+                    style: AppTextStyles.caption
+                        .copyWith(color: AppColors.textSecondary),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 2),
                 Text(value,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                    ),
+                    style: AppTextStyles.bodyStrong
+                        .copyWith(color: AppColors.textPrimary),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
               ],
@@ -824,7 +792,7 @@ class _OrderEarningsSection extends StatelessWidget {
                       ),
                       child: Text(_tabs[i],
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight:
                                 active ? FontWeight.w800 : FontWeight.w600,
                             color: active
@@ -888,7 +856,7 @@ class _OrderEarningsSection extends StatelessWidget {
                           onTap: onLoadMore,
                           child: const Text('Xem thêm',
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.primary,
                               )),
@@ -987,7 +955,7 @@ class _WalletTransactionItem extends StatelessWidget {
         Text(
           '${credit ? '+' : '-'}${Fmt.currency(tx.amount)}',
           style: TextStyle(
-            fontSize: 15,
+            fontSize: 16,
             fontWeight: FontWeight.w800,
             color: credit ? AppColors.success : AppColors.textSecondary,
           ),
@@ -1055,7 +1023,7 @@ class _OrderEarningsItem extends StatelessWidget {
           Text(
             '+${Fmt.currency(order.driverEarning)}',
             style: const TextStyle(
-              fontSize: 15,
+              fontSize: 16,
               fontWeight: FontWeight.w800,
               color: AppColors.success,
             ),
@@ -1102,7 +1070,7 @@ class _EmptyEarnings extends StatelessWidget {
             const SizedBox(height: 10),
             Text(title,
                 style: const TextStyle(
-                  fontSize: 13.5,
+                  fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textSecondary,
                 )),

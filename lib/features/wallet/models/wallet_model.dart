@@ -14,11 +14,11 @@ class BankAccount {
   bool get isEmpty => bankName == null && accountNumber == null;
 
   factory BankAccount.fromJson(Map<String, dynamic> j) => BankAccount(
-    bankCode:      j['bank_code']    as String?,
-    bankName:      j['bank_name']    as String?,
-    accountNumber: j['bank_account'] as String?,
-    accountHolder: j['bank_holder']  as String?,
-  );
+        bankCode: j['bank_code'] as String?,
+        bankName: j['bank_name'] as String?,
+        accountNumber: j['bank_account'] as String?,
+        accountHolder: j['bank_holder'] as String?,
+      );
 }
 
 class EarningsSummary {
@@ -28,9 +28,9 @@ class EarningsSummary {
   const EarningsSummary({this.orders = 0, this.total = 0});
 
   factory EarningsSummary.fromJson(Map<String, dynamic> j) => EarningsSummary(
-    orders: (j['orders'] as num?)?.toInt() ?? 0,
-    total:  (j['total']  as num?)?.toInt() ?? 0,
-  );
+        orders: (j['orders'] as num?)?.toInt() ?? 0,
+        total: (j['total'] as num?)?.toInt() ?? 0,
+      );
 }
 
 class DailyEarning {
@@ -47,11 +47,11 @@ class DailyEarning {
   });
 
   factory DailyEarning.fromJson(Map<String, dynamic> j) => DailyEarning(
-    date:     DateTime.tryParse(j['date'] as String? ?? '') ?? DateTime.now(),
-    total:    ((j['total']    as num?) ?? 0).round(),
-    shipping: ((j['shipping'] as num?) ?? 0).round(),
-    bonus:    ((j['bonus']    as num?) ?? 0).round(),
-  );
+        date: DateTime.tryParse(j['date'] as String? ?? '') ?? DateTime.now(),
+        total: ((j['total'] as num?) ?? 0).round(),
+        shipping: ((j['shipping'] as num?) ?? 0).round(),
+        bonus: ((j['bonus'] as num?) ?? 0).round(),
+      );
 }
 
 class WalletTransaction {
@@ -69,15 +69,16 @@ class WalletTransaction {
     required this.createdAt,
   });
 
-  factory WalletTransaction.fromJson(Map<String, dynamic> j) => WalletTransaction(
-    id:          (j['id'] as num).toInt(),
-    type:        j['type'] as String? ?? 'credit',
-    amount:      (j['amount'] as num).toInt(),
-    description: j['description'] as String?,
-    createdAt: j['created_at'] != null
-        ? DateTime.tryParse(j['created_at'] as String) ?? DateTime.now()
-        : DateTime.now(),
-  );
+  factory WalletTransaction.fromJson(Map<String, dynamic> j) =>
+      WalletTransaction(
+        id: (j['id'] as num).toInt(),
+        type: j['type'] as String? ?? 'credit',
+        amount: (j['amount'] as num).toInt(),
+        description: j['description'] as String?,
+        createdAt: j['created_at'] != null
+            ? DateTime.tryParse(j['created_at'] as String) ?? DateTime.now()
+            : DateTime.now(),
+      );
 
   bool get isCredit => type == 'credit';
 }
@@ -106,18 +107,18 @@ class DriverDebt {
   });
 
   factory DriverDebt.fromJson(Map<String, dynamic> j) => DriverDebt(
-    id:         (j['id'] as num).toInt(),
-    amount:     num.parse(j['amount_due'].toString()).toInt(),
-    paidAmount: num.parse((j['amount_paid'] ?? 0).toString()).toInt(),
-    status:     j['status'] as String? ?? 'pending',
-    note:       j['note'] as String?,
-    weekStart:  j['week_start'] as String?,
-    weekEnd:    j['week_end'] as String?,
-    refId:      j['ref_id'] as String?,
-    createdAt:  j['created_at'] != null
-        ? DateTime.tryParse(j['created_at'] as String) ?? DateTime.now()
-        : DateTime.now(),
-  );
+        id: (j['id'] as num).toInt(),
+        amount: num.parse(j['amount_due'].toString()).toInt(),
+        paidAmount: num.parse((j['amount_paid'] ?? 0).toString()).toInt(),
+        status: j['status'] as String? ?? 'pending',
+        note: j['note'] as String?,
+        weekStart: j['week_start'] as String?,
+        weekEnd: j['week_end'] as String?,
+        refId: j['ref_id'] as String?,
+        createdAt: j['created_at'] != null
+            ? DateTime.tryParse(j['created_at'] as String) ?? DateTime.now()
+            : DateTime.now(),
+      );
 
   int get remaining => amount - paidAmount;
   bool get isPaid => status == 'paid';
@@ -125,7 +126,8 @@ class DriverDebt {
 
   // Khớp điều kiện lọc trong MarkOverdueDebtsCommand: nợ phạt điểm tuần luôn
   // có ref_id dạng 'score_penalty_<...>', nợ phí tuần thường thì ref_id null.
-  bool get isScorePenalty => refId != null && refId!.startsWith('score_penalty_');
+  bool get isScorePenalty =>
+      refId != null && refId!.startsWith('score_penalty_');
   bool get isWeeklyFee => refId == null;
 
   // Nợ phạt điểm quá hạn sau 24h kể từ lúc tạo (theo MarkOverdueDebtsCommand).
@@ -141,8 +143,8 @@ class BankListItem {
   const BankListItem({required this.code, required this.name, this.logoUrl});
 
   factory BankListItem.fromJson(Map<String, dynamic> j) => BankListItem(
-    code:    j['code'] as String? ?? '',
-    name:    j['name'] as String? ?? '',
-    logoUrl: j['logo_url'] as String?,
-  );
+        code: j['code'] as String? ?? '',
+        name: j['name'] as String? ?? '',
+        logoUrl: j['logo_url'] as String?,
+      );
 }

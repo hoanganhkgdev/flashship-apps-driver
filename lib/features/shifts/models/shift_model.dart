@@ -3,7 +3,7 @@ class ShiftModel {
   final String code;
   final String name;
   final String startTime; // "06:00:00"
-  final String endTime;   // "12:00:00" (có thể "00:00:00" nếu ca qua nửa đêm)
+  final String endTime; // "12:00:00" (có thể "00:00:00" nếu ca qua nửa đêm)
 
   const ShiftModel({
     required this.id,
@@ -14,11 +14,11 @@ class ShiftModel {
   });
 
   factory ShiftModel.fromJson(Map<String, dynamic> json) => ShiftModel(
-        id:        (json['id'] as num).toInt(),
-        code:      json['code']       as String? ?? '',
-        name:      json['name']       as String? ?? '',
+        id: (json['id'] as num).toInt(),
+        code: json['code'] as String? ?? '',
+        name: json['name'] as String? ?? '',
         startTime: json['start_time'] as String? ?? '',
-        endTime:   json['end_time']   as String? ?? '',
+        endTime: json['end_time'] as String? ?? '',
       );
 
   static String _hm(String t) => t.length >= 5 ? t.substring(0, 5) : t;
@@ -44,13 +44,13 @@ class ShiftChangeRequestModel {
 
   factory ShiftChangeRequestModel.fromJson(Map<String, dynamic> json) =>
       ShiftChangeRequestModel(
-        id:       (json['id'] as num).toInt(),
+        id: (json['id'] as num).toInt(),
         shiftIds: (json['shift_ids'] as List?)
                 ?.map((e) => (e as num).toInt())
                 .toList() ??
             [],
-        status:      json['status']     as String? ?? 'pending',
-        adminNote:   json['admin_note'] as String?,
+        status: json['status'] as String? ?? 'pending',
+        adminNote: json['admin_note'] as String?,
         processedAt: json['processed_at'] != null
             ? DateTime.tryParse(json['processed_at'] as String)
             : null,
@@ -58,7 +58,7 @@ class ShiftChangeRequestModel {
             DateTime.now(),
       );
 
-  bool get isPending  => status == 'pending';
+  bool get isPending => status == 'pending';
   bool get isApproved => status == 'approved';
   bool get isRejected => status == 'rejected';
 }

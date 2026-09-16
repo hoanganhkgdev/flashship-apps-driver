@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/auth_field.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/auth_chrome.dart';
@@ -62,200 +63,115 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
-    const fieldBorder = BorderSide(color: Color(0xFFE5DDD9), width: 1);
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    const fieldBorder = BorderSide(color: AppColors.divider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFDFC),
+      backgroundColor: AppColors.background,
       resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(24, 16, 24, bottom + 24),
+          padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.xl,
+              AppSpacing.lg, bottom + AppSpacing.xl2),
           child: Form(
             key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFBE7DD),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Icon(
-                          Icons.local_shipping_outlined,
-                          size: 22,
-                          color: Color(0xFF17110F),
+            child: Column(children: [
+              const AuthBrandHeader(),
+              const SizedBox(height: AppSpacing.xl2),
+              AuthContentCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const AuthHeader(
+                      title: 'Đăng nhập',
+                      subtitle: 'Nhập thông tin tài khoản để bắt đầu nhận đơn',
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    const _FieldLabel('Số điện thoại'),
+                    const SizedBox(height: AppSpacing.sm),
+                    AuthField(
+                      controller: _phoneCtrl,
+                      hint: '0912 345 678',
+                      keyboardType: TextInputType.phone,
+                      textInputAction: TextInputAction.next,
+                      prefixIcon: const Icon(Icons.phone_outlined,
+                          size: 20, color: AppColors.textSecondary),
+                      fillColor: AppColors.surfaceAlt,
+                      borderSide: fieldBorder,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) {
+                          return 'Vui lòng nhập số điện thoại';
+                        }
+                        if (v.trim().length < 9) {
+                          return 'Số điện thoại không hợp lệ';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    const _FieldLabel('Mật khẩu'),
+                    const SizedBox(height: AppSpacing.sm),
+                    AuthField(
+                      controller: _passwordCtrl,
+                      hint: '••••••••',
+                      obscureText: _obscure,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => _submit(),
+                      prefixIcon: const Icon(Icons.lock_outline_rounded,
+                          size: 20, color: AppColors.textSecondary),
+                      suffixIcon: IconButton(
+                        onPressed: () => setState(() => _obscure = !_obscure),
+                        icon: Icon(
+                          _obscure
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          size: 20,
+                          color: AppColors.textSecondary,
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'FlashShip Tài xế',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 22,
-                          height: 1.25,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.7,
-                          color: Color(0xFF1B1411),
-                        ),
+                      fillColor: AppColors.surfaceAlt,
+                      borderSide: fieldBorder,
+                      validator: (v) {
+                        if (v == null || v.isEmpty) {
+                          return 'Vui lòng nhập mật khẩu';
+                        }
+                        if (v.length < 6) {
+                          return 'Mật khẩu phải tối thiểu 6 ký tự';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () => context.push('/forgot-password'),
+                        child: const Text('Quên mật khẩu?'),
                       ),
-                      const SizedBox(height: 2),
-                      const Text(
-                        'Giao hàng nhanh — Thu nhập ổn định',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 14,
-                          height: 1.45,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF6A605C),
-                        ),
-                      ),
+                    ),
+                    if (_error != null) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      AuthErrorBanner(message: _error!),
                     ],
-                  ),
-                ),
-                const SizedBox(height: 32),
-                const Text(
-                  'Đăng nhập',
-                  style: TextStyle(
-                    fontSize: 24,
-                    height: 1.25,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.6,
-                    color: Color(0xFF1B1411),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Nhập số điện thoại và mật khẩu để tiếp tục',
-                  style: TextStyle(
-                    fontSize: 14,
-                    height: 1.5,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF6A605C),
-                  ),
-                ),
-                const SizedBox(height: 22),
-                const _FieldLabel('Số điện thoại'),
-                const SizedBox(height: 6),
-                AuthField(
-                  controller: _phoneCtrl,
-                  hint: '0912 345 678',
-                  keyboardType: TextInputType.phone,
-                  textInputAction: TextInputAction.next,
-                  prefixIcon: const Icon(
-                    Icons.phone_outlined,
-                    size: 21,
-                    color: Color(0xFF17110F),
-                  ),
-                  fillColor: const Color(0xFFFFFDFC),
-                  borderSide: fieldBorder,
-                  borderRadius: 16,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 13),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) {
-                      return 'Vui lòng nhập số điện thoại';
-                    }
-                    if (v.trim().length < 9) {
-                      return 'Số điện thoại không hợp lệ';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                const _FieldLabel('Mật khẩu'),
-                const SizedBox(height: 6),
-                AuthField(
-                  controller: _passwordCtrl,
-                  hint: '••••••••',
-                  obscureText: _obscure,
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => _submit(),
-                  prefixIcon: const Icon(
-                    Icons.lock_outline_rounded,
-                    size: 20,
-                    color: Color(0xFF17110F),
-                  ),
-                  suffixIcon: GestureDetector(
-                    onTap: () => setState(() => _obscure = !_obscure),
-                    child: Icon(
-                      _obscure
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
-                      size: 20,
-                      color: const Color(0xFF17110F),
+                    const SizedBox(height: AppSpacing.lg),
+                    AuthPrimaryButton(
+                      label: 'Đăng nhập',
+                      loading: _loading,
+                      onPressed: _submit,
+                      height: 52,
+                      borderRadius: AppRadius.md,
+                      fontSize: AppFontSize.md,
                     ),
-                  ),
-                  fillColor: const Color(0xFFFFFDFC),
-                  borderSide: fieldBorder,
-                  borderRadius: 16,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 13),
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return 'Vui lòng nhập mật khẩu';
-                    if (v.length < 6) return 'Mật khẩu phải tối thiểu 6 ký tự';
-                    return null;
-                  },
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: GestureDetector(
-                    onTap: () => context.push('/forgot-password'),
-                    child: const Text(
-                      'Quên mật khẩu?',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFFFF6035),
-                      ),
-                    ),
-                  ),
-                ),
-                if (_error != null) ...[
-                  const SizedBox(height: 14),
-                  AuthErrorBanner(message: _error!),
-                ],
-                const SizedBox(height: 22),
-                AuthPrimaryButton(
-                  label: 'Đăng nhập',
-                  loading: _loading,
-                  onPressed: _submit,
-                  height: 54,
-                  color: const Color(0xFFFF6035),
-                  fontSize: 16,
-                ),
-                const SizedBox(height: 22),
-                Align(
-                  alignment: Alignment.center,
-                  child: GestureDetector(
-                    onTap: () => context.go('/register'),
-                    child: const Text.rich(
-                      TextSpan(
-                        text: 'Chưa có tài khoản? ',
-                        children: [
-                          TextSpan(
-                            text: 'Đăng ký ngay',
-                            style: TextStyle(
-                              color: Color(0xFFFF6035),
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF6A605C),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              AuthFooterLink(
+                promptText: 'Chưa có tài khoản? ',
+                actionText: 'Đăng ký ngay',
+                onTap: () => context.go('/register'),
+              ),
+            ]),
           ),
         ),
       ),
@@ -272,10 +188,10 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) => Text(
         text,
         style: const TextStyle(
-          fontSize: 14,
+          fontSize: AppFontSize.base,
           height: 1.4,
           fontWeight: FontWeight.w700,
-          color: Color(0xFF655B57),
+          color: AppColors.textSecondary,
         ),
       );
 }

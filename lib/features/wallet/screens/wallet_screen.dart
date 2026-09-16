@@ -3,8 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
+import '../../../core/widgets/app_screen_header.dart';
+import '../../../core/widgets/app_surface_card.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/widgets/app_back_button.dart';
 import '../models/wallet_model.dart';
 import '../providers/wallet_provider.dart';
 import 'debt_screen.dart';
@@ -28,43 +30,34 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     final wallet = ref.watch(walletProvider);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-      ),
+      value: SystemUiOverlayStyle.dark,
       child: Scaffold(
-        backgroundColor: const Color(0xFFFFF8F5),
+        backgroundColor: AppColors.background,
+        appBar: const AppScreenHeader(title: 'Số dư ví'),
         body: RefreshIndicator(
           color: AppColors.primary,
           onRefresh: () => ref.read(walletProvider.notifier).fetch(),
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // ── Gradient header ──────────────────────────────────
-                _WalletHeader(
-                  balance: wallet.balance,
-                  loading: wallet.loading,
-                  balanceError: wallet.balanceError,
-                  onWithdraw: () => _showWithdraw(context),
-                ),
-
-                // ── Cards ────────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-                  child: Column(
-                    children: [
-                      _DebtWarningBanner(debts: wallet.debts),
-                      _TransactionCard(
-                        transactions: wallet.transactions,
-                        loading: wallet.loading,
-                      ),
-                    ],
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _BalanceCard(
+                    balance: wallet.balance,
+                    loading: wallet.loading,
+                    balanceError: wallet.balanceError,
+                    onWithdraw: () => _showWithdraw(context),
                   ),
-                ),
-              ],
+                  const SizedBox(height: AppSpacing.md),
+                  _DebtWarningBanner(debts: wallet.debts),
+                  _TransactionCard(
+                    transactions: wallet.transactions,
+                    loading: wallet.loading,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -77,11 +70,9 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
   Future<void> _showWithdraw(BuildContext context) async {
     final wallet = ref.read(walletProvider);
     final messenger = ScaffoldMessenger.of(context);
-    await showModalBottomSheet(
+    await showAppBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.38),
       builder: (_) => _WithdrawSheet(
         bankAccount: wallet.bankAccount,
         onSubmit: (amount) async {
@@ -101,13 +92,13 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
 
 // ── Wallet header ─────────────────────────────────────────────────────────────
 
-class _WalletHeader extends StatelessWidget {
+class _BalanceCard extends StatelessWidget {
   final int balance;
   final bool loading;
   final bool balanceError;
   final VoidCallback onWithdraw;
 
-  const _WalletHeader({
+  const _BalanceCard({
     required this.balance,
     required this.loading,
     this.balanceError = false,
@@ -116,154 +107,89 @@ class _WalletHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final top = MediaQuery.of(context).padding.top;
-
     return Container(
-      color: const Color(0xFFFF6035),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: EdgeInsets.fromLTRB(16, top + 18, 16, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Topbar
-                    SizedBox(
-                      height: 48,
-                      child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            if (GoRouter.of(context).canPop()) ...[
-                              AppBackButton.onColor(
-                                  onTap: () => GoRouter.of(context).pop()),
-                              const SizedBox(width: 12),
-                            ],
-                            const Text(
-                              'Ví của tôi',
-                              style: TextStyle(
-                                fontSize: 19,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                                letterSpacing: -0.2,
-                              ),
-                            ),
-                          ]),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Balance
-                    Text(
-                      'Số dư ví',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.white.withValues(alpha: 0.75),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    loading
-                        ? Container(
-                            height: 42,
-                            width: 180,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          )
-                        : Text(
-                            Fmt.currency(balance),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 40,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -1,
-                            ),
-                          ),
-
-                    if (balanceError && !loading) ...[
-                      const SizedBox(height: 6),
-                      Row(children: [
-                        const Icon(Icons.wifi_off_rounded,
-                            size: 13, color: Colors.white),
-                        const SizedBox(width: 5),
-                        Text(
-                          'Không tải được số dư mới nhất — kéo xuống để thử lại',
-                          style: TextStyle(
-                              fontSize: 11.5,
-                              color: Colors.white.withValues(alpha: 0.9)),
-                        ),
-                      ]),
-                    ],
-
-                    const SizedBox(height: 24),
-
-                    // Action button
-                    SizedBox(
-                      width: double.infinity,
-                      child: _HeaderBtn(
-                        icon: Icons.arrow_upward_rounded,
-                        label: 'Rút tiền',
-                        filled: true,
-                        onTap: onWithdraw,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(height: 20, color: const Color(0xFFFFF8F5)),
-            ],
-          ),
-        ],
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primaryGradientStart,
+            AppColors.primaryGradientMiddle,
+            AppColors.primaryGradientEnd,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        boxShadow: AppShadows.raised,
       ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: const Icon(Icons.account_balance_wallet_rounded,
+                color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          const Expanded(
+            child: Text('Số dư khả dụng',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: AppFontSize.base,
+                    fontWeight: FontWeight.w700)),
+          ),
+          Icon(Icons.shield_outlined,
+              size: 19, color: Colors.white.withValues(alpha: 0.8)),
+        ]),
+        const SizedBox(height: AppSpacing.xl),
+        if (loading)
+          Container(
+            height: 38,
+            width: 180,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(AppRadius.xs),
+            ),
+          )
+        else
+          Text(Fmt.currency(balance),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: AppFontSize.xl5,
+                  height: 1.05,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.8)),
+        if (balanceError && !loading) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Text('Chưa tải được số dư mới nhất · Kéo xuống để thử lại',
+              style: TextStyle(
+                  fontSize: AppFontSize.sm,
+                  color: Colors.white.withValues(alpha: 0.9))),
+        ],
+        const SizedBox(height: AppSpacing.xl),
+        SizedBox(
+          width: double.infinity,
+          height: AppSize.buttonHeight,
+          child: FilledButton.icon(
+            onPressed: onWithdraw,
+            icon: const Icon(Icons.arrow_upward_rounded, size: 18),
+            label: const Text('Rút tiền'),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: AppColors.primaryDark,
+              textStyle: AppTextStyles.bodyStrong,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md)),
+            ),
+          ),
+        ),
+      ]),
     );
   }
-}
-
-class _HeaderBtn extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool filled;
-  final VoidCallback onTap;
-  const _HeaderBtn(
-      {required this.icon,
-      required this.label,
-      required this.filled,
-      required this.onTap});
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 13),
-          decoration: BoxDecoration(
-            color: filled
-                ? const Color(0xFFFFFEFD)
-                : Colors.white.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(24),
-            border: filled
-                ? null
-                : Border.all(color: Colors.white.withValues(alpha: 0.5)),
-          ),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(icon,
-                size: 18,
-                color: filled ? const Color(0xFF17110F) : Colors.white),
-            const SizedBox(width: 7),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: filled ? const Color(0xFFFF6035) : Colors.white,
-              ),
-            ),
-          ]),
-        ),
-      );
 }
 
 // ── Debt warning banner ───────────────────────────────────────────────────────
@@ -301,14 +227,11 @@ class _DebtWarningBanner extends StatelessWidget {
     final total = debts.fold<int>(0, (s, d) => s + d.remaining);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFE9E6),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFF2B1AE)),
-        ),
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: AppSurfaceCard(
+        color: AppColors.dangerSoft,
+        showBorder: false,
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             const Icon(Icons.warning_amber_rounded,
@@ -317,7 +240,7 @@ class _DebtWarningBanner extends StatelessWidget {
             const Expanded(
               child: Text('Bạn đang có công nợ chưa thanh toán',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     fontWeight: FontWeight.w800,
                     color: Color(0xFFD52E36),
                   )),
@@ -341,7 +264,7 @@ class _DebtWarningBanner extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(_subtitle,
                         style: const TextStyle(
-                            fontSize: 11.5, color: AppColors.danger)),
+                            fontSize: 12, color: AppColors.danger)),
                   ]),
             ),
             const SizedBox(width: 10),
@@ -358,7 +281,7 @@ class _DebtWarningBanner extends StatelessWidget {
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   const Text('Xem công nợ',
                       style: TextStyle(
-                        fontSize: 12.5,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                       )),
@@ -415,7 +338,8 @@ class _TransactionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _surfaceCard(
+    return AppSurfaceCard(
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -426,7 +350,7 @@ class _TransactionCard extends StatelessWidget {
               const Text(
                 'Lịch sử giao dịch',
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 16,
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
                 ),
@@ -581,7 +505,7 @@ class _TxItem extends StatelessWidget {
             Text(
               '$sign${Fmt.currency(tx.amount)}',
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 16,
                 fontWeight: FontWeight.w800,
                 color: _color,
               ),
@@ -677,43 +601,13 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Handle
-            Center(
-                child: Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 20),
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE1D9D5),
-                borderRadius: BorderRadius.circular(2),
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.md),
+              child: AppBottomSheetHeader(
+                title: 'Rút tiền',
+                subtitle: 'Số dư: ${Fmt.currency(balance)}',
               ),
-            )),
-
-            // Title
-            Row(children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFEAE3),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.arrow_upward_rounded,
-                    size: 18, color: Color(0xFF1B1411)),
-              ),
-              const SizedBox(width: 12),
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Rút tiền',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF1B1411),
-                    )),
-                Text('Số dư: ${Fmt.currency(balance)}',
-                    style: const TextStyle(
-                        fontSize: 12, color: Color(0xFF6A605C))),
-              ]),
-            ]),
+            ),
 
             const SizedBox(height: 20),
 
@@ -750,7 +644,7 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
                               children: [
                             Text(widget.bankAccount.bankName ?? '',
                                 style: const TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w700,
                                   color: Color(0xFF1B1411),
                                 )),
@@ -758,7 +652,7 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
                             Text(
                               '${widget.bankAccount.accountNumber} · ${widget.bankAccount.accountHolder}',
                               style: const TextStyle(
-                                  fontSize: 11, color: Color(0xFF6A605C)),
+                                  fontSize: 12, color: Color(0xFF6A605C)),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -793,7 +687,7 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
               // Amount input
               const Text('Số tiền rút',
                   style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFF6A605C))),
               const SizedBox(height: 8),
@@ -811,7 +705,7 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
                       const TextStyle(fontSize: 18, color: Color(0xFFA99F9A)),
                   suffixText: 'VND',
                   suffixStyle: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       color: Color(0xFF6A605C),
                       fontWeight: FontWeight.w500),
                   filled: true,
@@ -831,7 +725,7 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
                   ),
                   errorText: _error,
                   errorStyle:
-                      const TextStyle(fontSize: 11, color: AppColors.danger),
+                      const TextStyle(fontSize: 12, color: AppColors.danger),
                 ),
               ),
 
@@ -891,7 +785,7 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
                 const Expanded(
                   child: Text(
                       'Số dư bị trừ ngay · Hoàn lại nếu bị từ chối · Xử lý 1–2 ngày',
-                      style: TextStyle(fontSize: 11, color: Color(0xFF6A605C))),
+                      style: TextStyle(fontSize: 12, color: Color(0xFF6A605C))),
                 ),
               ]),
 
@@ -946,18 +840,4 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
           ]),
     );
   }
-}
-
-// ── Shared helpers ────────────────────────────────────────────────────────────
-
-Widget _surfaceCard({required Widget child}) {
-  return Container(
-    width: double.infinity,
-    decoration: BoxDecoration(
-      color: const Color(0xFFFFFEFD),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: const Color(0xFFE5DDD9)),
-    ),
-    child: child,
-  );
 }

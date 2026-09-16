@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 class EditNameSheet extends StatefulWidget {
   final String currentName;
@@ -20,14 +21,9 @@ class EditNameSheet extends StatefulWidget {
     required Future<void> Function(String name) onSave,
     required VoidCallback onSaved,
   }) {
-    return showModalBottomSheet(
+    return showAppBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFFFFFEFD),
-      barrierColor: Colors.black.withValues(alpha: 0.38),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
       builder: (_) => EditNameSheet(
         currentName: currentName,
         onSave: onSave,
@@ -80,67 +76,47 @@ class _EditNameSheetState extends State<EditNameSheet> {
       padding: EdgeInsets.fromLTRB(
           24, 12, 24, MediaQuery.of(context).viewInsets.bottom + 24),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(
-          width: 36,
-          height: 4,
-          decoration: BoxDecoration(
-            color: const Color(0xFFE1D9D5),
-            borderRadius: BorderRadius.circular(2),
-          ),
+        const AppBottomSheetHeader(
+          title: 'Chỉnh sửa tên',
+          subtitle: 'Tên chỉ được thay đổi một lần.',
         ),
-        const SizedBox(height: 20),
-        const Align(
-          alignment: Alignment.centerLeft,
-          child: Text('Chỉnh sửa tên',
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF1B1411))),
-        ),
-        const SizedBox(height: 4),
-        const Align(
-          alignment: Alignment.centerLeft,
-          child: Text('Tên chỉ được thay đổi một lần.',
-              style: TextStyle(fontSize: 14, color: Color(0xFF6A605C))),
-        ),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpacing.xl),
         TextField(
           controller: _ctrl,
           textCapitalization: TextCapitalization.words,
           style: const TextStyle(
-              fontSize: 16,
+              fontSize: AppFontSize.md,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF1B1411)),
+              color: AppColors.textPrimary),
           decoration: InputDecoration(
             hintText: 'Họ và tên',
-            hintStyle: const TextStyle(color: Color(0xFFA99F9A)),
+            hintStyle: const TextStyle(color: AppColors.textTertiary),
             filled: true,
-            fillColor: const Color(0xFFFFF8F5),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            fillColor: AppColors.background,
+            contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg, vertical: AppSpacing.lg),
             border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(15),
-                borderSide: const BorderSide(color: Color(0xFFE5DDD9))),
+                borderSide: const BorderSide(color: AppColors.divider)),
             enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(15),
-                borderSide: const BorderSide(color: Color(0xFFE5DDD9))),
+                borderSide: const BorderSide(color: AppColors.divider)),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(15),
               borderSide:
-                  const BorderSide(color: Color(0xFFFF6035), width: 1.5),
+                  const BorderSide(color: AppColors.primary, width: 1.5),
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         SizedBox(
           width: double.infinity,
           height: 52,
           child: FilledButton(
             onPressed: _saving ? null : _submit,
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFFF6035),
-              disabledBackgroundColor:
-                  const Color(0xFFFF6035).withValues(alpha: 0.5),
+              backgroundColor: AppColors.primary,
+              disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5),
               shape: const StadiumBorder(),
             ),
             child: _saving
@@ -151,7 +127,7 @@ class _EditNameSheetState extends State<EditNameSheet> {
                         strokeWidth: 2, color: Colors.white))
                 : const Text('Lưu',
                     style: TextStyle(
-                        fontSize: 16,
+                        fontSize: AppFontSize.md,
                         fontWeight: FontWeight.w800,
                         color: Colors.white)),
           ),

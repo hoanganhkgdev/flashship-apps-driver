@@ -14,11 +14,11 @@ class ScoreState {
 
   const ScoreState({
     this.score,
-    this.history             = const [],
-    this.loading             = false,
-    this.historyLoading      = false,
-    this.historyLoadingMore  = false,
-    this.historyHasMore      = true,
+    this.history = const [],
+    this.loading = false,
+    this.historyLoading = false,
+    this.historyLoadingMore = false,
+    this.historyHasMore = true,
   });
 
   ScoreState copyWith({
@@ -28,13 +28,14 @@ class ScoreState {
     bool? historyLoading,
     bool? historyLoadingMore,
     bool? historyHasMore,
-  }) => ScoreState(
-        score:                score               ?? this.score,
-        history:              history             ?? this.history,
-        loading:              loading             ?? this.loading,
-        historyLoading:       historyLoading      ?? this.historyLoading,
-        historyLoadingMore:   historyLoadingMore  ?? this.historyLoadingMore,
-        historyHasMore:       historyHasMore      ?? this.historyHasMore,
+  }) =>
+      ScoreState(
+        score: score ?? this.score,
+        history: history ?? this.history,
+        loading: loading ?? this.loading,
+        historyLoading: historyLoading ?? this.historyLoading,
+        historyLoadingMore: historyLoadingMore ?? this.historyLoadingMore,
+        historyHasMore: historyHasMore ?? this.historyHasMore,
       );
 }
 
@@ -77,9 +78,10 @@ class ScoreNotifier extends StateNotifier<ScoreState> {
   Future<void> fetch() async {
     state = state.copyWith(loading: true);
     try {
-      final res  = await _ref.read(apiClientProvider).get('/driver/score');
+      final res = await _ref.read(apiClientProvider).get('/driver/score');
       final data = (res.data['data'] ?? res.data) as Map<String, dynamic>;
-      state = state.copyWith(score: DriverScoreModel.fromJson(data), loading: false);
+      state = state.copyWith(
+          score: DriverScoreModel.fromJson(data), loading: false);
     } catch (_) {
       state = state.copyWith(loading: false);
     }
@@ -90,15 +92,17 @@ class ScoreNotifier extends StateNotifier<ScoreState> {
     state = state.copyWith(historyLoading: true);
     final myRequestId = ++_historyRequestId;
     try {
-      final res     = await _ref.read(apiClientProvider).get(
-          '/driver/score/history', params: {'page': 1});
+      final res = await _ref
+          .read(apiClientProvider)
+          .get('/driver/score/history', params: {'page': 1});
       if (myRequestId != _historyRequestId) return;
-      final list    = (res.data['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      final list =
+          (res.data['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
       final hasMore = res.data['has_more'] as bool? ?? false;
       state = state.copyWith(
-        history:            list.map(ScoreLogEntry.fromJson).toList(),
-        historyLoading:     false,
-        historyHasMore:     hasMore,
+        history: list.map(ScoreLogEntry.fromJson).toList(),
+        historyLoading: false,
+        historyHasMore: hasMore,
         historyLoadingMore: false,
       );
     } catch (_) {
@@ -113,16 +117,18 @@ class ScoreNotifier extends StateNotifier<ScoreState> {
     final myRequestId = ++_historyRequestId;
     try {
       _historyPage++;
-      final res     = await _ref.read(apiClientProvider).get(
-          '/driver/score/history', params: {'page': _historyPage});
+      final res = await _ref
+          .read(apiClientProvider)
+          .get('/driver/score/history', params: {'page': _historyPage});
       if (myRequestId != _historyRequestId) return;
-      final list    = (res.data['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      final list =
+          (res.data['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
       final hasMore = res.data['has_more'] as bool? ?? false;
       final newItems = list.map(ScoreLogEntry.fromJson).toList();
       state = state.copyWith(
-        history:            [...state.history, ...newItems],
+        history: [...state.history, ...newItems],
         historyLoadingMore: false,
-        historyHasMore:     hasMore,
+        historyHasMore: hasMore,
       );
     } catch (_) {
       _historyPage--;

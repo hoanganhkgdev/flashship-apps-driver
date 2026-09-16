@@ -55,23 +55,16 @@ class _FlashShipDriverAppState extends ConsumerState<FlashShipDriverApp>
       routerConfig: router,
       debugShowCheckedModeBanner: false,
       builder: (context, child) {
-        final media = MediaQuery.of(context);
-        final systemScale = media.textScaler.scale(1);
-        return MediaQuery(
-          data: media.copyWith(
-            textScaler: TextScaler.linear(systemScale * 1.08),
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
+            statusBarBrightness: Brightness.light,
+            systemNavigationBarColor: Color(0xFFFFFDFC),
+            systemNavigationBarIconBrightness: Brightness.dark,
+            systemNavigationBarDividerColor: Colors.transparent,
           ),
-          child: AnnotatedRegion<SystemUiOverlayStyle>(
-            value: const SystemUiOverlayStyle(
-              statusBarColor: Colors.transparent,
-              statusBarIconBrightness: Brightness.dark,
-              statusBarBrightness: Brightness.light,
-              systemNavigationBarColor: Color(0xFFFFFDFC),
-              systemNavigationBarIconBrightness: Brightness.dark,
-              systemNavigationBarDividerColor: Colors.transparent,
-            ),
-            child: child ?? const SizedBox.shrink(),
-          ),
+          child: child ?? const SizedBox.shrink(),
         );
       },
     );

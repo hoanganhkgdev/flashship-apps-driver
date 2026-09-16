@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/services/offer_listener_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/app_surface_card.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../models/order_model.dart';
 import '../providers/order_provider.dart';
@@ -272,7 +273,7 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
     final top = MediaQuery.of(context).padding.top;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8F5),
+      backgroundColor: AppColors.background,
       body: Column(children: [
         // ── Gradient header ───────────────────────────────────────────
         OfferHeader(
@@ -287,11 +288,16 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
         // ── Scrollable body ───────────────────────────────────────────
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.xl,
+            ),
             child: Column(children: [
-              ServiceContent(order: _order),
-              const SizedBox(height: 14),
               _OfferStats(order: _order),
+              const SizedBox(height: AppSpacing.md),
+              AppSurfaceCard(child: ServiceContent(order: _order)),
             ]),
           ),
         ),
@@ -317,25 +323,37 @@ class _OfferStats extends StatelessWidget {
   Widget build(BuildContext context) {
     final distance = Fmt.distanceKm(
         order.pickupLat, order.pickupLng, order.deliveryLat, order.deliveryLng);
-    return Row(children: [
-      _Stat(
-          icon: Icons.payments_outlined,
-          value: Fmt.currency(order.driverEarning),
-          label: 'Phí giao',
-          green: true),
-      const SizedBox(width: 10),
-      _Stat(
-          icon: Icons.account_balance_wallet_outlined,
-          value: order.isCod
-              ? Fmt.currency(order.customerCollectionAmount)
-              : 'Trả trước',
-          label: order.isCod ? 'Tổng cần thu' : 'Đã thanh toán'),
-      const SizedBox(width: 10),
-      _Stat(
-          icon: Icons.route_outlined,
-          value: distance ?? '—',
-          label: 'Khoảng cách'),
-    ]);
+    return AppSurfaceCard(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.md,
+      ),
+      child: Row(children: [
+        _Stat(
+            icon: Icons.payments_outlined,
+            value: Fmt.currency(order.driverEarning),
+            label: 'Phí giao',
+            green: true),
+        const SizedBox(
+          height: 42,
+          child: VerticalDivider(width: 1, color: AppColors.divider),
+        ),
+        _Stat(
+            icon: Icons.account_balance_wallet_outlined,
+            value: order.isCod
+                ? Fmt.currency(order.customerCollectionAmount)
+                : 'Trả trước',
+            label: order.isCod ? 'Tổng cần thu' : 'Đã thanh toán'),
+        const SizedBox(
+          height: 42,
+          child: VerticalDivider(width: 1, color: AppColors.divider),
+        ),
+        _Stat(
+            icon: Icons.route_outlined,
+            value: distance ?? '—',
+            label: 'Khoảng cách'),
+      ]),
+    );
   }
 }
 
@@ -350,28 +368,27 @@ class _Stat extends StatelessWidget {
       this.green = false});
   @override
   Widget build(BuildContext context) => Expanded(
-          child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 14),
-        decoration: BoxDecoration(
-            color: const Color(0xFFFFFEFD),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE5DDD9))),
+          child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
         child: Column(children: [
-          Icon(icon, size: 18, color: const Color(0xFF17110F)),
-          const SizedBox(height: 8),
+          Icon(
+            icon,
+            size: 18,
+            color: green ? AppColors.success : AppColors.textSecondary,
+          ),
+          const SizedBox(height: AppSpacing.xs),
           Text(value,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                  color: green
-                      ? const Color(0xFF229650)
-                      : const Color(0xFF1B1411))),
-          const SizedBox(height: 3),
+              style: AppTextStyles.bodyStrong.copyWith(
+                  color: green ? AppColors.success : AppColors.textPrimary)),
+          const SizedBox(height: AppSpacing.xxs),
           Text(label,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 10.5, color: Color(0xFFA99F9A))),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textTertiary)),
         ]),
       ));
 }

@@ -8,7 +8,8 @@ import 'package:geolocator/geolocator.dart';
 /// lặng mọi fix >50m) khiến tài xế ở nơi sóng GPS kém (hầm xe, nhà cao tầng)
 /// có thể KHÔNG gửi được vị trí nào suốt cả phiên mà không ai biết — bên nhận
 /// cần nhìn thấy cả fix kém để còn có phương án dự phòng.
-typedef LocationCallback = void Function(double lat, double lng, double bearing, double accuracy);
+typedef LocationCallback = void Function(
+    double lat, double lng, double bearing, double accuracy);
 
 class LocationService {
   static final LocationService instance = LocationService._();
@@ -101,9 +102,10 @@ class LocationService {
         // online (_onLocation != null) thì còn phải thử lại.
         if (_onLocation == null) return;
         _errorCount++;
-        final secs  = (_errorCount * 3).clamp(3, 30); // 3s, 6s, 9s … tối đa 30s
+        final secs = (_errorCount * 3).clamp(3, 30); // 3s, 6s, 9s … tối đa 30s
         final delay = Duration(seconds: secs);
-        debugPrint('[LocationService] Retry #$_errorCount in ${delay.inSeconds}s');
+        debugPrint(
+            '[LocationService] Retry #$_errorCount in ${delay.inSeconds}s');
         await Future.delayed(delay);
         if (_onLocation != null) await _runExclusive(_listen);
       },
@@ -123,7 +125,8 @@ class LocationService {
         // "online" nhưng app đã bị hệ điều hành cho ngủ, không nhận được đơn.
         foregroundNotificationConfig: const ForegroundNotificationConfig(
           notificationTitle: 'FlashShip đang hoạt động',
-          notificationText: 'Đang nhận đơn hàng — đừng tắt để không bị gián đoạn',
+          notificationText:
+              'Đang nhận đơn hàng — đừng tắt để không bị gián đoạn',
           notificationChannelName: 'Đang chạy nền',
           enableWakeLock: true,
           setOngoing: true,
@@ -146,6 +149,8 @@ class LocationService {
       perm = await Geolocator.requestPermission();
     }
     if (perm == LocationPermission.deniedForever) return false;
-    return perm == LocationPermission.always || perm == LocationPermission.whileInUse;
+    if (Platform.isAndroid) return perm == LocationPermission.always;
+    return perm == LocationPermission.always ||
+        perm == LocationPermission.whileInUse;
   }
 }

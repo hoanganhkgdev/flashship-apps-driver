@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +8,7 @@ import '../../../core/services/notification_service.dart';
 import '../../../core/services/location_push_service.dart';
 import '../../../core/services/offer_listener_service.dart';
 import '../../../core/services/session_guard_service.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../providers/home_providers.dart';
 import '../widgets/bottom_nav.dart';
@@ -26,6 +28,9 @@ Future<String?> _checkLocationIssue() async {
   if (perm == LocationPermission.denied ||
       perm == LocationPermission.deniedForever) {
     return 'permission';
+  }
+  if (Platform.isAndroid && perm != LocationPermission.always) {
+    return 'background_permission';
   }
   return null;
 }
@@ -208,11 +213,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8F5),
-      // Cho body vẽ tràn xuống phía sau bottomNavigationBar — bắt buộc để
-      // hiệu ứng kính mờ (BackdropFilter) của BottomNav có nội dung thật
-      // phía sau để làm mờ, thay vì chỉ mờ màu nền phẳng của Scaffold.
-      extendBody: true,
+      backgroundColor: AppColors.background,
       body: IndexedStack(index: tab, children: pages),
       bottomNavigationBar: BottomNav(
         currentIndex: tab,

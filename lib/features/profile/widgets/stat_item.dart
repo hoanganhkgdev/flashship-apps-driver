@@ -22,7 +22,8 @@ class StatItem extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 36, height: 36,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
@@ -40,7 +41,7 @@ class StatItem extends StatelessWidget {
             const SizedBox(height: 2),
             Text(label,
                 style: const TextStyle(
-                    fontSize: 11, color: AppColors.textSecondary)),
+                    fontSize: 12, color: AppColors.textSecondary)),
           ],
         ),
       );

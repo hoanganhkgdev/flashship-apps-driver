@@ -67,15 +67,7 @@ class StepCard extends StatelessWidget {
                   : const Color(0xFFE5DDD9),
           width: isActive ? 1.5 : 1,
         ),
-        boxShadow: isActive
-            ? [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                )
-              ]
-            : null,
+        boxShadow: AppShadows.soft,
       ),
       child: Row(
         children: [
@@ -164,7 +156,8 @@ class PendingSupportCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-        elevation: 0,
+        elevation: 2,
+        shadowColor: const Color(0x1A1B1411),
         color: Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.xl),
@@ -228,7 +221,7 @@ class PendingSupportCard extends StatelessWidget {
                     'Gọi ngay',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                      fontSize: 14,
                     ),
                   ),
                 ),
@@ -257,6 +250,7 @@ class PendingActionButton extends StatelessWidget {
         loading: loggingIn,
         onPressed: approved ? onLogin : null,
         height: 52,
+        borderRadius: AppRadius.md,
         color: approved ? AppColors.success : AppColors.primary,
       );
 }

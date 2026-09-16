@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
+
 class ProfileScoreCard extends StatelessWidget {
   final int score, maxScore;
   final String label;
@@ -33,7 +35,8 @@ class ProfileScoreCard extends StatelessWidget {
         decoration: BoxDecoration(
             color: const Color(0xFFFFFEFD),
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE5DDD9))),
+            border: Border.all(color: const Color(0xFFE5DDD9)),
+            boxShadow: AppShadows.soft),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             const Text('Điểm số tuần',
@@ -58,13 +61,13 @@ class ProfileScoreCard extends StatelessWidget {
           Row(children: [
             Text('${penaltyAt ?? 70} điểm · -${_money(penaltyAmt)}đ',
                 style: const TextStyle(
-                    fontSize: 10.5,
+                    fontSize: 10,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFFD83C35))),
             const Spacer(),
             Text('${bonusAt ?? 120} điểm · +${_money(bonusAmt)}đ',
                 style: const TextStyle(
-                    fontSize: 10.5,
+                    fontSize: 10,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFF229650))),
           ]),

@@ -21,14 +21,18 @@ class BottomBar extends StatelessWidget {
     final bottom = MediaQuery.of(context).padding.bottom;
     if (onAction == null) return const SizedBox.shrink();
     return Container(
-      padding: EdgeInsets.fromLTRB(16, 12, 16, bottom + 12),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.sm,
+        AppSpacing.lg,
+        bottom + AppSpacing.md,
+      ),
       decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: AppColors.divider)),
+        color: AppColors.surface,
         boxShadow: [
           BoxShadow(
-            color: Color(0x08000000),
-            blurRadius: 12,
+            color: Color(0x0F1B1411),
+            blurRadius: 14,
             offset: Offset(0, -4),
           ),
         ],

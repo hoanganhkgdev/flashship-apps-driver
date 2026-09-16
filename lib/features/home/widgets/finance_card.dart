@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/app_surface_card.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_section_header.dart';
+import '../../../core/widgets/app_value_row.dart';
 import '../../../core/utils/formatters.dart';
-import 'surface_card.dart';
 
 class FinanceCard extends StatelessWidget {
   final int balance;
-  final int codPending;
+  final int debtPending;
   final int debtCount;
   final VoidCallback onWalletTap;
   final VoidCallback onDebtTap;
@@ -13,68 +16,45 @@ class FinanceCard extends StatelessWidget {
   const FinanceCard(
       {super.key,
       required this.balance,
-      required this.codPending,
+      required this.debtPending,
       required this.debtCount,
       required this.onWalletTap,
       required this.onDebtTap});
 
   @override
-  Widget build(BuildContext context) => surfaceCard(
-        child: Column(children: [
+  Widget build(BuildContext context) => AppSurfaceCard(
+        color: const Color(0xFFFFFCF7),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           GestureDetector(
             onTap: onWalletTap,
-            child: const Row(children: [
-              Icon(Icons.account_balance_wallet_outlined,
-                  size: 18, color: Color(0xFF17110F)),
-              SizedBox(width: 10),
-              Text('Tài chính',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF1B1411))),
-              Spacer(),
-              Icon(Icons.chevron_right_rounded, color: Color(0xFF17110F)),
-            ]),
+            child: const AppSectionHeader(
+              title: 'Ví và công nợ',
+              subtitle: 'Số dư có thể sử dụng',
+              icon: Icons.account_balance_wallet_rounded,
+              color: AppColors.warning,
+            ),
           ),
-          const SizedBox(height: 16),
-          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  const Text('Số dư ví',
-                      style:
-                          TextStyle(fontSize: 12.5, color: Color(0xFFA99F9A))),
-                  const SizedBox(height: 3),
-                  Text(Fmt.currency(balance),
-                      style: const TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF1B1411))),
-                ])),
-            GestureDetector(
-                onTap: onDebtTap,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
-                  decoration: BoxDecoration(
-                      color: const Color(0xFFFFF1CC),
-                      borderRadius: BorderRadius.circular(18)),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Text(
-                        debtCount > 0
-                            ? 'Công nợ COD ${Fmt.currency(codPending)}'
-                            : 'Không có công nợ',
-                        style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFFB77300))),
-                    const SizedBox(width: 7),
-                    const Icon(Icons.chevron_right_rounded,
-                        size: 17, color: Color(0xFF17110F)),
-                  ]),
-                )),
-          ]),
+          const SizedBox(height: AppSpacing.lg),
+          Text('SỐ DƯ VÍ',
+              style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textTertiary, letterSpacing: .6)),
+          const SizedBox(height: AppSpacing.sm),
+          Text(Fmt.currency(balance),
+              style: AppTextStyles.metricLarge
+                  .copyWith(color: AppColors.textPrimary)),
+          const SizedBox(height: AppSpacing.md),
+          const Divider(height: 1),
+          const SizedBox(height: AppSpacing.xs),
+          AppValueRow(
+            label: debtCount > 0 ? '$debtCount khoản công nợ' : 'Công nợ',
+            value:
+                debtCount > 0 ? Fmt.currency(debtPending) : 'Không có công nợ',
+            icon: debtCount > 0
+                ? Icons.receipt_long_rounded
+                : Icons.verified_rounded,
+            color: debtCount > 0 ? AppColors.warning : AppColors.success,
+            onTap: onDebtTap,
+          ),
         ]),
       );
 }

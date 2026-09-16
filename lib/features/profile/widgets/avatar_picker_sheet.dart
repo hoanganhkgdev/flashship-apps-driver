@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 class AvatarPickerSheet extends StatelessWidget {
   final dynamic user;
@@ -29,10 +30,8 @@ class AvatarPickerSheet extends StatelessWidget {
     required VoidCallback onCamera,
     required VoidCallback onGallery,
   }) {
-    return showModalBottomSheet(
+    return showAppBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.38),
       isScrollControlled: true,
       builder: (_) => AvatarPickerSheet(
         user: user,
@@ -57,18 +56,11 @@ class AvatarPickerSheet extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            // Drag handle
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 20),
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE1D9D5),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
+            const Padding(
+              padding: EdgeInsets.only(top: 12),
+              child: AppBottomSheetHeader(title: 'Ảnh đại diện'),
             ),
+            const SizedBox(height: AppSpacing.xl),
 
             // Avatar preview
             Stack(alignment: Alignment.center, children: [
@@ -120,7 +112,7 @@ class AvatarPickerSheet extends StatelessWidget {
             Text(
               user?.name ?? 'Tài xế',
               style: const TextStyle(
-                fontSize: 17,
+                fontSize: 18,
                 fontWeight: FontWeight.w800,
                 color: Color(0xFF1B1411),
               ),
@@ -155,7 +147,7 @@ class AvatarPickerSheet extends StatelessWidget {
                           ? 'Còn ${avatarNextUpdate!.difference(DateTime.now()).inDays + 1} ngày nữa có thể đổi ảnh.'
                           : 'Ảnh đại diện chỉ được thay đổi 1 tháng 1 lần.',
                       style: const TextStyle(
-                        fontSize: 13,
+                        fontSize: 14,
                         color: AppColors.primary,
                         fontWeight: FontWeight.w500,
                         height: 1.4,
@@ -211,7 +203,7 @@ class AvatarPickerSheet extends StatelessWidget {
                 child: const Text('Hủy',
                     style: TextStyle(
                         color: Color(0xFF6A605C),
-                        fontSize: 15,
+                        fontSize: 16,
                         fontWeight: FontWeight.w700)),
               ),
             ),

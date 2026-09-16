@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 
-/// Nút vuốt để xác nhận hành động (unchanged logic — AnimationController +
-/// drag gesture, chỉ chuyển file, không sửa logic).
+/// Nút vuốt để xác nhận hành động quan trọng.
 class SwipeButton extends StatefulWidget {
   final String label;
   final Color color;
@@ -24,9 +23,9 @@ class SwipeButton extends StatefulWidget {
 
 class _SwipeButtonState extends State<SwipeButton>
     with SingleTickerProviderStateMixin {
-  static const double _h = 58.0;
-  static const double _thumb = 50.0;
-  static const double _pad = 4.0;
+  static const double _h = 56.0;
+  static const double _thumb = 46.0;
+  static const double _pad = 5.0;
 
   double _dragX = 0;
   bool _triggered = false;
@@ -86,9 +85,15 @@ class _SwipeButtonState extends State<SwipeButton>
 
         return Container(
           decoration: BoxDecoration(
-            color: widget.color.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(17),
-            border: Border.all(color: widget.color.withValues(alpha: 0.30)),
+            color: widget.color,
+            borderRadius: BorderRadius.circular(_h / 2),
+            boxShadow: [
+              BoxShadow(
+                color: widget.color.withValues(alpha: .24),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Stack(children: [
             // Fill progress
@@ -98,8 +103,8 @@ class _SwipeButtonState extends State<SwipeButton>
                 widthFactor: progress,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: widget.color.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(17),
+                    color: Colors.black.withValues(alpha: .10),
+                    borderRadius: BorderRadius.circular(_h / 2),
                   ),
                 ),
               ),
@@ -108,19 +113,32 @@ class _SwipeButtonState extends State<SwipeButton>
             // Label
             Center(
               child: Opacity(
-                opacity: (1 - progress * 1.8).clamp(0.0, 1.0),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text(
-                    widget.label,
-                    style: TextStyle(
-                        color: widget.color,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700),
+                opacity: (1 - progress * 1.6).clamp(0.0, 1.0),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 58),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          widget.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.bodyStrong.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Icon(
+                        Icons.keyboard_double_arrow_right_rounded,
+                        color: Colors.white.withValues(alpha: .72),
+                        size: 18,
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 6),
-                  Icon(Icons.keyboard_double_arrow_right_rounded,
-                      color: widget.color.withValues(alpha: 0.5), size: 18),
-                ]),
+                ),
               ),
             ),
 
@@ -135,19 +153,34 @@ class _SwipeButtonState extends State<SwipeButton>
                   width: _thumb,
                   height: _thumb,
                   decoration: BoxDecoration(
-                    color:
-                        widget.loading ? AppColors.textSecondary : widget.color,
-                    borderRadius: BorderRadius.circular(13),
+                    color: widget.loading
+                        ? Colors.white.withValues(alpha: .88)
+                        : Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x29000000),
+                        blurRadius: 6,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: widget.loading
                       ? const Center(
                           child: SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white)))
-                      : const Icon(Icons.arrow_forward_ios_rounded,
-                          color: Colors.white, size: 20),
+                            width: 19,
+                            height: 19,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        )
+                      : Icon(
+                          Icons.arrow_forward_rounded,
+                          color: widget.color,
+                          size: 21,
+                        ),
                 ),
               ),
             ),

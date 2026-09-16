@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../models/order_model.dart';
 
 class OfferHeader extends StatelessWidget {
@@ -10,83 +11,104 @@ class OfferHeader extends StatelessWidget {
   final Animation<double> pulse;
   final double topInset;
 
-  const OfferHeader(
-      {super.key,
-      required this.order,
-      required this.remaining,
-      required this.progress,
-      required this.isUrgent,
-      required this.pulse,
-      required this.topInset});
+  const OfferHeader({
+    super.key,
+    required this.order,
+    required this.remaining,
+    required this.progress,
+    required this.isUrgent,
+    required this.pulse,
+    required this.topInset,
+  });
 
   @override
-  Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        color: isUrgent ? const Color(0xFFE54339) : const Color(0xFFFF6035),
-        padding: EdgeInsets.fromLTRB(20, topInset + 18, 20, 26),
-        child: Column(children: [
-          Row(children: [
-            Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: .22),
-                    borderRadius: BorderRadius.circular(18)),
-                child: Text(order.displayTitle,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white))),
-            const Spacer(),
-            Text('#${order.code}',
-                style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white)),
-          ]),
-          const SizedBox(height: 20),
-          SizedBox(
-              width: 116,
-              height: 116,
-              child: Stack(alignment: Alignment.center, children: [
-                SizedBox.expand(
-                    child: CircularProgressIndicator(
-                        value: progress,
-                        strokeWidth: 6,
-                        backgroundColor: Colors.white.withValues(alpha: .25),
-                        color: Colors.white)),
-                Container(
-                    width: 104,
-                    height: 104,
-                    decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                            color: Colors.white.withValues(alpha: .28),
-                            width: 2))),
-                AnimatedBuilder(
-                    animation: pulse,
-                    builder: (_, __) =>
-                        Column(mainAxisSize: MainAxisSize.min, children: [
-                          Text('$remaining',
-                              style: const TextStyle(
-                                  fontSize: 34,
-                                  height: 1,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white)),
-                          const SizedBox(height: 3),
-                          const Text('giây',
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white)),
-                        ])),
-              ])),
-          const SizedBox(height: 18),
-          const Text('Đơn mới đang chờ bạn',
-              style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white)),
+  Widget build(BuildContext context) {
+    final timerColor = isUrgent ? AppColors.danger : AppColors.primary;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        topInset + AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.md,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x0F1B1411),
+            blurRadius: 12,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(children: [
+        Row(children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.primarySoft,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: const Icon(
+              Icons.notifications_active_rounded,
+              size: 20,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Đơn mới', style: AppTextStyles.screenTitle),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  order.code,
+                  style: AppTextStyles.label.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          AnimatedBuilder(
+            animation: pulse,
+            builder: (context, child) => Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              decoration: BoxDecoration(
+                color: timerColor.withValues(
+                  alpha: isUrgent ? .10 + pulse.value * .08 : .10,
+                ),
+                borderRadius: BorderRadius.circular(AppRadius.full),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.timer_outlined, size: 17, color: timerColor),
+                const SizedBox(width: AppSpacing.xs),
+                Text(
+                  '$remaining giây',
+                  style: AppTextStyles.bodyStrong.copyWith(color: timerColor),
+                ),
+              ]),
+            ),
+          ),
         ]),
-      );
+        const SizedBox(height: AppSpacing.md),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.full),
+          child: LinearProgressIndicator(
+            value: progress.clamp(0.0, 1.0),
+            minHeight: 4,
+            backgroundColor: AppColors.surfaceAlt,
+            color: timerColor,
+          ),
+        ),
+      ]),
+    );
+  }
 }

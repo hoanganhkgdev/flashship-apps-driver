@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 /// Pill nhỏ icon + chữ, dùng trên nền gradient cam (VD trong
 /// [GradientHeaderShell]). [danger] đổi màu sang đỏ cho cảnh báo (VD "quá
 /// hạn"). [borderAlpha] mặc định khớp màn công nợ (0.35) — earnings_screen
@@ -20,20 +22,26 @@ class InfoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
         decoration: BoxDecoration(
           color: (danger ? Colors.red : Colors.white).withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(AppRadius.full),
           border: Border.all(
-            color: (danger ? Colors.red : Colors.white).withValues(alpha: borderAlpha),
+            color: (danger ? Colors.red : Colors.white)
+                .withValues(alpha: borderAlpha),
           ),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 12, color: Colors.white.withValues(alpha: 0.9)),
-          const SizedBox(width: 5),
+          Icon(icon,
+              size: AppFontSize.sm, color: Colors.white.withValues(alpha: 0.9)),
+          const SizedBox(width: AppSpacing.xs),
           Text(label,
               style: TextStyle(
-                fontSize: 12, fontWeight: FontWeight.w600,
+                fontSize: AppFontSize.sm,
+                fontWeight: FontWeight.w600,
                 color: Colors.white.withValues(alpha: 0.9),
               )),
         ]),

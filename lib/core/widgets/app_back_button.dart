@@ -18,7 +18,7 @@ class AppBackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = _onColor ? 34.0 : 40.0;
+    final size = _onColor ? 34.0 : AppSpacing.xl4;
     final button = Container(
       width: size,
       height: size,
@@ -29,15 +29,22 @@ class AppBackButton extends StatelessWidget {
         borderRadius:
             BorderRadius.circular(_onColor ? AppRadius.sm : AppRadius.md),
       ),
-      child: Icon(Icons.arrow_back_ios_new_rounded,
-          size: _onColor ? 17 : 16, color: AppColors.textPrimary),
+      child: Icon(
+        Icons.arrow_back_ios_new_rounded,
+        size: _onColor ? 17 : AppSize.iconSm,
+        color: AppColors.textPrimary,
+      ),
     );
     return GestureDetector(
       onTap: onTap,
       // Vùng chạm 48x48 cho biến thể onColor (nút vẽ nhỏ hơn để cân đối thị
       // giác trên header màu) — biến thể còn lại đã đủ 40px, không cần bọc.
       child: _onColor
-          ? SizedBox(width: 48, height: 48, child: Center(child: button))
+          ? SizedBox(
+              width: AppSize.minTouchTarget,
+              height: AppSize.minTouchTarget,
+              child: Center(child: button),
+            )
           : button,
     );
   }

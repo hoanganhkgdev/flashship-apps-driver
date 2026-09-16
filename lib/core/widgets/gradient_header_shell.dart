@@ -47,7 +47,11 @@ class GradientHeaderShell extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: colors ??
-                const [Color(0xFFCC5A08), Color(0xFFE8720C), Color(0xFFF59E30)],
+                const [
+                  AppColors.primaryGradientStart,
+                  AppColors.primaryGradientMiddle,
+                  AppColors.primaryGradientEnd,
+                ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -74,7 +78,10 @@ class GradientHeaderShell extends StatelessWidget {
               crossAxisAlignment: crossAxisAlignment,
               children: [
                 ...children,
-                Container(height: 20, color: seamColor ?? AppColors.background),
+                Container(
+                  height: AppSpacing.xl,
+                  color: seamColor ?? AppColors.background,
+                ),
               ],
             ),
           ],

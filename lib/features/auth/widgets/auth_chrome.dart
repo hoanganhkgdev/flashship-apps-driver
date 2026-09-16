@@ -1,6 +1,61 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_surface_card.dart';
+
+/// Nhận diện dùng chung ở đầu các màn xác thực.
+class AuthBrandHeader extends StatelessWidget {
+  final bool compact;
+
+  const AuthBrandHeader({super.key, this.compact = false});
+
+  @override
+  Widget build(BuildContext context) => Column(children: [
+        Container(
+          width: compact ? 48 : 56,
+          height: compact ? 48 : 56,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [AppColors.primary, AppColors.primaryGradientEnd],
+            ),
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            boxShadow: AppShadows.soft,
+          ),
+          child: const Icon(Icons.local_shipping_rounded,
+              size: 27, color: Colors.white),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        const Text('FlashShip Tài xế',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                fontSize: AppFontSize.xl2,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.6,
+                color: AppColors.textPrimary)),
+        if (!compact) ...[
+          const SizedBox(height: AppSpacing.xs),
+          const Text('Giao hàng nhanh · Thu nhập ổn định',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: AppFontSize.base, color: AppColors.textSecondary)),
+        ],
+      ]);
+}
+
+/// Card trắng chuẩn chứa form của toàn bộ luồng xác thực.
+class AuthContentCard extends StatelessWidget {
+  final Widget child;
+
+  const AuthContentCard({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) => AppSurfaceCard(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: child,
+      );
+}
 
 /// Nút back bo góc dùng chung cho các màn auth (register/otp/forgot-password).
 class AuthBackButton extends StatelessWidget {
@@ -127,7 +182,7 @@ class AuthErrorBanner extends StatelessWidget {
               child: Text(
                 message,
                 style: const TextStyle(
-                  fontSize: 15,
+                  fontSize: 16,
                   color: AppColors.danger,
                   fontWeight: FontWeight.w500,
                 ),

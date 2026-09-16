@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/launch_utils.dart';
+import '../../../core/widgets/app_status_banner.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/pending_widgets.dart';
 
@@ -18,6 +19,7 @@ class PendingScreen extends ConsumerStatefulWidget {
 class _PendingScreenState extends ConsumerState<PendingScreen> {
   bool _approved = false;
   bool _loggingIn = false;
+  bool _pollError = false;
   Timer? _pollTimer;
 
   @override
@@ -44,11 +46,14 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
       final data = (res.data['data'] ?? res.data) as Map<String, dynamic>;
       final user = (data['user'] ?? data) as Map<String, dynamic>;
       final status = (user['status'] as num?)?.toInt() ?? 0;
+      if (mounted && _pollError) setState(() => _pollError = false);
       if (status == 1 && mounted) {
         _pollTimer?.cancel();
         setState(() => _approved = true);
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted && !_pollError) setState(() => _pollError = true);
+    }
   }
 
   Future<void> _login() async {
@@ -73,14 +78,11 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFFFFF6F0),
-              Colors.white,
-            ],
+            colors: [AppColors.background, AppColors.background],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -112,8 +114,8 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
                     const Text(
                       'Đang chờ xét duyệt',
                       style: TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.w900,
+                        fontSize: AppFontSize.xl3,
+                        fontWeight: FontWeight.w800,
                         color: AppColors.textPrimary,
                         letterSpacing: -0.8,
                       ),
@@ -159,6 +161,18 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
                     ),
 
                     const SizedBox(height: 40),
+
+                    if (_pollError) ...[
+                      AppStatusBanner(
+                        icon: Icons.cloud_off_rounded,
+                        color: AppColors.warning,
+                        title: 'Chưa kiểm tra được trạng thái',
+                        message: 'Mất kết nối, ứng dụng sẽ tiếp tục thử lại.',
+                        actionLabel: 'Thử lại',
+                        onTap: _poll,
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                    ],
 
                     // ── Contact Support ───────────────────────────────────────
                     PendingSupportCard(onCallSupport: _callSupport),

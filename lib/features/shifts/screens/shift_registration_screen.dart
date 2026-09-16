@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/app_back_button.dart';
+import '../../../core/widgets/app_screen_header.dart';
+import '../../../core/widgets/app_surface_card.dart';
 import '../providers/shift_provider.dart';
 import '../widgets/pending_banner.dart';
 import '../widgets/rejected_banner.dart';
@@ -77,15 +78,14 @@ class _ShiftRegistrationScreenState
       };
 
   Color _colorFor(String code) => switch (code) {
-        'morning' => const Color(0xFFF59E0B),
-        'afternoon' => const Color(0xFF3B82F6),
+        'morning' => AppColors.amber,
+        'afternoon' => AppColors.info,
         'evening' => const Color(0xFF6366F1),
         _ => AppColors.primary,
       };
 
   @override
   Widget build(BuildContext context) {
-    final top = MediaQuery.of(context).padding.top;
     final state = ref.watch(shiftProvider);
 
     // Đồng bộ lựa chọn ban đầu với ca đã đăng ký — chỉ chạy 1 lần, đúng lúc
@@ -120,7 +120,8 @@ class _ShiftRegistrationScreenState
         statusBarBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFFFF8F5),
+        backgroundColor: AppColors.background,
+        appBar: const AppScreenHeader(title: 'Ca làm việc'),
         body: state.loading && state.shifts.isEmpty
             ? const Center(
                 child: CircularProgressIndicator(
@@ -132,111 +133,89 @@ class _ShiftRegistrationScreenState
                   padding: const EdgeInsets.only(bottom: 100),
                   physics: const AlwaysScrollableScrollPhysics(),
                   children: [
-                    Container(
-                      width: double.infinity,
-                      color: const Color(0xFFFFFEFD),
-                      padding: EdgeInsets.fromLTRB(16, top + 16, 16, 16),
-                      child: Row(children: [
-                        AppBackButton(
-                            onTap: () => Navigator.of(context).maybePop()),
-                        const Expanded(
-                          child: Text('Ca làm việc',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontSize: 19,
-                                  fontWeight: FontWeight.w900,
-                                  color: Color(0xFF1B1411),
-                                  letterSpacing: -0.2)),
-                        ),
-                        const SizedBox(width: 40),
-                      ]),
-                    ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.lg),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (isRegistered &&
                               state.currentShiftIds.isNotEmpty) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFFEAE3),
-                                borderRadius: BorderRadius.circular(18),
-                              ),
+                            AppSurfaceCard(
+                              color: AppColors.successSoft,
+                              showBorder: false,
                               child: Row(children: [
-                                const Icon(Icons.check_circle_outline_rounded,
-                                    color: Color(0xFF17110F), size: 20),
-                                const SizedBox(width: 10),
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.check_rounded,
+                                    color: AppColors.success,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.md),
                                 Expanded(
                                   child: Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        const Text('Đang đăng ký',
-                                            style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w600,
-                                                color: Color(0xFFFF6035))),
-                                        const SizedBox(height: 2),
+                                        Text('Ca đang áp dụng',
+                                            style: AppTextStyles.label.copyWith(
+                                                color: AppColors.success)),
+                                        const SizedBox(height: AppSpacing.xxs),
                                         Text(
                                           currentNames,
-                                          style: const TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w800,
-                                              color: AppColors.textPrimary),
+                                          style: AppTextStyles.bodyStrong,
                                         ),
                                       ]),
                                 ),
                               ]),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: AppSpacing.lg),
                           ],
                           if (hasPending) ...[
                             PendingBanner(
                                 request: state.changeRequest!,
                                 shifts: state.shifts),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: AppSpacing.lg),
                           ] else if (state.changeRequest?.isRejected ??
                               false) ...[
                             RejectedBanner(request: state.changeRequest!),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: AppSpacing.lg),
                           ],
                           Text(
-                            isRegistered
-                                ? 'Ca hiện tại của bạn'
-                                : 'Chọn ca làm việc',
-                            style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF1B1411)),
+                            isRegistered ? 'Thay đổi ca' : 'Chọn ca làm việc',
+                            style: AppTextStyles.sectionTitle,
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: AppSpacing.xs),
                           Text(
                             isRegistered
                                 ? 'Muốn đổi ca, chọn lại bên dưới rồi gửi yêu cầu để quản lý duyệt.'
                                 : 'Đăng ký ca phù hợp với bạn, áp dụng ngay và lặp lại mỗi ngày cho tới khi bạn đổi ca.',
-                            style: const TextStyle(
-                                fontSize: 12.5,
-                                color: AppColors.textSecondary,
-                                height: 1.4),
+                            style: AppTextStyles.label
+                                .copyWith(color: AppColors.textSecondary),
                           ),
                           const SizedBox(height: 14),
                           if (state.shifts.isEmpty && state.loadError)
                             Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 32),
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: AppSpacing.xl3),
                               child: Center(
                                 child: Column(children: [
                                   const Icon(Icons.wifi_off_rounded,
                                       color: AppColors.textSecondary, size: 28),
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: AppSpacing.sm),
                                   const Text(
                                       'Không tải được danh sách ca làm việc',
                                       style: TextStyle(
                                           color: AppColors.textSecondary,
-                                          fontSize: 13)),
+                                          fontSize: AppFontSize.base)),
                                   const SizedBox(height: 10),
                                   TextButton(
                                     onPressed: () => ref
@@ -249,13 +228,14 @@ class _ShiftRegistrationScreenState
                             )
                           else if (state.shifts.isEmpty)
                             const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 32),
+                              padding: EdgeInsets.symmetric(
+                                  vertical: AppSpacing.xl3),
                               child: Center(
                                 child: Text(
                                     'Khu vực của bạn chưa có ca nào được thiết lập',
                                     style: TextStyle(
                                         color: AppColors.textSecondary,
-                                        fontSize: 13)),
+                                        fontSize: AppFontSize.base)),
                               ),
                             )
                           else
@@ -280,21 +260,30 @@ class _ShiftRegistrationScreenState
             ? null
             : SafeArea(
                 child: Container(
-                  color: const Color(0xFFFFFEFD),
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                  decoration: const BoxDecoration(
+                    color: AppColors.surface,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x141B1411),
+                        blurRadius: 16,
+                        offset: Offset(0, -5),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.lg,
+                      AppSpacing.md, AppSpacing.lg, AppSpacing.lg),
                   child: SizedBox(
                     width: double.infinity,
-                    height: 52,
+                    height: AppSize.buttonHeight,
                     child: FilledButton(
                       onPressed: (canSubmit && !state.submitting)
                           ? () => _submit(isRegistered)
                           : null,
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF6035),
+                        backgroundColor: AppColors.primary,
                         disabledBackgroundColor:
-                            const Color(0xFFFF6035).withValues(alpha: 0.35),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(26)),
+                            AppColors.primary.withValues(alpha: 0.35),
+                        shape: const StadiumBorder(),
                       ),
                       child: state.submitting
                           ? const SizedBox(
@@ -308,10 +297,8 @@ class _ShiftRegistrationScreenState
                                   : (isRegistered
                                       ? 'Gửi yêu cầu đổi ca'
                                       : 'Đăng ký ca làm việc'),
-                              style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white),
+                              style: AppTextStyles.sectionTitle
+                                  .copyWith(color: Colors.white),
                             ),
                     ),
                   ),

@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart' hide ServiceStatus;
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_status_banner.dart';
 
 class OverdueBanner extends StatelessWidget {
   final VoidCallback onTap;
@@ -56,6 +59,7 @@ Future<bool?> showNotifPrimingDialog(BuildContext context) {
 }
 
 Future<void> showLocationPermissionGuide(BuildContext context) {
+  final isAndroid = Platform.isAndroid;
   return showDialog(
     context: context,
     builder: (_) => AlertDialog(
@@ -66,20 +70,24 @@ Future<void> showLocationPermissionGuide(BuildContext context) {
         Text('Cấp quyền vị trí',
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
       ]),
-      content: const Column(
+      content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Làm theo 4 bước sau:',
-              style: TextStyle(fontSize: 15, color: Color(0xFF666666))),
-          SizedBox(height: 12),
-          GuideStep(number: '1', text: 'Bấm "Mở cài đặt" bên dưới'),
-          SizedBox(height: 8),
-          GuideStep(number: '2', text: 'Chọn ứng dụng Flash Driver'),
-          SizedBox(height: 8),
-          GuideStep(number: '3', text: 'Chọn Vị trí'),
-          SizedBox(height: 8),
-          GuideStep(number: '4', text: 'Chọn "Luôn luôn"'),
+          const Text('Thiết lập để GPS hoạt động ổn định:',
+              style: TextStyle(fontSize: 16, color: Color(0xFF666666))),
+          const SizedBox(height: 12),
+          const GuideStep(number: '1', text: 'Bấm "Mở cài đặt" bên dưới'),
+          const SizedBox(height: 8),
+          const GuideStep(number: '2', text: 'Chọn Quyền → Vị trí'),
+          const SizedBox(height: 8),
+          const GuideStep(number: '3', text: 'Chọn "Luôn cho phép"'),
+          if (isAndroid) ...[
+            const SizedBox(height: 8),
+            const GuideStep(number: '4', text: 'Pin → chọn "Không hạn chế"'),
+            const SizedBox(height: 8),
+            const GuideStep(number: '5', text: 'Trên Xiaomi: bật Tự khởi động'),
+          ],
         ],
       ),
       actions: [
@@ -115,7 +123,7 @@ Future<bool?> showCccdRequiredDialog(BuildContext context) {
       ]),
       content: const Text(
         'Bạn cần tải lên CCCD và chờ admin duyệt trước khi có thể bật online nhận đơn.',
-        style: TextStyle(fontSize: 15, height: 1.5),
+        style: TextStyle(fontSize: 16, height: 1.5),
       ),
       actions: [
         TextButton(
@@ -146,7 +154,7 @@ Future<bool?> showNoShiftRequiredDialog(BuildContext context) {
       ]),
       content: const Text(
         'Bạn cần đăng ký ca làm việc trước khi có thể bật online nhận đơn.',
-        style: TextStyle(fontSize: 15, height: 1.5),
+        style: TextStyle(fontSize: 16, height: 1.5),
       ),
       actions: [
         TextButton(
@@ -172,13 +180,20 @@ class LocationIssueBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isServiceOff = issue == 'service';
+    final needsBackground = issue == 'background_permission';
     return AlertCard(
       color: const Color(0xFFBE7900),
       icon: isServiceOff
           ? Icons.location_off_rounded
           : Icons.location_disabled_rounded,
-      title: isServiceOff ? 'Định vị GPS đang tắt' : 'Chưa cấp quyền vị trí',
-      subtitle: 'Bật lại để tiếp tục nhận đơn mới',
+      title: isServiceOff
+          ? 'Định vị GPS đang tắt'
+          : needsBackground
+              ? 'GPS chưa được phép chạy nền'
+              : 'Chưa cấp quyền vị trí',
+      subtitle: needsBackground
+          ? 'Chọn “Luôn cho phép” để tránh mất GPS khi khóa máy'
+          : 'Bật lại để tiếp tục nhận đơn mới',
       buttonLabel: isServiceOff ? 'Bật GPS' : 'Mở cài đặt',
       onTap: () => isServiceOff
           ? Geolocator.openLocationSettings()
@@ -207,7 +222,7 @@ class NotifDeniedBanner extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Làm theo 4 bước sau:',
-                style: TextStyle(fontSize: 15, color: Color(0xFF666666))),
+                style: TextStyle(fontSize: 16, color: Color(0xFF666666))),
             SizedBox(height: 12),
             GuideStep(number: '1', text: 'Bấm "Mở cài đặt" bên dưới'),
             SizedBox(height: 8),
@@ -271,65 +286,17 @@ class AlertCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color == const Color(0xFFBE7900)
-            ? const Color(0xFFFFF2CE)
-            : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 0),
+      child: AppStatusBanner(
+        icon: icon,
+        color: color,
+        title: title,
+        message: subtitle,
+        actionLabel: buttonLabel,
+        onTap: onTap,
       ),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: color, size: 20),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title,
-                style: const TextStyle(
-                    fontSize: 15.5,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                    height: 1.2)),
-            const SizedBox(height: 2),
-            Text(subtitle,
-                style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
-                    height: 1.2)),
-          ]),
-        ),
-        const SizedBox(width: 10),
-        GestureDetector(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              buttonLabel,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ),
-      ]),
     );
   }
 }

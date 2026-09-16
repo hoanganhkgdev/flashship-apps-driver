@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/app_surface_card.dart';
+import '../../../core/widgets/app_section_header.dart';
 import '../../score/models/score_model.dart';
-import 'surface_card.dart';
 
 class DashboardScoreCard extends StatelessWidget {
   final DriverScoreModel? score;
@@ -13,19 +14,18 @@ class DashboardScoreCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return AppSurfaceCard(
       onTap: onTap,
-      child: surfaceCard(
-        // Chỉ hiện spinner lần đầu (chưa có điểm). Khi đã có điểm thì giữ hiển
-        // thị trong lúc refresh (RTDB ping / resume) để tránh nháy sang spinner.
-        child: score == null
-            ? const SizedBox(
-                height: 48,
-                child: Center(
-                    child: CircularProgressIndicator(
-                        color: AppColors.primary, strokeWidth: 2)))
-            : _content(score!),
-      ),
+      color: const Color(0xFFFFFAF8),
+      // Chỉ hiện spinner lần đầu (chưa có điểm). Khi đã có điểm thì giữ hiển
+      // thị trong lúc refresh (RTDB ping / resume) để tránh nháy sang spinner.
+      child: score == null
+          ? const SizedBox(
+              height: 48,
+              child: Center(
+                  child: CircularProgressIndicator(
+                      color: AppColors.primary, strokeWidth: 2)))
+          : _content(score!),
     );
   }
 
@@ -52,36 +52,74 @@ class DashboardScoreCard extends StatelessWidget {
 
   Widget _content(DriverScoreModel s) {
     final status = _weekStatus(s);
+    final isBonus = s.score >= (s.week?.bonusAt ?? s.maxScore + 1);
+    final isDanger = s.score < (s.week?.penaltyAt ?? -1);
+    final scoreColor = isBonus
+        ? AppColors.success
+        : isDanger
+            ? AppColors.danger
+            : AppColors.primary;
+    final scoreLabel = isBonus
+        ? 'Đang ở vùng thưởng'
+        : isDanger
+            ? 'Dưới ngưỡng an toàn'
+            : 'Đang ở vùng an toàn';
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [
-        const Text('Điểm số tuần',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-            )),
+      const AppSectionHeader(
+        title: 'Điểm tài xế',
+        subtitle: 'Điểm hiệu suất trong tuần',
+        icon: Icons.workspace_premium_rounded,
+        color: AppColors.primary,
+      ),
+      const SizedBox(height: AppSpacing.lg),
+      Text('ĐIỂM HIỆN TẠI',
+          style: AppTextStyles.caption
+              .copyWith(color: AppColors.textTertiary, letterSpacing: .6)),
+      const SizedBox(height: AppSpacing.xs),
+      Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        Text('${s.score}',
+            style: AppTextStyles.metricLarge.copyWith(color: scoreColor)),
+        Padding(
+          padding:
+              const EdgeInsets.only(left: AppSpacing.xs, bottom: AppSpacing.xs),
+          child: Text('/ ${s.maxScore}',
+              style: AppTextStyles.bodyStrong
+                  .copyWith(color: AppColors.textTertiary)),
+        ),
         const Spacer(),
-        Text('${s.score} / ${s.maxScore}',
-            style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFFFF6035))),
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+          child: Text(scoreLabel,
+              style: AppTextStyles.label.copyWith(color: scoreColor)),
+        ),
       ]),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpacing.md),
       _ScoreZoneBar(
         score: s.score,
         maxScore: s.maxScore,
         bonusAt: s.week?.bonusAt,
         penaltyAt: s.week?.penaltyAt,
       ),
+      if (s.week != null) ...[
+        const SizedBox(height: AppSpacing.xs),
+        Row(children: [
+          Text('Phạt dưới ${s.week!.penaltyAt}',
+              style: AppTextStyles.caption.copyWith(color: AppColors.danger)),
+          const Spacer(),
+          Text('Thưởng từ ${s.week!.bonusAt}',
+              style: AppTextStyles.caption.copyWith(color: AppColors.success)),
+        ]),
+      ],
       if (status != null) ...[
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpacing.md),
+        const Divider(height: 1),
+        const SizedBox(height: AppSpacing.md),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Icon(
-            s.score >= (s.week?.bonusAt ?? s.maxScore + 1)
+            isBonus
                 ? Icons.emoji_events_rounded
-                : s.score < (s.week?.penaltyAt ?? -1)
+                : isDanger
                     ? Icons.warning_amber_rounded
                     : Icons.trending_up_rounded,
             size: 15,
@@ -90,25 +128,19 @@ class DashboardScoreCard extends StatelessWidget {
           const SizedBox(width: 6),
           Expanded(
             child: Text(status.$2,
-                style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: status.$1,
-                    height: 1.3)),
+                style: AppTextStyles.label.copyWith(color: status.$1)),
           ),
         ]),
       ],
       if (s.tips.isNotEmpty) ...[
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Icon(Icons.bolt_rounded, size: 15, color: AppColors.warning),
           const SizedBox(width: 6),
           Expanded(
             child: Text(s.tips.first,
-                style: const TextStyle(
-                    fontSize: 12.5,
-                    color: AppColors.textSecondary,
-                    height: 1.3)),
+                style: AppTextStyles.label
+                    .copyWith(color: AppColors.textSecondary)),
           ),
         ]),
       ],

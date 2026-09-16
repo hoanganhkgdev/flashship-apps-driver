@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/orders/providers/order_provider.dart';
 import '../../features/wallet/providers/wallet_provider.dart';
+import '../router/app_router.dart';
 import 'location_push_service.dart';
 import 'offer_listener_service.dart';
 import 'offer_ack_service.dart';
@@ -40,11 +41,49 @@ int _offerTimeoutMs(Map<String, dynamic> data) {
 /// `OfferListenerService.ensureOfferVisible()` — đọc thẳng RTDB (nguồn dữ
 /// liệu đầy đủ) và tái dùng đúng logic điều hướng đã có, không tạo đường
 /// điều hướng thứ 2 chạy song song dễ lệch nhau.
-void _navigateToOfferFromNotification(Map<String, dynamic> data, WidgetRef ref) {
+void _navigateToOfferFromNotification(
+    Map<String, dynamic> data, WidgetRef ref) {
   if (data['type'] != 'order_offer') return;
   final driverId = ref.read(authProvider).user?.id;
   if (driverId == null) return;
   OfferListenerService.instance.ensureOfferVisible(driverId);
+}
+
+Future<void> _handleNotificationTap(
+    Map<String, dynamic> data, WidgetRef ref) async {
+  final type = data['type']?.toString();
+  if (type == 'order_offer') {
+    _navigateToOfferFromNotification(data, ref);
+    return;
+  }
+
+  final router = appRouter;
+  if (router == null) return;
+  switch (type) {
+    case 'debt_overdue':
+      router.go('/wallet');
+      break;
+    case 'driver_gps_stale_warning':
+    case 'driver_auto_offline':
+      router.go('/home');
+      break;
+    case 'order_assigned_direct':
+    case 'delivery_reminder':
+      await ref.read(activeOrderProvider.notifier).fetch();
+      final orders = ref.read(activeOrderProvider).orders;
+      if (orders.isNotEmpty) {
+        router.go('/order/active', extra: {'orderId': orders.first.id});
+      } else {
+        router.go('/home');
+      }
+      break;
+    case 'order_status':
+      await ref.read(activeOrderProvider.notifier).fetch();
+      router.go('/home');
+      break;
+    default:
+      router.go('/home');
+  }
 }
 
 /// KHÔNG tự show local notification ở đây nữa. Backend (`FCMService::
@@ -68,8 +107,9 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
   // quyền thông báo thật sự đang được cấp; payload tới máy nhưng
   // OS bị chặn quyền không được dùng làm bằng chứng để phạt.
   final settings = await FirebaseMessaging.instance.getNotificationSettings();
-  final allowed = settings.authorizationStatus == AuthorizationStatus.authorized ||
-      settings.authorizationStatus == AuthorizationStatus.provisional;
+  final allowed =
+      settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional;
   if (!allowed) return;
 
   final orderId = int.tryParse('${message.data['order_id'] ?? ''}');
@@ -102,14 +142,14 @@ class NotificationService {
   static Future<bool?> init(WidgetRef ref) async {
     final settings = await _fcm.getNotificationSettings();
     final status = settings.authorizationStatus;
-    final bool? granted = (status == AuthorizationStatus.authorized ||
+    bool? granted = (status == AuthorizationStatus.authorized ||
             status == AuthorizationStatus.provisional)
         ? true
         : status == AuthorizationStatus.denied
             ? false
             : null; // notDetermined
 
-    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const android = AndroidInitializationSettings('ic_stat_flashship');
     // Không request quyền trong initialize — để HomeScreen hỏi đúng lúc
     const ios = DarwinInitializationSettings(
       requestAlertPermission: false,
@@ -126,10 +166,31 @@ class NotificationService {
         if (payload == null) return;
         try {
           final data = jsonDecode(payload) as Map<String, dynamic>;
-          _navigateToOfferFromNotification(data, ref);
+          _handleNotificationTap(data, ref);
         } catch (_) {}
       },
     );
+
+    await _fcm.setForegroundNotificationPresentationOptions(
+      alert: false,
+      badge: false,
+      sound: false,
+    );
+
+    if (Platform.isAndroid && granted == true) {
+      final android = _localNotif.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      granted = await android?.areNotificationsEnabled() ?? granted;
+    }
+
+    final localLaunch = await _localNotif.getNotificationAppLaunchDetails();
+    final localPayload = localLaunch?.notificationResponse?.payload;
+    if (localLaunch?.didNotificationLaunchApp == true && localPayload != null) {
+      try {
+        final data = jsonDecode(localPayload) as Map<String, dynamic>;
+        await _handleNotificationTap(data, ref);
+      } catch (_) {}
+    }
 
     // Tạo Android notification channel với custom sound (đơn hàng mới)
     const channel = AndroidNotificationChannel(
@@ -140,8 +201,10 @@ class NotificationService {
       sound: RawResourceAndroidNotificationSound('order_offer'),
       enableVibration: true,
     );
-    await _localNotif.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(channel);
+    await _localNotif
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
 
     // Kênh chung cho các thông báo còn lại (đơn bị huỷ, công nợ...) — không
     // set thì Android 8+ tự đẩy vào kênh mặc định "Miscellaneous" (chuông
@@ -154,8 +217,10 @@ class NotificationService {
       description: 'Đơn bị huỷ, công nợ, và các thông báo khác',
       importance: Importance.high,
     );
-    await _localNotif.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(generalChannel);
+    await _localNotif
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(generalChannel);
 
     FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
 
@@ -164,7 +229,7 @@ class NotificationService {
     // trị đúng 1 lần ngay sau khi app khởi động do bị tap-launch.
     final initialMessage = await _fcm.getInitialMessage();
     if (initialMessage != null) {
-      _navigateToOfferFromNotification(initialMessage.data, ref);
+      await _handleNotificationTap(initialMessage.data, ref);
     }
 
     // Chỉ lấy token ngay nếu đã có quyền — tránh retry APNs 10s khi chưa hỏi
@@ -199,8 +264,10 @@ class NotificationService {
           'Nhấn để xem và nhận đơn hàng',
           NotificationDetails(
             android: AndroidNotificationDetails(
-              'order_offer_channel', 'Đơn hàng mới',
-              importance: Importance.max, priority: Priority.high,
+              'order_offer_channel',
+              'Đơn hàng mới',
+              importance: Importance.max,
+              priority: Priority.high,
               sound: const RawResourceAndroidNotificationSound('order_offer'),
               playSound: true,
               timeoutAfter: _offerTimeoutMs(data),
@@ -222,11 +289,16 @@ class NotificationService {
           );
         }
       } else if (type == 'order_status' || type == 'order_assigned_direct') {
-        try { ref.read(activeOrderProvider.notifier).fetch(); } catch (_) {}
+        try {
+          ref.read(activeOrderProvider.notifier).fetch();
+        } catch (_) {}
       } else if (type == 'debt_overdue') {
-        try { ref.read(walletProvider.notifier).fetch(); } catch (_) {}
+        try {
+          ref.read(walletProvider.notifier).fetch();
+        } catch (_) {}
       } else if (type == 'driver_auto_offline') {
-        // Backend đã đóng phiên vì Firebase không có vị trí mới quá 2 phút.
+        // Backend cảnh báo sau 3 phút không có GPS tươi và đóng phiên nếu
+        // thêm 1 phút nữa vẫn không phục hồi vị trí.
         LocationPushService.instance.stop();
         OfferListenerService.instance.stop();
         try {
@@ -250,11 +322,14 @@ class NotificationService {
             n.body ?? '',
             const NotificationDetails(
               android: AndroidNotificationDetails(
-                'general_channel', 'Thông báo chung',
-                importance: Importance.high, priority: Priority.high,
+                'general_channel',
+                'Thông báo chung',
+                importance: Importance.high,
+                priority: Priority.high,
               ),
               iOS: DarwinNotificationDetails(),
             ),
+            payload: jsonEncode(msg.data),
           );
         }
       }
@@ -264,7 +339,7 @@ class NotificationService {
     // mở lại đúng đơn — trước đây callback rỗng, bấm vào chỉ đưa app lên
     // foreground ở màn hình đang dở, không thấy đơn đâu.
     _onMessageOpenedSub = FirebaseMessaging.onMessageOpenedApp.listen((msg) {
-      _navigateToOfferFromNotification(msg.data, ref);
+      _handleNotificationTap(msg.data, ref);
     });
 
     return granted;
@@ -275,8 +350,9 @@ class NotificationService {
   static Future<bool> requestPermission(WidgetRef ref) async {
     await _fcm.requestPermission(alert: true, badge: true, sound: true);
     final settings = await _fcm.getNotificationSettings();
-    final granted = settings.authorizationStatus == AuthorizationStatus.authorized ||
-        settings.authorizationStatus == AuthorizationStatus.provisional;
+    final granted =
+        settings.authorizationStatus == AuthorizationStatus.authorized ||
+            settings.authorizationStatus == AuthorizationStatus.provisional;
     if (granted) await _refreshFcmToken(ref);
     return granted;
   }
@@ -289,8 +365,13 @@ class NotificationService {
   static Future<bool> refreshPermissionState(WidgetRef ref) async {
     final settings = await _fcm.getNotificationSettings();
     final status = settings.authorizationStatus;
-    final granted = status == AuthorizationStatus.authorized ||
+    var granted = status == AuthorizationStatus.authorized ||
         status == AuthorizationStatus.provisional;
+    if (Platform.isAndroid && granted) {
+      final android = _localNotif.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      granted = await android?.areNotificationsEnabled() ?? granted;
+    }
     if (granted && !_tokenSent) await _refreshFcmToken(ref);
     return !granted;
   }

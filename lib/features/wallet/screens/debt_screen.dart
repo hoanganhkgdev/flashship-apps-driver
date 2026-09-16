@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/widgets/app_back_button.dart';
+import '../../../core/widgets/app_screen_header.dart';
 import '../../../core/widgets/empty_state.dart';
-import '../../../core/widgets/gradient_header_shell.dart';
 import '../models/wallet_model.dart';
 import '../providers/wallet_provider.dart';
 import '../widgets/payment_qr_sheet.dart';
@@ -37,13 +35,10 @@ class DebtScreen extends ConsumerWidget {
       });
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-      ),
+      value: SystemUiOverlayStyle.dark,
       child: Scaffold(
-        backgroundColor: const Color(0xFFFFF8F5),
+        backgroundColor: AppColors.background,
+        appBar: const AppScreenHeader(title: 'Công nợ'),
         body: RefreshIndicator(
           color: AppColors.primary,
           onRefresh: () => ref.read(walletProvider.notifier).fetch(),
@@ -51,13 +46,17 @@ class DebtScreen extends ConsumerWidget {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               // ── Gradient header ────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: _Header(
-                  total: total,
-                  count: debts.length,
-                  overdue: overdue,
-                  urgent: urgentCount,
-                  loading: wallet.loading,
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.md),
+                sliver: SliverToBoxAdapter(
+                  child: _Header(
+                    total: total,
+                    count: debts.length,
+                    overdue: overdue,
+                    urgent: urgentCount,
+                    loading: wallet.loading,
+                  ),
                 ),
               ),
 
@@ -80,7 +79,8 @@ class DebtScreen extends ConsumerWidget {
                 )
               else
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
+                  padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.xl4),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (_, i) => Padding(
@@ -124,6 +124,7 @@ class DebtScreen extends ConsumerWidget {
 class _Header extends StatelessWidget {
   final int total, count, overdue, urgent;
   final bool loading;
+
   const _Header({
     required this.total,
     required this.count,
@@ -134,91 +135,88 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final top = MediaQuery.of(context).padding.top;
-
-    return GradientHeaderShell(
-      colors: const [Color(0xFFFF6035), Color(0xFFFF6035)],
-      showBubbles: false,
-      seamColor: const Color(0xFFFFF8F5),
-      children: [
-        SizedBox(height: top),
-
-        // Topbar
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: SizedBox(
-            height: 46,
-            child:
-                Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-              AppBackButton.onColor(onTap: () => context.pop()),
-              const SizedBox(width: 12),
-              const Text('Công nợ',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    letterSpacing: -0.2,
-                  )),
-            ]),
-          ),
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFC92A32), Color(0xFFE5483F), Color(0xFFF06A45)],
         ),
-
-        const SizedBox(height: 16),
-
-        // Hero summary
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: loading
-              ? Container(
-                  height: 52,
-                  width: 180,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        boxShadow: AppShadows.raised,
+      ),
+      child: loading
+          ? Container(
+              height: 42,
+              width: 180,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(AppRadius.xs),
+              ),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: const Icon(
+                      Icons.receipt_long_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                   ),
-                )
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(width: AppSpacing.md),
+                  const Text(
+                    'Tổng công nợ',
+                    style: TextStyle(
+                      fontSize: AppFontSize.base,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ]),
+                const SizedBox(height: AppSpacing.xl),
+                Text(
+                  Fmt.currency(total),
+                  style: const TextStyle(
+                    fontSize: AppFontSize.xl5,
+                    height: 1.05,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: -0.8,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
                   children: [
-                    Text(
-                      'Tổng công nợ',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white.withValues(alpha: 0.82),
-                      ),
+                    _HeroChip(
+                      icon: Icons.receipt_long_rounded,
+                      label: '$count khoản',
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      Fmt.currency(total),
-                      style: const TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: -1,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Wrap(spacing: 8, runSpacing: 8, children: [
+                    if (overdue > 0)
                       _HeroChip(
-                          icon: Icons.receipt_long_rounded,
-                          label: '$count khoản'),
-                      if (overdue > 0)
-                        _HeroChip(
-                            icon: Icons.warning_amber_rounded,
-                            label: '$overdue quá hạn'),
-                      if (urgent > 0)
-                        _HeroChip(
-                          icon: Icons.warning_amber_rounded,
-                          label: '$urgent khẩn cấp',
-                          emphasized: true,
-                        ),
-                    ]),
+                        icon: Icons.error_outline_rounded,
+                        label: '$overdue quá hạn',
+                      ),
+                    if (urgent > 0)
+                      _HeroChip(
+                        icon: Icons.bolt_rounded,
+                        label: '$urgent khẩn cấp',
+                        emphasized: true,
+                      ),
                   ],
                 ),
-        ),
-
-        const SizedBox(height: 18),
-      ],
+              ],
+            ),
     );
   }
 }
@@ -305,7 +303,7 @@ class _DebtCard extends StatelessWidget {
                 ? Border.all(
                     color: AppColors.danger.withValues(alpha: 0.25), width: 1.5)
                 : null),
-        boxShadow: const [],
+        boxShadow: AppShadows.soft,
       ),
       child: Column(children: [
         // Card header
@@ -504,7 +502,7 @@ class _AmountCol extends StatelessWidget {
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(label,
                 style: const TextStyle(
-                  fontSize: 11,
+                  fontSize: 12,
                   color: Color(0xFF6A605C),
                 )),
             const SizedBox(height: 5),

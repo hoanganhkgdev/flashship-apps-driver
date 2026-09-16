@@ -8,10 +8,11 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/utils/launch_utils.dart';
 import '../models/order_model.dart';
 import '../widgets/active_order_header.dart';
-import '../widgets/earning_card.dart';
+import '../widgets/completed_order_finance_card.dart';
 import '../widgets/order_card_shell.dart';
 import '../widgets/order_note_card.dart';
 import '../widgets/route_card.dart';
+import '../../../core/widgets/app_section_header.dart';
 
 /// Xem lại chi tiết 1 đơn đã hoàn thành từ tab "Hoàn thành" — chỉ đọc,
 /// không có nút hành động (không còn bước nào để làm tiếp), tái dùng lại các
@@ -78,7 +79,7 @@ class CompletedOrderDetailScreen extends StatelessWidget {
         statusBarBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFFFF8F5),
+        backgroundColor: AppColors.background,
         body: Column(children: [
           ActiveOrderHeader(
             order: order,
@@ -88,7 +89,8 @@ class CompletedOrderDetailScreen extends StatelessWidget {
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg, 14, AppSpacing.lg, AppSpacing.xl2),
               children: [
                 // Timeline — cả 2 điểm đều hiện trạng thái "đã xong" (xanh),
                 // không có điểm nào "đang đến" vì đơn đã hoàn thành/huỷ.
@@ -96,6 +98,14 @@ class CompletedOrderDetailScreen extends StatelessWidget {
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        const AppSectionHeader(
+                          title: 'Lộ trình',
+                          subtitle: 'Điểm lấy và điểm giao hàng',
+                          icon: Icons.route_rounded,
+                          color: AppColors.secondary,
+                          trailing: SizedBox.shrink(),
+                        ),
+                        const SizedBox(height: AppSpacing.xl),
                         RouteStop(
                           isOrigin: true,
                           isActive: false,
@@ -145,12 +155,12 @@ class CompletedOrderDetailScreen extends StatelessWidget {
                 ),
 
                 if (order.orderNote != null && order.orderNote!.isNotEmpty) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   OrderNoteCard(note: order.orderNote!),
                 ],
 
-                const SizedBox(height: 12),
-                EarningCard(order: order, color: color),
+                const SizedBox(height: AppSpacing.md),
+                CompletedOrderFinanceCard(order: order),
               ],
             ),
           ),

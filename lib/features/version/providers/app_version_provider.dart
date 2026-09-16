@@ -12,9 +12,9 @@ class AppVersionState {
   final String message;
 
   const AppVersionState({
-    this.isChecked        = false,
+    this.isChecked = false,
     this.needsForceUpdate = false,
-    this.needsSoftUpdate  = false,
+    this.needsSoftUpdate = false,
     this.storeUrl,
     this.message = 'Vui lòng cập nhật ứng dụng tài xế để tiếp tục.',
   });
@@ -25,7 +25,7 @@ class AppVersionNotifier extends StateNotifier<AppVersionState> {
 
   Future<void> check() async {
     try {
-      final info    = await PackageInfo.fromPlatform();
+      final info = await PackageInfo.fromPlatform();
       final current = info.version;
 
       final res = await Dio().get(
@@ -35,29 +35,37 @@ class AppVersionNotifier extends StateNotifier<AppVersionState> {
       );
       final data = res.data as Map<String, dynamic>;
 
-      final forceUpdate  = data['force_update']  as bool?   ?? false;
+      final forceUpdate = data['force_update'] as bool? ?? false;
       final forceMessage = data['force_message'] as String? ?? '';
-      final androidUrl   = data['android_url']   as String?;
-      final iosUrl       = data['ios_url']        as String?;
-      final storeUrl     = Platform.isIOS ? iosUrl : androidUrl;
+      final androidUrl = data['android_url'] as String?;
+      final iosUrl = data['ios_url'] as String?;
+      final storeUrl = Platform.isIOS ? iosUrl : androidUrl;
 
       // Dùng version theo OS nếu có, fallback về version chung
       final minVersion = Platform.isIOS
-          ? (data['ios_min_version']    as String? ?? data['min_version']    as String? ?? '1.0.0')
-          : (data['android_min_version'] as String? ?? data['min_version']   as String? ?? '1.0.0');
+          ? (data['ios_min_version'] as String? ??
+              data['min_version'] as String? ??
+              '1.0.0')
+          : (data['android_min_version'] as String? ??
+              data['min_version'] as String? ??
+              '1.0.0');
       final latestVersion = Platform.isIOS
-          ? (data['ios_latest_version']    as String? ?? data['latest_version']    as String? ?? '1.0.0')
-          : (data['android_latest_version'] as String? ?? data['latest_version']   as String? ?? '1.0.0');
+          ? (data['ios_latest_version'] as String? ??
+              data['latest_version'] as String? ??
+              '1.0.0')
+          : (data['android_latest_version'] as String? ??
+              data['latest_version'] as String? ??
+              '1.0.0');
 
       final needsForce = forceUpdate && _isOlderThan(current, minVersion);
-      final needsSoft  = !needsForce && _isOlderThan(current, latestVersion);
+      final needsSoft = !needsForce && _isOlderThan(current, latestVersion);
 
       state = AppVersionState(
-        isChecked:        true,
+        isChecked: true,
         needsForceUpdate: needsForce,
-        needsSoftUpdate:  needsSoft,
-        storeUrl:         storeUrl,
-        message:          forceMessage.isNotEmpty
+        needsSoftUpdate: needsSoft,
+        storeUrl: storeUrl,
+        message: forceMessage.isNotEmpty
             ? forceMessage
             : 'Vui lòng cập nhật ứng dụng tài xế để tiếp tục.',
       );
@@ -78,7 +86,9 @@ class AppVersionNotifier extends StateNotifier<AppVersionState> {
 
   List<int> _parse(String v) {
     final parts = v.split('.').map((e) => int.tryParse(e) ?? 0).toList();
-    while (parts.length < 3) { parts.add(0); }
+    while (parts.length < 3) {
+      parts.add(0);
+    }
     return parts;
   }
 }

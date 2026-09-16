@@ -7,7 +7,8 @@ class Bubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: size, height: size,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: Colors.white.withValues(alpha: opacity),

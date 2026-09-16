@@ -1,5 +1,5 @@
 class WeekSettlement {
-  final String type;   // 'bonus' | 'penalty'
+  final String type; // 'bonus' | 'penalty'
   final int amount;
   final String status; // 'pending' | 'paid'
 
@@ -10,7 +10,7 @@ class WeekSettlement {
   });
 
   factory WeekSettlement.fromJson(Map<String, dynamic> json) => WeekSettlement(
-        type:   json['type']   as String? ?? '',
+        type: json['type'] as String? ?? '',
         amount: (json['amount'] as num?)?.toInt() ?? 0,
         status: json['status'] as String? ?? '',
       );
@@ -36,12 +36,12 @@ class WeekInfo {
   factory WeekInfo.fromJson(Map<String, dynamic> json) {
     final s = json['settlement'] as Map<String, dynamic>?;
     return WeekInfo(
-      bonusAt:      (json['bonus_at']       as num?)?.toInt() ?? 130,
-      penaltyAt:    (json['penalty_at']     as num?)?.toInt() ?? 70,
-      bonusAmount:  (json['bonus_amount']   as num?)?.toInt() ?? 100000,
-      penaltyAmount:(json['penalty_amount'] as num?)?.toInt() ?? 100000,
-      weekStart:    json['week_start']      as String? ?? '',
-      settlement:   s != null ? WeekSettlement.fromJson(s) : null,
+      bonusAt: (json['bonus_at'] as num?)?.toInt() ?? 130,
+      penaltyAt: (json['penalty_at'] as num?)?.toInt() ?? 70,
+      bonusAmount: (json['bonus_amount'] as num?)?.toInt() ?? 100000,
+      penaltyAmount: (json['penalty_amount'] as num?)?.toInt() ?? 100000,
+      weekStart: json['week_start'] as String? ?? '',
+      settlement: s != null ? WeekSettlement.fromJson(s) : null,
     );
   }
 }
@@ -57,9 +57,10 @@ class StreakNextMilestone {
     required this.remaining,
   });
 
-  factory StreakNextMilestone.fromJson(Map<String, dynamic> json) => StreakNextMilestone(
-        at:        (json['at']        as num?)?.toInt() ?? 0,
-        bonus:     (json['bonus']     as num?)?.toInt() ?? 0,
+  factory StreakNextMilestone.fromJson(Map<String, dynamic> json) =>
+      StreakNextMilestone(
+        at: (json['at'] as num?)?.toInt() ?? 0,
+        bonus: (json['bonus'] as num?)?.toInt() ?? 0,
         remaining: (json['remaining'] as num?)?.toInt() ?? 0,
       );
 }
@@ -73,7 +74,7 @@ class StreakInfo {
   factory StreakInfo.fromJson(Map<String, dynamic> json) {
     final nm = json['next_milestone'] as Map<String, dynamic>?;
     return StreakInfo(
-      count:         (json['count'] as num?)?.toInt() ?? 0,
+      count: (json['count'] as num?)?.toInt() ?? 0,
       nextMilestone: nm != null ? StreakNextMilestone.fromJson(nm) : null,
     );
   }
@@ -93,33 +94,33 @@ class DriverScoreModel {
     required this.minScore,
     required this.maxScore,
     required this.label,
-    this.tips   = const [],
+    this.tips = const [],
     this.streak,
     this.week,
   });
 
   factory DriverScoreModel.fromJson(Map<String, dynamic> json) {
-    final weekJson   = json['week']   as Map<String, dynamic>?;
+    final weekJson = json['week'] as Map<String, dynamic>?;
     final streakJson = json['streak'] as Map<String, dynamic>?;
     return DriverScoreModel(
-      score:    (json['score']     as num?)?.toInt() ?? 100,
+      score: (json['score'] as num?)?.toInt() ?? 100,
       minScore: (json['min_score'] as num?)?.toInt() ?? 0,
       maxScore: (json['max_score'] as num?)?.toInt() ?? 140,
-      label:    json['label']      as String? ?? '',
-      tips:     (json['tips']      as List?)?.cast<String>() ?? [],
-      streak:   streakJson != null ? StreakInfo.fromJson(streakJson) : null,
-      week:     weekJson   != null ? WeekInfo.fromJson(weekJson)     : null,
+      label: json['label'] as String? ?? '',
+      tips: (json['tips'] as List?)?.cast<String>() ?? [],
+      streak: streakJson != null ? StreakInfo.fromJson(streakJson) : null,
+      week: weekJson != null ? WeekInfo.fromJson(weekJson) : null,
     );
   }
 
   DriverScoreModel copyWith({int? score}) => DriverScoreModel(
-        score:    score ?? this.score,
+        score: score ?? this.score,
         minScore: minScore,
         maxScore: maxScore,
-        label:    label,
-        tips:     tips,
-        streak:   streak,
-        week:     week,
+        label: label,
+        tips: tips,
+        streak: streak,
+        week: week,
       );
 }
 
@@ -141,12 +142,13 @@ class ScoreLogEntry {
   });
 
   factory ScoreLogEntry.fromJson(Map<String, dynamic> json) => ScoreLogEntry(
-        delta:       (json['delta']        as num?)?.toInt() ?? 0,
+        delta: (json['delta'] as num?)?.toInt() ?? 0,
         scoreBefore: (json['score_before'] as num?)?.toInt() ?? 0,
-        scoreAfter:  (json['score_after']  as num?)?.toInt() ?? 0,
-        reason:      json['reason']        as String? ?? '',
-        label:       json['label']         as String? ?? json['reason'] as String? ?? '',
-        createdAt:   DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+        scoreAfter: (json['score_after'] as num?)?.toInt() ?? 0,
+        reason: json['reason'] as String? ?? '',
+        label: json['label'] as String? ?? json['reason'] as String? ?? '',
+        createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ??
+            DateTime.now(),
       );
 
   bool get isPositive => delta > 0;

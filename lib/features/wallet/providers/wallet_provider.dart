@@ -46,20 +46,21 @@ class WalletState {
     bool? dailyEarningsLoading,
     bool? loading,
     bool? balanceError,
-  }) => WalletState(
-    balance:         balance         ?? this.balance,
-    transactions:    transactions    ?? this.transactions,
-    debts:           debts           ?? this.debts,
-    earningsToday:   earningsToday   ?? this.earningsToday,
-    earningsWeekly:  earningsWeekly  ?? this.earningsWeekly,
-    earningsMonthly: earningsMonthly ?? this.earningsMonthly,
-    bankAccount:     bankAccount     ?? this.bankAccount,
-    bankList:        bankList        ?? this.bankList,
-    dailyEarnings:        dailyEarnings        ?? this.dailyEarnings,
-    dailyEarningsLoading: dailyEarningsLoading ?? this.dailyEarningsLoading,
-    loading:         loading         ?? this.loading,
-    balanceError:    balanceError    ?? this.balanceError,
-  );
+  }) =>
+      WalletState(
+        balance: balance ?? this.balance,
+        transactions: transactions ?? this.transactions,
+        debts: debts ?? this.debts,
+        earningsToday: earningsToday ?? this.earningsToday,
+        earningsWeekly: earningsWeekly ?? this.earningsWeekly,
+        earningsMonthly: earningsMonthly ?? this.earningsMonthly,
+        bankAccount: bankAccount ?? this.bankAccount,
+        bankList: bankList ?? this.bankList,
+        dailyEarnings: dailyEarnings ?? this.dailyEarnings,
+        dailyEarningsLoading: dailyEarningsLoading ?? this.dailyEarningsLoading,
+        loading: loading ?? this.loading,
+        balanceError: balanceError ?? this.balanceError,
+      );
 }
 
 class WalletNotifier extends StateNotifier<WalletState> {
@@ -71,19 +72,21 @@ class WalletNotifier extends StateNotifier<WalletState> {
     state = state.copyWith(loading: true);
 
     // Chạy độc lập — 1 API lỗi không làm trắng toàn bộ ví
-    int?               balance;
-    bool               balanceFailed = false;
-    List<dynamic>?     txList;
-    List<dynamic>?     debtList;
+    int? balance;
+    bool balanceFailed = false;
+    List<dynamic>? txList;
+    List<dynamic>? debtList;
     Map<String, dynamic>? earningsData;
     Map<String, dynamic>? profileData;
-    List<dynamic>?     bankListRaw;
+    List<dynamic>? bankListRaw;
 
     await Future.wait([
       _ref.read(apiClientProvider).get('/wallet').then((r) {
         final d = (r.data['data'] ?? r.data) as Map<String, dynamic>;
         balance = (d['balance'] as num?)?.toInt() ?? 0;
-      }).catchError((_) { balanceFailed = true; }),
+      }).catchError((_) {
+        balanceFailed = true;
+      }),
       _ref.read(apiClientProvider).get('/wallet/transactions').then((r) {
         final d = r.data['data'] ?? r.data;
         txList = d is List ? d : <dynamic>[];
@@ -96,8 +99,9 @@ class WalletNotifier extends StateNotifier<WalletState> {
         earningsData = (r.data['data'] ?? r.data) as Map<String, dynamic>;
       }).catchError((_) {}),
       _ref.read(apiClientProvider).get('/driver/profile').then((r) {
-        profileData = ((r.data['data'] ?? r.data) as Map<String, dynamic>)['user']
-            as Map<String, dynamic>? ?? {};
+        profileData = ((r.data['data'] ?? r.data)
+                as Map<String, dynamic>)['user'] as Map<String, dynamic>? ??
+            {};
       }).catchError((_) {}),
       _ref.read(apiClientProvider).get('/driver/bank-lists').then((r) {
         final d = r.data['data'] ?? r.data;
@@ -106,32 +110,41 @@ class WalletNotifier extends StateNotifier<WalletState> {
     ]);
 
     state = WalletState(
-      balance:      balance      ?? state.balance,
+      balance: balance ?? state.balance,
       transactions: txList != null
-          ? txList!.map((e) => WalletTransaction.fromJson(e as Map<String, dynamic>)).toList()
+          ? txList!
+              .map((e) => WalletTransaction.fromJson(e as Map<String, dynamic>))
+              .toList()
           : state.transactions,
       debts: debtList != null
-          ? debtList!.map((e) => DriverDebt.fromJson(e as Map<String, dynamic>))
-              .where((d) => !d.isPaid).toList()
+          ? debtList!
+              .map((e) => DriverDebt.fromJson(e as Map<String, dynamic>))
+              .where((d) => !d.isPaid)
+              .toList()
           : state.debts,
-      earningsToday:   earningsData != null
-          ? EarningsSummary.fromJson(earningsData!['today']   as Map<String, dynamic>? ?? {})
+      earningsToday: earningsData != null
+          ? EarningsSummary.fromJson(
+              earningsData!['today'] as Map<String, dynamic>? ?? {})
           : state.earningsToday,
-      earningsWeekly:  earningsData != null
-          ? EarningsSummary.fromJson(earningsData!['weekly']  as Map<String, dynamic>? ?? {})
+      earningsWeekly: earningsData != null
+          ? EarningsSummary.fromJson(
+              earningsData!['weekly'] as Map<String, dynamic>? ?? {})
           : state.earningsWeekly,
       earningsMonthly: earningsData != null
-          ? EarningsSummary.fromJson(earningsData!['monthly'] as Map<String, dynamic>? ?? {})
+          ? EarningsSummary.fromJson(
+              earningsData!['monthly'] as Map<String, dynamic>? ?? {})
           : state.earningsMonthly,
       bankAccount: profileData != null
           ? BankAccount.fromJson(profileData!)
           : state.bankAccount,
       bankList: bankListRaw != null
-          ? bankListRaw!.map((e) => BankListItem.fromJson(e as Map<String, dynamic>)).toList()
+          ? bankListRaw!
+              .map((e) => BankListItem.fromJson(e as Map<String, dynamic>))
+              .toList()
           : state.bankList,
       // fetch() không đụng tới biểu đồ thu nhập theo ngày — giữ nguyên để
       // tránh bị xoá mất khi refresh() gọi song song với fetchDailyEarnings().
-      dailyEarnings:        state.dailyEarnings,
+      dailyEarnings: state.dailyEarnings,
       dailyEarningsLoading: state.dailyEarningsLoading,
       balanceError: balanceFailed,
     );
@@ -144,7 +157,8 @@ class WalletNotifier extends StateNotifier<WalletState> {
   Future<void> fetchDailyEarnings({required bool monthly}) async {
     state = state.copyWith(dailyEarningsLoading: true);
     try {
-      final res  = await _ref.read(apiClientProvider)
+      final res = await _ref
+          .read(apiClientProvider)
           .get(monthly ? '/earnings/monthly' : '/earnings/weekly');
       final list = (res.data['data'] ?? res.data) as List? ?? [];
       state = state.copyWith(
@@ -166,15 +180,15 @@ class WalletNotifier extends StateNotifier<WalletState> {
   }) async {
     try {
       await _ref.read(apiClientProvider).post('/driver/profile/bank', data: {
-        'bank_code':      bankCode,
-        'bank_name':      bankName,
+        'bank_code': bankCode,
+        'bank_name': bankName,
         'account_number': accountNumber,
-        'account_name':   accountHolder,
+        'account_name': accountHolder,
       });
       state = state.copyWith(
         bankAccount: BankAccount(
-          bankCode:      bankCode,
-          bankName:      bankName,
+          bankCode: bankCode,
+          bankName: bankName,
           accountNumber: accountNumber,
           accountHolder: accountHolder,
         ),
@@ -187,7 +201,9 @@ class WalletNotifier extends StateNotifier<WalletState> {
 
   Future<bool> withdraw(int amount) async {
     try {
-      await _ref.read(apiClientProvider).post('/wallet/withdraw', data: {'amount': amount});
+      await _ref
+          .read(apiClientProvider)
+          .post('/wallet/withdraw', data: {'amount': amount});
       return true;
     } catch (_) {
       return false;

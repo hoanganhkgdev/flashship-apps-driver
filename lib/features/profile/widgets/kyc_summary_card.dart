@@ -39,6 +39,7 @@ class KycSummaryCard extends StatelessWidget {
             color: const Color(0xFFFFFEFD),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: const Color(0xFFE5DDD9)),
+            boxShadow: AppShadows.soft,
           ),
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -63,7 +64,7 @@ class KycSummaryCard extends StatelessWidget {
                     children: [
                       const Text('Hồ sơ tài xế',
                           style: TextStyle(
-                              fontSize: 14.5,
+                              fontSize: 14,
                               fontWeight: FontWeight.w700,
                               color: AppColors.textPrimary)),
                       Text(
@@ -132,7 +133,7 @@ class StepChip extends StatelessWidget {
       const SizedBox(width: 4),
       Text(label,
           style: TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: done ? FontWeight.w600 : FontWeight.w400,
               color: color)),
     ]);

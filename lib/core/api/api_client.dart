@@ -54,11 +54,9 @@ class ApiClient {
   Future<Response> put(String path, {dynamic data}) =>
       _dio.put(path, data: data);
 
-  Future<Response> postMultipart(String path, FormData formData) =>
-      _dio.post(
+  Future<Response> postMultipart(String path, FormData formData) => _dio.post(
         path,
         data: formData,
         options: Options(contentType: 'multipart/form-data'),
       );
 }
-

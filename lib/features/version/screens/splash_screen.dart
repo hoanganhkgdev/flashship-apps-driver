@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/router/app_router.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../orders/providers/order_provider.dart';
 import '../providers/app_version_provider.dart';
@@ -84,16 +85,20 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
         statusBarBrightness: Brightness.dark,
-        systemNavigationBarColor: Color(0xFFD83A05),
+        systemNavigationBarColor: AppColors.primaryGradientEnd,
         systemNavigationBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(
         body: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFFFF6035), Color(0xFFD83A05)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.primaryGradientStart,
+                AppColors.primaryGradientMiddle,
+                AppColors.primaryGradientEnd,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
           ),
           child: LayoutBuilder(
@@ -122,35 +127,56 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            width: 120,
-                            height: 120,
+                            width: 104,
+                            height: 104,
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.18),
-                              borderRadius: BorderRadius.circular(32),
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(30),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.16),
+                                  blurRadius: 30,
+                                  offset: const Offset(0, 12),
+                                ),
+                              ],
                             ),
                             child: const Icon(
-                              Icons.local_shipping_outlined,
-                              size: 52,
-                              color: Colors.white,
+                              Icons.local_shipping_rounded,
+                              size: 48,
+                              color: AppColors.primary,
                             ),
                           ),
-                          const SizedBox(height: 28),
+                          const SizedBox(height: AppSpacing.xl2),
                           const Text(
-                            'FLASHSHIP',
+                            'FlashShip',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 34,
+                              fontSize: AppFontSize.xl4,
                               fontWeight: FontWeight.w900,
-                              letterSpacing: 1.4,
+                              letterSpacing: -0.8,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Ứng dụng tài xế',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
+                          const SizedBox(height: AppSpacing.sm),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md,
+                                vertical: AppSpacing.xs),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.18),
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.full),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.24),
+                              ),
+                            ),
+                            child: const Text(
+                              'DÀNH CHO TÀI XẾ',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: AppFontSize.sm,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.8,
+                              ),
                             ),
                           ),
                         ],
@@ -159,12 +185,26 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   ),
                 ),
                 Positioned(
-                  bottom: 48,
+                  bottom: 42,
                   left: 0,
                   right: 0,
                   child: FadeTransition(
                     opacity: _fade,
-                    child: const _LoadingDots(),
+                    child: const Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Đang khởi động ứng dụng',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: AppFontSize.sm,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: AppSpacing.md),
+                        _LoadingDots(),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -191,31 +231,34 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         canPop: false,
         child: AlertDialog(
           backgroundColor: Colors.white,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.xl)),
           title: const Row(children: [
             Icon(Icons.system_update_rounded,
-                color: Color(0xFFE8720C), size: 22),
+                color: AppColors.primaryGradientMiddle, size: 22),
             SizedBox(width: 10),
             Text('Cập nhật bắt buộc',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                style: TextStyle(
+                    fontSize: AppFontSize.md, fontWeight: FontWeight.w800)),
           ]),
           content: Text(v.message,
               style: const TextStyle(
-                  fontSize: 14, color: Color(0xFF6B7280), height: 1.5)),
+                  fontSize: AppFontSize.base,
+                  color: AppColors.slate,
+                  height: 1.5)),
           actions: [
             SizedBox(
               width: double.infinity,
               child: FilledButton(
                 onPressed: () => _openStore(v.storeUrl),
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFE8720C),
+                  backgroundColor: AppColors.primaryGradientMiddle,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
+                      borderRadius: BorderRadius.circular(AppRadius.md)),
                 ),
                 child: const Text('Cập nhật ngay',
                     style: TextStyle(
-                        fontSize: 15,
+                        fontSize: AppFontSize.md,
                         fontWeight: FontWeight.w700,
                         color: Colors.white)),
               ),
@@ -231,29 +274,34 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       context: ctx,
       builder: (dialogCtx) => AlertDialog(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.xl)),
         title: const Row(children: [
-          Icon(Icons.new_releases_rounded, color: Color(0xFFE8720C), size: 22),
+          Icon(Icons.new_releases_rounded,
+              color: AppColors.primaryGradientMiddle, size: 22),
           SizedBox(width: 10),
           Text('Có phiên bản mới',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+              style: TextStyle(
+                  fontSize: AppFontSize.md, fontWeight: FontWeight.w800)),
         ]),
         content: const Text(
             'Có phiên bản mới của ứng dụng tài xế. Cập nhật để trải nghiệm tốt hơn!',
-            style:
-                TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.5)),
+            style: TextStyle(
+                fontSize: AppFontSize.base,
+                color: AppColors.slate,
+                height: 1.5)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Để sau',
-                style: TextStyle(color: Color(0xFF6B7280))),
+            child:
+                const Text('Để sau', style: TextStyle(color: AppColors.slate)),
           ),
           FilledButton(
             onPressed: () => _openStore(v.storeUrl),
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFE8720C),
+              backgroundColor: AppColors.primaryGradientMiddle,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
+                  borderRadius: BorderRadius.circular(AppRadius.md)),
             ),
             child:
                 const Text('Cập nhật', style: TextStyle(color: Colors.white)),
@@ -384,7 +432,7 @@ class _LoadingDotsState extends State<_LoadingDots>
           builder: (_, __) => Container(
             width: 8,
             height: 8,
-            margin: const EdgeInsets.symmetric(horizontal: 4),
+            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: Colors.white.withValues(alpha: anim.value),

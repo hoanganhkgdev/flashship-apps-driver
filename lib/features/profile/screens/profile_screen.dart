@@ -9,6 +9,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_root_header_title.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 import '../../../core/utils/formatters.dart';
 import '../widgets/avatar_picker_sheet.dart';
 import '../widgets/balance_row.dart';
@@ -174,7 +176,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
         child: const Text('Cần thanh toán ngay',
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.w700,
               color: AppColors.danger,
             )),
@@ -193,10 +195,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     var saving = false;
     var plateInput = _licensePlate ?? '';
 
-    await showModalBottomSheet<void>(
+    await showAppBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (sheetContext) => StatefulBuilder(
         builder: (context, setSheetState) {
           final media = MediaQuery.of(context);
@@ -222,19 +223,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 padding:
                     EdgeInsets.fromLTRB(20, 12, 20, media.padding.bottom + 20),
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Container(
-                    width: 42,
-                    height: 4,
-                    decoration: BoxDecoration(
-                        color: const Color(0xFFD8D0CC),
-                        borderRadius: BorderRadius.circular(2)),
-                  ),
-                  const SizedBox(height: 18),
-                  const Text('Thông tin phương tiện',
-                      style: TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary)),
+                  const AppBottomSheetHeader(title: 'Thông tin phương tiện'),
                   const SizedBox(height: 18),
                   SegmentedButton<String>(
                     segments: const [
@@ -356,285 +345,292 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         statusBarBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFFFF8F5),
-        body: RefreshIndicator(
-          color: AppColors.primary,
-          onRefresh: _loadData,
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              // ── Header + floating stats card ──────────────────────────
-              ProfileHeader(
-                user: user,
-                photoUrl: _photoUrl,
-                uploadingAvatar: _uploadingAvatar,
-                nameLocked: _nameLocked,
-                cityName: _cityName,
-                hasStats: hasStats,
-                acceptanceRate: _acceptanceRate,
-                completionRate: _completionRate,
-                rating: _rating,
-                onAvatarTap: _onAvatarTap,
-                onEditName: (name) => _showEditName(context, name),
-              ),
-
-              const SizedBox(height: 12),
-
-              // ── Score card ────────────────────────────────────────────
-              if (_score != null) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: ProfileScoreCard(
-                    score: _score!,
-                    maxScore: _maxScore ?? 140,
-                    label: _scoreLabel ?? '',
-                    bonusAt: _scoreBonusAt,
-                    penaltyAt: _scorePenaltyAt,
-                    bonusAmt: _scoreBonusAmt,
-                    penaltyAmt: _scorePenaltyAmt,
-                    streak: _scoreStreak,
-                    onTap: () => context.push('/score'),
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
-
-              // ── Hồ sơ tài xế ─────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: KycSummaryCard(
-                  cccdStatus: _cccdImageStatus,
-                  licenseStatus: _licenseStatus,
-                  onTap: () async {
-                    await context.push('/kyc');
-                    _loadData();
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // ── Phương tiện ────────────────────────────────────────
-              SettingsSection(
-                header: 'Phương tiện',
+        backgroundColor: AppColors.background,
+        body: Column(children: [
+          const AppRootHeader(title: 'Tài khoản'),
+          Expanded(
+            child: RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: _loadData,
+              child: ListView(
+                padding: EdgeInsets.zero,
                 children: [
-                  SettingsRow(
-                    icon: _vehicleType == 'car'
-                        ? Icons.directions_car_rounded
-                        : Icons.two_wheeler_rounded,
-                    iconBg: AppColors.primary.withValues(alpha: 0.12),
-                    iconColor: AppColors.primary,
-                    label: 'Loại xe',
-                    trailing: Text(
-                      switch (_vehicleType) {
-                        'motorbike' => 'Xe máy',
-                        'car' => 'Ô tô',
-                        _ => 'Chưa cập nhật',
+                  // ── Header + floating stats card ──────────────────────────
+                  ProfileHeader(
+                    user: user,
+                    photoUrl: _photoUrl,
+                    uploadingAvatar: _uploadingAvatar,
+                    nameLocked: _nameLocked,
+                    cityName: _cityName,
+                    hasStats: hasStats,
+                    acceptanceRate: _acceptanceRate,
+                    completionRate: _completionRate,
+                    rating: _rating,
+                    onAvatarTap: _onAvatarTap,
+                    onEditName: (name) => _showEditName(context, name),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // ── Score card ────────────────────────────────────────────
+                  if (_score != null) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: ProfileScoreCard(
+                        score: _score!,
+                        maxScore: _maxScore ?? 140,
+                        label: _scoreLabel ?? '',
+                        bonusAt: _scoreBonusAt,
+                        penaltyAt: _scorePenaltyAt,
+                        bonusAmt: _scoreBonusAmt,
+                        penaltyAmt: _scorePenaltyAmt,
+                        streak: _scoreStreak,
+                        onTap: () => context.push('/score'),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+
+                  // ── Hồ sơ tài xế ─────────────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: KycSummaryCard(
+                      cccdStatus: _cccdImageStatus,
+                      licenseStatus: _licenseStatus,
+                      onTap: () async {
+                        await context.push('/kyc');
+                        _loadData();
                       },
-                      style: const TextStyle(
-                          fontSize: 13, color: AppColors.textSecondary),
                     ),
-                    onTap: _showVehicleEditor,
                   ),
-                  const Divider(
-                      height: 1, indent: 56, color: Color(0xFFF5F5F5)),
-                  SettingsRow(
-                    icon: Icons.pin_rounded,
-                    iconBg: AppColors.primary.withValues(alpha: 0.12),
-                    iconColor: AppColors.primary,
-                    label: 'Biển số xe',
-                    trailing: Text(
-                      _licensePlate?.trim().isNotEmpty == true
-                          ? _licensePlate!.toUpperCase()
-                          : 'Chưa cập nhật',
-                      style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary),
-                    ),
-                    onTap: _showVehicleEditor,
+
+                  const SizedBox(height: 12),
+
+                  // ── Phương tiện ────────────────────────────────────────
+                  SettingsSection(
+                    header: 'Phương tiện',
+                    children: [
+                      SettingsRow(
+                        icon: _vehicleType == 'car'
+                            ? Icons.directions_car_rounded
+                            : Icons.two_wheeler_rounded,
+                        iconBg: AppColors.primary.withValues(alpha: 0.12),
+                        iconColor: AppColors.primary,
+                        label: 'Loại xe',
+                        trailing: Text(
+                          switch (_vehicleType) {
+                            'motorbike' => 'Xe máy',
+                            'car' => 'Ô tô',
+                            _ => 'Chưa cập nhật',
+                          },
+                          style: const TextStyle(
+                              fontSize: 14, color: AppColors.textSecondary),
+                        ),
+                        onTap: _showVehicleEditor,
+                      ),
+                      const Divider(
+                          height: 1, indent: 56, color: Color(0xFFF5F5F5)),
+                      SettingsRow(
+                        icon: Icons.pin_rounded,
+                        iconBg: AppColors.primary.withValues(alpha: 0.12),
+                        iconColor: AppColors.primary,
+                        label: 'Biển số xe',
+                        trailing: Text(
+                          _licensePlate?.trim().isNotEmpty == true
+                              ? _licensePlate!.toUpperCase()
+                              : 'Chưa cập nhật',
+                          style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary),
+                        ),
+                        onTap: _showVehicleEditor,
+                      ),
+                    ],
                   ),
+
+                  const SizedBox(height: 12),
+
+                  // ── Lịch làm việc ────────────────────────────────────────
+                  SettingsSection(
+                    header: 'Lịch làm việc',
+                    children: [
+                      SettingsRow(
+                        icon: Icons.schedule_rounded,
+                        iconBg: AppColors.primary.withValues(alpha: 0.12),
+                        iconColor: AppColors.primary,
+                        label: 'Ca làm việc',
+                        onTap: () => context.push('/shifts'),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // ── Tài chính ────────────────────────────────────────────
+                  SettingsSection(
+                    header: 'Tài chính',
+                    children: [
+                      // Balance row
+                      BalanceRow(
+                        balance: _balance,
+                        onTap: () => context.push('/wallet'),
+                      ),
+                      const Divider(
+                          height: 1, indent: 56, color: Color(0xFFF5F5F5)),
+                      // Công nợ
+                      SettingsRow(
+                        icon: Icons.warning_amber_rounded,
+                        iconBg: AppColors.danger.withValues(alpha: 0.12),
+                        iconColor: AppColors.danger,
+                        label: 'Công nợ',
+                        trailing: _debtTrailing(),
+                        onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (_) => const DebtScreen())),
+                      ),
+                      const Divider(
+                          height: 1, indent: 56, color: Color(0xFFF5F5F5)),
+                      // Ngân hàng liên kết
+                      SettingsRow(
+                        icon: Icons.account_balance_rounded,
+                        iconBg: AppColors.primary.withValues(alpha: 0.12),
+                        iconColor: AppColors.primary,
+                        label: 'Tài khoản ngân hàng',
+                        trailing: _bankName != null
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(_bankName!,
+                                      style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: AppColors.textSecondary)),
+                                  if (_bankAccount != null)
+                                    Text(
+                                      '••••${_bankAccount!.length > 4 ? _bankAccount!.substring(_bankAccount!.length - 4) : _bankAccount!}',
+                                      style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textSecondary),
+                                    ),
+                                ],
+                              )
+                            : Text('Chưa liên kết',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.danger
+                                        .withValues(alpha: 0.8))),
+                        onTap: () => context.push('/bank-account'),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // ── Bảo mật ──────────────────────────────────────────────
+                  SettingsSection(
+                    header: 'Bảo mật',
+                    children: [
+                      SettingsRow(
+                        icon: Icons.lock_outline_rounded,
+                        iconBg: AppColors.primary.withValues(alpha: 0.12),
+                        iconColor: AppColors.primary,
+                        label: 'Đổi mật khẩu',
+                        onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (_) => const ChangePasswordScreen())),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // ── Pháp lý ──────────────────────────────────────────────
+                  SettingsSection(
+                    header: 'Pháp lý',
+                    children: [
+                      SettingsRow(
+                        icon: Icons.shield_outlined,
+                        iconBg: AppColors.primary.withValues(alpha: 0.12),
+                        iconColor: AppColors.primary,
+                        label: 'Chính sách bảo mật',
+                        onTap: () => _showPage(
+                            context, 'privacy-policy', 'Chính sách bảo mật'),
+                      ),
+                      const Divider(
+                          height: 1, indent: 56, color: Color(0xFFF5F5F5)),
+                      SettingsRow(
+                        icon: Icons.description_outlined,
+                        iconBg: AppColors.primary.withValues(alpha: 0.12),
+                        iconColor: AppColors.primary,
+                        label: 'Điều khoản sử dụng',
+                        onTap: () => _showPage(
+                            context, 'terms-of-service', 'Điều khoản sử dụng'),
+                      ),
+                      const Divider(
+                          height: 1, indent: 56, color: Color(0xFFF5F5F5)),
+                      SettingsRow(
+                        icon: Icons.info_outline_rounded,
+                        iconBg: AppColors.primary.withValues(alpha: 0.12),
+                        iconColor: AppColors.primary,
+                        label: 'Phiên bản',
+                        trailing: Text(
+                          _appVersion.isEmpty ? '...' : _appVersion,
+                          style: const TextStyle(
+                              color: AppColors.textSecondary, fontSize: 14),
+                        ),
+                        onTap: null,
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // ── Tài khoản ────────────────────────────────────────────
+                  SettingsSection(
+                    children: [
+                      SettingsRow(
+                        icon: Icons.logout_rounded,
+                        iconBg: AppColors.danger.withValues(alpha: 0.12),
+                        iconColor: AppColors.danger,
+                        label: 'Đăng xuất',
+                        labelColor: AppColors.danger,
+                        showChevron: false,
+                        onTap: () => _confirmLogout(context),
+                      ),
+                      const Divider(
+                          height: 1, indent: 56, color: Color(0xFFF5F5F5)),
+                      SettingsRow(
+                        icon: _deleteRequested
+                            ? Icons.restore_rounded
+                            : Icons.delete_forever_rounded,
+                        iconBg: AppColors.danger.withValues(alpha: 0.12),
+                        iconColor: _deleteRequested
+                            ? AppColors.textSecondary
+                            : AppColors.danger,
+                        label: _deleteRequested
+                            ? 'Hủy yêu cầu xóa tài khoản'
+                            : 'Yêu cầu xóa tài khoản',
+                        labelColor: _deleteRequested
+                            ? AppColors.textSecondary
+                            : AppColors.danger,
+                        showChevron: false,
+                        onTap: () => _deleteRequested
+                            ? _confirmCancelDelete(context)
+                            : _confirmDeleteAccount(context),
+                      ),
+                    ],
+                  ),
+
+                  // Chừa chỗ cho thanh bottom nav nổi (kính mờ, extendBody: true
+                  // ở HomeScreen) — không thì phần cuối bị nav che mất.
+                  SizedBox(height: BottomNav.reservedHeight(context)),
                 ],
               ),
-
-              const SizedBox(height: 12),
-
-              // ── Lịch làm việc ────────────────────────────────────────
-              SettingsSection(
-                header: 'Lịch làm việc',
-                children: [
-                  SettingsRow(
-                    icon: Icons.schedule_rounded,
-                    iconBg: AppColors.primary.withValues(alpha: 0.12),
-                    iconColor: AppColors.primary,
-                    label: 'Ca làm việc',
-                    onTap: () => context.push('/shifts'),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
-              // ── Tài chính ────────────────────────────────────────────
-              SettingsSection(
-                header: 'Tài chính',
-                children: [
-                  // Balance row
-                  BalanceRow(
-                    balance: _balance,
-                    onTap: () => context.push('/wallet'),
-                  ),
-                  const Divider(
-                      height: 1, indent: 56, color: Color(0xFFF5F5F5)),
-                  // Công nợ
-                  SettingsRow(
-                    icon: Icons.warning_amber_rounded,
-                    iconBg: AppColors.danger.withValues(alpha: 0.12),
-                    iconColor: AppColors.danger,
-                    label: 'Công nợ',
-                    trailing: _debtTrailing(),
-                    onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const DebtScreen())),
-                  ),
-                  const Divider(
-                      height: 1, indent: 56, color: Color(0xFFF5F5F5)),
-                  // Ngân hàng liên kết
-                  SettingsRow(
-                    icon: Icons.account_balance_rounded,
-                    iconBg: AppColors.primary.withValues(alpha: 0.12),
-                    iconColor: AppColors.primary,
-                    label: 'Tài khoản ngân hàng',
-                    trailing: _bankName != null
-                        ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(_bankName!,
-                                  style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: AppColors.textSecondary)),
-                              if (_bankAccount != null)
-                                Text(
-                                  '••••${_bankAccount!.length > 4 ? _bankAccount!.substring(_bankAccount!.length - 4) : _bankAccount!}',
-                                  style: const TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.textSecondary),
-                                ),
-                            ],
-                          )
-                        : Text('Chưa liên kết',
-                            style: TextStyle(
-                                fontSize: 12,
-                                color:
-                                    AppColors.danger.withValues(alpha: 0.8))),
-                    onTap: () => context.push('/bank-account'),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
-              // ── Bảo mật ──────────────────────────────────────────────
-              SettingsSection(
-                header: 'Bảo mật',
-                children: [
-                  SettingsRow(
-                    icon: Icons.lock_outline_rounded,
-                    iconBg: AppColors.primary.withValues(alpha: 0.12),
-                    iconColor: AppColors.primary,
-                    label: 'Đổi mật khẩu',
-                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => const ChangePasswordScreen())),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
-              // ── Pháp lý ──────────────────────────────────────────────
-              SettingsSection(
-                header: 'Pháp lý',
-                children: [
-                  SettingsRow(
-                    icon: Icons.shield_outlined,
-                    iconBg: AppColors.primary.withValues(alpha: 0.12),
-                    iconColor: AppColors.primary,
-                    label: 'Chính sách bảo mật',
-                    onTap: () => _showPage(
-                        context, 'privacy-policy', 'Chính sách bảo mật'),
-                  ),
-                  const Divider(
-                      height: 1, indent: 56, color: Color(0xFFF5F5F5)),
-                  SettingsRow(
-                    icon: Icons.description_outlined,
-                    iconBg: AppColors.primary.withValues(alpha: 0.12),
-                    iconColor: AppColors.primary,
-                    label: 'Điều khoản sử dụng',
-                    onTap: () => _showPage(
-                        context, 'terms-of-service', 'Điều khoản sử dụng'),
-                  ),
-                  const Divider(
-                      height: 1, indent: 56, color: Color(0xFFF5F5F5)),
-                  SettingsRow(
-                    icon: Icons.info_outline_rounded,
-                    iconBg: AppColors.primary.withValues(alpha: 0.12),
-                    iconColor: AppColors.primary,
-                    label: 'Phiên bản',
-                    trailing: Text(
-                      _appVersion.isEmpty ? '...' : _appVersion,
-                      style: const TextStyle(
-                          color: AppColors.textSecondary, fontSize: 13),
-                    ),
-                    onTap: null,
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
-              // ── Tài khoản ────────────────────────────────────────────
-              SettingsSection(
-                children: [
-                  SettingsRow(
-                    icon: Icons.logout_rounded,
-                    iconBg: AppColors.danger.withValues(alpha: 0.12),
-                    iconColor: AppColors.danger,
-                    label: 'Đăng xuất',
-                    labelColor: AppColors.danger,
-                    showChevron: false,
-                    onTap: () => _confirmLogout(context),
-                  ),
-                  const Divider(
-                      height: 1, indent: 56, color: Color(0xFFF5F5F5)),
-                  SettingsRow(
-                    icon: _deleteRequested
-                        ? Icons.restore_rounded
-                        : Icons.delete_forever_rounded,
-                    iconBg: AppColors.danger.withValues(alpha: 0.12),
-                    iconColor: _deleteRequested
-                        ? AppColors.textSecondary
-                        : AppColors.danger,
-                    label: _deleteRequested
-                        ? 'Hủy yêu cầu xóa tài khoản'
-                        : 'Yêu cầu xóa tài khoản',
-                    labelColor: _deleteRequested
-                        ? AppColors.textSecondary
-                        : AppColors.danger,
-                    showChevron: false,
-                    onTap: () => _deleteRequested
-                        ? _confirmCancelDelete(context)
-                        : _confirmDeleteAccount(context),
-                  ),
-                ],
-              ),
-
-              // Chừa chỗ cho thanh bottom nav nổi (kính mờ, extendBody: true
-              // ở HomeScreen) — không thì phần cuối bị nav che mất.
-              SizedBox(height: BottomNav.reservedHeight(context)),
-            ],
+            ),
           ),
-        ),
+        ]),
       ),
     );
   }

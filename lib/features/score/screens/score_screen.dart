@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_screen_header.dart';
 import '../providers/score_provider.dart';
 import '../widgets/score_header.dart';
 import '../widgets/score_cards.dart';
@@ -33,11 +34,12 @@ class _ScoreScreenState extends ConsumerState<ScoreScreen> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFFFF8F5),
+        backgroundColor: AppColors.background,
+        appBar: const AppScreenHeader(title: 'Điểm số tuần'),
         body: score == null && state.loading
             ? const Center(
                 child: CircularProgressIndicator(
@@ -54,18 +56,23 @@ class _ScoreScreenState extends ConsumerState<ScoreScreen> {
                   children: [
                     ScoreHeader(score: score),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
+                        AppSpacing.md,
+                        AppSpacing.lg,
+                        AppSpacing.xl3,
+                      ),
                       child: Column(children: [
                         if (score?.streak != null) ...[
                           StreakCard(streak: score!.streak!),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: AppSpacing.md),
                         ],
                         if (score?.week != null) ...[
                           WeekCard(score: score!),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: AppSpacing.md),
                         ],
                         RulesCard(),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpacing.md),
                         HistoryCard(
                           history: state.history,
                           loading: state.historyLoading,

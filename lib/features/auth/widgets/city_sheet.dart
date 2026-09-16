@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 class City {
   final int id;
@@ -18,11 +19,9 @@ class CitySheet extends StatefulWidget {
     required List<City> cities,
     required City? selected,
   }) {
-    return showModalBottomSheet<City>(
+    return showAppBottomSheet<City>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.38),
       builder: (_) => CitySheet(cities: cities, selected: selected),
     );
   }
@@ -71,26 +70,9 @@ class _CitySheetState extends State<CitySheet> {
         height: MediaQuery.of(context).size.height * 0.58,
         child: Column(
           children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE1D9D5),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 17),
             const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Chọn khu vực',
-                    style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF1B1411))),
-              ),
+              padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+              child: AppBottomSheetHeader(title: 'Chọn khu vực'),
             ),
             const SizedBox(height: 15),
             Padding(
@@ -98,13 +80,13 @@ class _CitySheetState extends State<CitySheet> {
               child: TextField(
                 controller: _searchCtrl,
                 style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF1B1411)),
                 decoration: InputDecoration(
                   hintText: 'Tìm khu vực...',
                   hintStyle:
-                      const TextStyle(color: Color(0xFFA99F9A), fontSize: 15),
+                      const TextStyle(color: Color(0xFFA99F9A), fontSize: 16),
                   prefixIcon: const Icon(Icons.search_rounded,
                       color: Color(0xFF1B1411), size: 21),
                   suffixIcon: _searchCtrl.text.isNotEmpty

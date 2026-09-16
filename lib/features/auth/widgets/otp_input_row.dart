@@ -100,7 +100,7 @@ class _OtpInputRowState extends State<OtpInputRow> {
                       child: Text(
                         filled ? code[i] : '',
                         style: const TextStyle(
-                          fontSize: 23,
+                          fontSize: 24,
                           fontWeight: FontWeight.w800,
                           color: Color(0xFF1B1411),
                         ),

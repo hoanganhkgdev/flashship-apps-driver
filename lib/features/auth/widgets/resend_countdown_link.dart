@@ -73,18 +73,18 @@ class _ResendCountdownLinkState extends State<ResendCountdownLink> {
         child: _seconds > 0
             ? RichText(
                 text: TextSpan(
-                  style: const TextStyle(fontSize: 16),
+                  style: const TextStyle(fontSize: AppFontSize.md),
                   children: [
                     TextSpan(
                       text: widget.promptText,
                       style: const TextStyle(
-                          color: Color(0xFF6A605C),
+                          color: AppColors.textSecondary,
                           fontWeight: FontWeight.w500),
                     ),
                     TextSpan(
                       text: 'Gửi lại sau ${_seconds}s',
                       style: const TextStyle(
-                          color: Color(0xFFA99F9A),
+                          color: AppColors.textTertiary,
                           fontWeight: FontWeight.w700),
                     ),
                   ],
@@ -95,7 +95,7 @@ class _ResendCountdownLinkState extends State<ResendCountdownLink> {
                 child: Text(
                   widget.actionLabel,
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: AppFontSize.md,
                     fontWeight: FontWeight.w700,
                     color:
                         _sending ? AppColors.textSecondary : AppColors.primary,

@@ -14,7 +14,7 @@ class AvatarInitials extends StatelessWidget {
             user?.initials ?? 'D',
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 28,
+              fontSize: AppFontSize.xl3,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -50,7 +50,8 @@ class AvatarOptionCard extends StatelessWidget {
           ),
           child: Column(children: [
             Container(
-              width: 48, height: 48,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
@@ -60,13 +61,13 @@ class AvatarOptionCard extends StatelessWidget {
             const SizedBox(height: 10),
             Text(label,
                 style: TextStyle(
-                    fontSize: 14,
+                    fontSize: AppFontSize.base,
                     fontWeight: FontWeight.w700,
                     color: color)),
-            const SizedBox(height: 2),
+            const SizedBox(height: AppSpacing.xxs),
             Text(subtitle,
                 style: const TextStyle(
-                    fontSize: 12, color: AppColors.textSecondary)),
+                    fontSize: AppFontSize.sm, color: AppColors.textSecondary)),
           ]),
         ),
       );

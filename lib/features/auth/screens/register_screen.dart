@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/auth_field.dart';
+import '../../../core/widgets/app_surface_card.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/auth_chrome.dart';
 import '../widgets/city_picker_field.dart';
@@ -122,42 +124,44 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final safeT = MediaQuery.of(context).padding.top;
     final safeB = MediaQuery.of(context).padding.bottom;
     final bottom = MediaQuery.of(context).viewInsets.bottom;
-    const fieldBorder = BorderSide(color: Color(0xFFE5DDD9), width: 1);
-    const fieldFill = Color(0xFFFCF6F3);
+    const fieldBorder = BorderSide(color: AppColors.divider, width: 1);
+    const fieldFill = AppColors.surfaceAlt;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFDFC),
+      backgroundColor: AppColors.background,
       resizeToAvoidBottomInset: false,
       body: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(24, safeT + 16, 24, bottom + safeB + 32),
+        padding: EdgeInsets.fromLTRB(AppSpacing.xl2, safeT + AppSpacing.lg,
+            AppSpacing.xl2, bottom + safeB + AppSpacing.xl3),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             AuthBackButton(onTap: () => context.go('/login')),
-            const SizedBox(height: 18),
+            const Center(child: AuthBrandHeader(compact: true)),
+            const SizedBox(height: AppSpacing.xl),
             const _RegistrationProgress(),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpacing.xl),
             const Text(
               'Đăng ký tài xế',
               style: TextStyle(
-                fontSize: 24,
+                fontSize: AppFontSize.xl2,
                 height: 1.25,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.7,
-                color: Color(0xFF1B1411),
+                color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 3),
             const Text(
               'Tham gia đội ngũ tài xế FlashShip',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: AppFontSize.base,
                 height: 1.5,
                 fontWeight: FontWeight.w500,
-                color: Color(0xFF6A605C),
+                color: AppColors.textSecondary,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpacing.xl),
             Form(
               key: _formKey,
               child: Column(
@@ -172,7 +176,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         controller: _nameCtrl,
                         hint: 'Nguyễn Văn An',
                         prefixIcon: const Icon(Icons.person_outline_rounded,
-                            size: 21, color: Color(0xFF17110F)),
+                            size: 21, color: AppColors.textPrimary),
                         textCapitalization: TextCapitalization.words,
                         textInputAction: TextInputAction.next,
                         fillColor: fieldFill,
@@ -191,7 +195,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         controller: _phoneCtrl,
                         hint: '0912 345 678',
                         prefixIcon: const Icon(Icons.phone_outlined,
-                            size: 21, color: Color(0xFF17110F)),
+                            size: 21, color: AppColors.textPrimary),
                         keyboardType: TextInputType.phone,
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly
@@ -214,7 +218,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpacing.xl),
                   _RegisterSection(
                     title: 'KHU VỰC HOẠT ĐỘNG',
                     children: [
@@ -229,7 +233,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpacing.xl),
                   _RegisterSection(
                     title: 'BẢO MẬT',
                     children: [
@@ -239,7 +243,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         controller: _passwordCtrl,
                         hint: '••••••••',
                         prefixIcon: const Icon(Icons.lock_outline_rounded,
-                            size: 20, color: Color(0xFF17110F)),
+                            size: 20, color: AppColors.textPrimary),
                         obscureText: _obscure,
                         textInputAction: TextInputAction.next,
                         suffixIcon: GestureDetector(
@@ -249,7 +253,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 ? Icons.visibility_outlined
                                 : Icons.visibility_off_outlined,
                             size: 20,
-                            color: const Color(0xFF17110F),
+                            color: AppColors.textPrimary,
                           ),
                         ),
                         fillColor: fieldFill,
@@ -274,7 +278,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         controller: _confirmCtrl,
                         hint: '••••••••',
                         prefixIcon: const Icon(Icons.lock_outline_rounded,
-                            size: 20, color: Color(0xFF17110F)),
+                            size: 20, color: AppColors.textPrimary),
                         obscureText: _obscureConfirm,
                         textInputAction: TextInputAction.done,
                         onFieldSubmitted: (_) => _submit(),
@@ -286,7 +290,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 ? Icons.visibility_outlined
                                 : Icons.visibility_off_outlined,
                             size: 20,
-                            color: const Color(0xFF17110F),
+                            color: AppColors.textPrimary,
                           ),
                         ),
                         fillColor: fieldFill,
@@ -313,13 +317,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xl2),
             AuthPrimaryButton(
               label: 'Gửi mã xác nhận',
               loading: _submitting,
               onPressed: _submit,
-              height: 54,
-              color: const Color(0xFFFF6035),
+              height: 52,
+              borderRadius: AppRadius.md,
+              color: AppColors.primary,
               fontSize: 16,
             ),
             const SizedBox(height: 22),
@@ -334,15 +339,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       TextSpan(
                         text: 'Đăng nhập',
                         style: TextStyle(
-                          color: Color(0xFFFF6035),
+                          color: AppColors.primary,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
                   ),
                   style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF6A605C),
+                    fontSize: AppFontSize.base,
+                    color: AppColors.textSecondary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -361,7 +366,7 @@ class _RegistrationProgress extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
         children: [
-          Expanded(child: _bar(const Color(0xFFFF6035))),
+          Expanded(child: _bar(AppColors.primary)),
           const SizedBox(width: 6),
           Expanded(child: _bar(const Color(0xFFE2DDD9))),
         ],
@@ -383,24 +388,19 @@ class _RegisterSection extends StatelessWidget {
   const _RegisterSection({required this.title, required this.children});
 
   @override
-  Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
-        decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFE5DDD9)),
-          borderRadius: BorderRadius.circular(20),
-        ),
+  Widget build(BuildContext context) => AppSurfaceCard(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, AppSpacing.xl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(
-                fontSize: 12,
+                fontSize: AppFontSize.sm,
                 height: 1.4,
                 fontWeight: FontWeight.w800,
                 letterSpacing: .2,
-                color: Color(0xFF655B57),
+                color: AppColors.textSecondary,
               ),
             ),
             const SizedBox(height: 14),
@@ -419,10 +419,10 @@ class _FieldLabel extends StatelessWidget {
   Widget build(BuildContext context) => Text(
         text,
         style: const TextStyle(
-          fontSize: 14,
+          fontSize: AppFontSize.base,
           height: 1.4,
           fontWeight: FontWeight.w700,
-          color: Color(0xFF655B57),
+          color: AppColors.textSecondary,
         ),
       );
 }

@@ -15,23 +15,26 @@ class RejectedBanner extends StatelessWidget {
         color: const Color(0xFFFFE7E4),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xFFF3A3A0)),
+        boxShadow: AppShadows.soft,
       ),
       child: Row(children: [
-        const Icon(Icons.cancel_outlined, color: Color(0xFF17110F), size: 20),
+        const Icon(Icons.cancel_outlined,
+            color: AppColors.textPrimary, size: 20),
         const SizedBox(width: 10),
         Expanded(
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('Yêu cầu đổi ca gần nhất đã bị từ chối',
                 style: TextStyle(
-                    fontSize: 14,
+                    fontSize: AppFontSize.base,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF1B1411))),
+                    color: AppColors.textPrimary)),
             if (request.adminNote != null && request.adminNote!.isNotEmpty) ...[
               const SizedBox(height: 3),
               Text('Lý do: ${request.adminNote}',
                   style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary)),
+                      fontSize: AppFontSize.sm,
+                      color: AppColors.textSecondary)),
             ],
           ]),
         ),

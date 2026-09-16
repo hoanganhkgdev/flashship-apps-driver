@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
-import 'surface_card.dart';
+import '../../../core/widgets/app_surface_card.dart';
+import '../../../core/widgets/app_section_header.dart';
+import '../../../core/widgets/app_metric_tile.dart';
 
 class EarningsCard extends StatelessWidget {
   final int todayEarnings;
@@ -29,96 +31,70 @@ class EarningsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return AppSurfaceCard(
       onTap: onTap,
-      child: surfaceCard(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Header
-          Row(children: [
-            const Text('Thu nhập hôm nay',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                )),
-            const Spacer(),
-            const Icon(Icons.chevron_right_rounded,
-                size: 18, color: AppColors.textTertiary),
-          ]),
-
-          const SizedBox(height: 12),
-
-          // Amount + yesterday
-          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Expanded(
-              child: Text(
-                Fmt.currency(todayEarnings),
-                style: const TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.success,
-                  letterSpacing: -0.5,
-                ),
-              ),
+      color: const Color(0xFFFFFBF8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const AppSectionHeader(
+          title: 'Hoạt động hôm nay',
+          subtitle: 'Thu nhập và hiệu suất làm việc',
+          icon: Icons.insights_rounded,
+          color: AppColors.primary,
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        Text('THU NHẬP HÔM NAY',
+            style: AppTextStyles.caption
+                .copyWith(color: AppColors.textTertiary, letterSpacing: .6)),
+        const SizedBox(height: AppSpacing.sm),
+        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Expanded(
+            child: Text(Fmt.currency(todayEarnings),
+                style: AppTextStyles.metricLarge
+                    .copyWith(color: AppColors.success)),
+          ),
+          if (yesterdayEarnings > 0)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+              child: Text('Hôm qua ${Fmt.currency(yesterdayEarnings)}',
+                  style: AppTextStyles.label
+                      .copyWith(color: AppColors.textTertiary)),
             ),
-            if (yesterdayEarnings > 0)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  'Hôm qua ${Fmt.currency(yesterdayEarnings)}',
-                  style: const TextStyle(
-                      fontSize: 13, color: AppColors.textTertiary),
-                ),
-              ),
-          ]),
-
-          if (last7Days.isNotEmpty) ...[
-            const SizedBox(height: 18),
-            _WeeklyEarningsChart(values: last7Days),
-          ],
-
-          const SizedBox(height: 14),
-          const Divider(height: 1, color: AppColors.divider),
-          const SizedBox(height: 12),
-
-          // Stats row
-          Row(children: [
-            _miniStat('$todayOrders', 'Đơn hôm nay', Icons.inventory_2_rounded),
-            _vDivider(),
-            _miniStat(
-              rating > 0 ? rating.toStringAsFixed(1) : '—',
-              ratingCount > 0 ? '$ratingCount đánh giá' : 'Đánh giá',
-              Icons.star_rounded,
-            ),
-          ]),
         ]),
-      ),
+        const SizedBox(height: AppSpacing.md),
+        Row(children: [
+          Expanded(
+            child: AppMetricTile(
+              label: 'Đơn hoàn thành',
+              value: '$todayOrders',
+              icon: Icons.inventory_2_rounded,
+              color: AppColors.secondary,
+            ),
+          ),
+          const SizedBox(
+            height: 40,
+            child: VerticalDivider(
+              width: AppSpacing.xl2,
+              color: AppColors.divider,
+            ),
+          ),
+          Expanded(
+            child: AppMetricTile(
+              label: ratingCount > 0 ? '$ratingCount đánh giá' : 'Đánh giá',
+              value: rating > 0 ? rating.toStringAsFixed(1) : '—',
+              icon: Icons.star_rounded,
+              color: AppColors.warning,
+            ),
+          ),
+        ]),
+        if (last7Days.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.lg),
+          const Divider(height: 1),
+          const SizedBox(height: AppSpacing.md),
+          _WeeklyEarningsChart(values: last7Days),
+        ],
+      ]),
     );
   }
-
-  Widget _vDivider() => Container(
-      width: 1,
-      height: 28,
-      margin: const EdgeInsets.symmetric(horizontal: 14),
-      color: AppColors.divider);
-
-  Widget _miniStat(String value, String label, IconData icon) => Expanded(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Icon(icon, size: 11, color: AppColors.textTertiary),
-            const SizedBox(width: 4),
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.textTertiary)),
-          ]),
-          const SizedBox(height: 3),
-          Text(value,
-              style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary)),
-        ]),
-      );
 }
 
 const _weekdayShort = ['', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -164,20 +140,20 @@ class _WeeklyEarningsChartState extends State<_WeeklyEarningsChart> {
       Row(children: [
         const Text('Thu nhập tuần này',
             style: TextStyle(
-              fontSize: 12.5,
+              fontSize: 12,
               fontWeight: FontWeight.w600,
               color: AppColors.textTertiary,
             )),
         const Spacer(),
         Text(
           isSelectedToday ? 'Hôm nay' : _weekdayFull[dates[_selected].weekday],
-          style: const TextStyle(fontSize: 12.5, color: AppColors.textTertiary),
+          style: const TextStyle(fontSize: 12, color: AppColors.textTertiary),
         ),
         const SizedBox(width: 6),
         Text(
           isSelectedFuture ? 'Chưa tới' : Fmt.currency(values[_selected]),
           style: const TextStyle(
-            fontSize: 12.5,
+            fontSize: 12,
             fontWeight: FontWeight.w800,
             color: AppColors.primary,
           ),
@@ -194,7 +170,7 @@ class _WeeklyEarningsChartState extends State<_WeeklyEarningsChart> {
           final isFuture = dates[i].isAfter(today);
           final isSelected = i == _selected;
           final frac = maxV > 0 ? values[i] / maxV : 0.0;
-          final h = isFuture ? 10.0 : 6.0 + frac * 46.0;
+          final h = isFuture ? 8.0 : 6.0 + frac * 34.0;
           return Expanded(
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
@@ -227,7 +203,7 @@ class _WeeklyEarningsChartState extends State<_WeeklyEarningsChart> {
                   Text(
                     _weekdayShort[dates[i].weekday],
                     style: TextStyle(
-                      fontSize: 11.5,
+                      fontSize: 12,
                       fontWeight:
                           isSelected ? FontWeight.w800 : FontWeight.w500,
                       color: isFuture

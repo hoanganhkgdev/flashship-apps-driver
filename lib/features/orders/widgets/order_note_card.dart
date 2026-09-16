@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_surface_card.dart';
 import 'phone_link_text.dart';
 
 /// Card ghi chú đơn hàng, dùng chung cho active_order_screen và
@@ -15,14 +16,8 @@ class OrderNoteCard extends StatelessWidget {
   const OrderNoteCard({super.key, required this.note, this.label = 'GHI CHÚ'});
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFF8E1),
-          borderRadius: BorderRadius.circular(AppRadius.card),
-          border: Border.all(
-              color: const Color(0xFFF59E0B).withValues(alpha: 0.30)),
-        ),
+  Widget build(BuildContext context) => AppSurfaceCard(
+        color: const Color(0xFFFFFCF3),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Icon(Icons.sticky_note_2_outlined,
               size: 18, color: AppColors.warning),
@@ -32,17 +27,13 @@ class OrderNoteCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                 Text(label,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.warning,
-                      letterSpacing: 0.5,
-                    )),
-                const SizedBox(height: 4),
+                    style: AppTextStyles.caption
+                        .copyWith(color: AppColors.warning, letterSpacing: .5)),
+                const SizedBox(height: AppSpacing.xs),
                 PhoneLinkText(
                   text: note,
-                  style: const TextStyle(
-                      fontSize: 13, color: AppColors.textPrimary, height: 1.5),
+                  style:
+                      AppTextStyles.body.copyWith(color: AppColors.textPrimary),
                 ),
               ])),
         ]),

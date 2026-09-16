@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/launch_utils.dart';
+import '../../../core/widgets/app_section_header.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/order_model.dart';
 import '../providers/order_provider.dart';
@@ -75,21 +76,17 @@ class _BatchStopsCardState extends ConsumerState<BatchStopsCard> {
     return orderCardShell(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // Header
-        Row(children: [
-          Icon(Icons.route_rounded, size: 13, color: AppColors.textTertiary),
-          const SizedBox(width: 6),
-          Text(
-            'CÁC ĐIỂM GIAO ($delivered/${stops.length})',
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textTertiary,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ]),
+        AppSectionHeader(
+          title: 'Các điểm giao',
+          subtitle: 'Đã hoàn thành $delivered/${stops.length} điểm',
+          icon: Icons.alt_route_rounded,
+          color: AppColors.secondary,
+          trailing: Text('$delivered/${stops.length}',
+              style: AppTextStyles.sectionTitle
+                  .copyWith(color: AppColors.secondary)),
+        ),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
 
         // Progress bar
         ClipRRect(
@@ -125,15 +122,14 @@ class _BatchStopsCardState extends ConsumerState<BatchStopsCard> {
                 height: 28,
                 decoration: BoxDecoration(
                   color: isDone ? AppColors.success : AppColors.primary,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppRadius.xs),
                 ),
                 child: Center(
                   child: isDone
                       ? const Icon(Icons.check_rounded,
                           size: 15, color: Colors.white)
                       : Text('$seq',
-                          style: const TextStyle(
-                              fontSize: 12,
+                          style: AppTextStyles.label.copyWith(
                               fontWeight: FontWeight.w800,
                               color: Colors.white)),
                 ),
@@ -148,9 +144,7 @@ class _BatchStopsCardState extends ConsumerState<BatchStopsCard> {
                       children: [
                     if (name.isNotEmpty)
                       Text(name,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                          style: AppTextStyles.bodyStrong.copyWith(
                             color: isDone
                                 ? AppColors.textSecondary
                                 : AppColors.textPrimary,
@@ -159,8 +153,7 @@ class _BatchStopsCardState extends ConsumerState<BatchStopsCard> {
                             decorationColor: AppColors.textSecondary,
                           )),
                     Text(addr,
-                        style: TextStyle(
-                          fontSize: 12,
+                        style: AppTextStyles.label.copyWith(
                           color: isDone
                               ? AppColors.textSecondary
                               : AppColors.textPrimary,
@@ -175,12 +168,10 @@ class _BatchStopsCardState extends ConsumerState<BatchStopsCard> {
                           child: Row(mainAxisSize: MainAxisSize.min, children: [
                             const Icon(Icons.phone_rounded,
                                 size: 12, color: AppColors.info),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: AppSpacing.xs),
                             Text(phone,
-                                style: const TextStyle(
-                                    fontSize: 11,
-                                    color: AppColors.info,
-                                    fontWeight: FontWeight.w600)),
+                                style: AppTextStyles.label
+                                    .copyWith(color: AppColors.info)),
                           ]),
                         ),
                       ),
@@ -188,10 +179,8 @@ class _BatchStopsCardState extends ConsumerState<BatchStopsCard> {
                       Padding(
                         padding: const EdgeInsets.only(top: 3),
                         child: Text('Thu COD: ${Fmt.currency(cod)}',
-                            style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.warning,
-                                fontWeight: FontWeight.w600)),
+                            style: AppTextStyles.label
+                                .copyWith(color: AppColors.warning)),
                       ),
                   ])),
 
@@ -207,8 +196,7 @@ class _BatchStopsCardState extends ConsumerState<BatchStopsCard> {
                       minimumSize: Size.zero,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(9)),
-                      textStyle: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w700),
+                      textStyle: AppTextStyles.label,
                     ),
                     onPressed: (!canDeliver || loading)
                         ? null

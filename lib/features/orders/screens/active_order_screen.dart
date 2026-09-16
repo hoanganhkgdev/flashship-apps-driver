@@ -156,7 +156,7 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
 
     if (order == null) {
       return Scaffold(
-        backgroundColor: const Color(0xFFFFF8F5),
+        backgroundColor: AppColors.background,
         appBar: AppBar(title: const Text('Đơn hàng')),
         body: const Center(child: Text('Đơn hàng này không còn hoạt động')),
       );
@@ -176,7 +176,7 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
         statusBarBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFFFF8F5),
+        backgroundColor: AppColors.background,
         body: Column(children: [
           // ── Header ─────────────────────────────────────────────────
           ActiveOrderHeader(order: order, color: color),
@@ -184,7 +184,8 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
           // ── Scrollable content ─────────────────────────────────────
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xl2),
               children: [
                 // Route or Topup
                 if (isTopup)
@@ -231,13 +232,13 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
 
                 // Note
                 if (order.orderNote != null && order.orderNote!.isNotEmpty) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   OrderNoteCard(note: order.orderNote!),
                 ],
 
                 // Batch stops
                 if (order.isBatch && order.stops.isNotEmpty) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   BatchStopsCard(
                     order: order,
                     onCompletionStateChanged: (completing) {
@@ -261,7 +262,7 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
                 ],
 
                 // Earnings
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 EarningCard(order: order, color: color),
               ],
             ),

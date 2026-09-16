@@ -2,10 +2,11 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/app_back_button.dart';
+import '../../../core/widgets/app_screen_header.dart';
+import '../../../core/widgets/app_surface_card.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 import '../../auth/providers/auth_provider.dart';
 
 class KycScreen extends ConsumerStatefulWidget {
@@ -71,12 +72,8 @@ class _KycScreenState extends ConsumerState<KycScreen> {
     required VoidCallback onCamera,
     required VoidCallback onGallery,
   }) {
-    showModalBottomSheet(
+    showAppBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.38),
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => Material(
         color: const Color(0xFFFFFEFD),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -84,35 +81,11 @@ class _KycScreenState extends ConsumerState<KycScreen> {
         child: SafeArea(
           top: false,
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(
-              width: 36,
-              height: 4,
-              margin: const EdgeInsets.only(top: 12, bottom: 17),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE1D9D5),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(title,
-                    style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF1B1411))),
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 3, 20, 9),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Ảnh rõ nét, đủ ánh sáng, không bị mờ',
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF6A605C))),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+              child: AppBottomSheetHeader(
+                title: title,
+                subtitle: 'Ảnh rõ nét, đủ ánh sáng, không bị mờ',
               ),
             ),
             const Divider(height: 1, color: Color(0xFFE5DDD9)),
@@ -224,7 +197,6 @@ class _KycScreenState extends ConsumerState<KycScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final top = MediaQuery.of(context).padding.top;
     final steps = _completedSteps;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -236,7 +208,8 @@ class _KycScreenState extends ConsumerState<KycScreen> {
         statusBarBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFFFF8F5),
+        backgroundColor: AppColors.background,
+        appBar: const AppScreenHeader(title: 'Hồ sơ tài xế'),
         body: RefreshIndicator(
           color: AppColors.primary,
           onRefresh: _loadData,
@@ -246,7 +219,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
               : ListView(
                   padding: EdgeInsets.zero,
                   children: [
-                    _buildHeader(top, steps),
+                    _buildHeader(steps),
 
                     const SizedBox(height: 16),
 
@@ -272,168 +245,122 @@ class _KycScreenState extends ConsumerState<KycScreen> {
 
   // ── Header ────────────────────────────────────────────────────────────────────
 
-  Widget _buildHeader(double top, int steps) {
+  Widget _buildHeader(int steps) {
     final isDone = steps == 2;
-    return Column(children: [
-      // Top bar
-      Container(
-        width: double.infinity,
-        color: const Color(0xFFFFFEFD),
-        padding: EdgeInsets.fromLTRB(16, top + 16, 16, 16),
-        child: Row(children: [
-          AppBackButton(onTap: () => context.pop()),
-          const Expanded(
-            child: Text('Hồ sơ tài xế',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF1B1411),
-                    letterSpacing: -0.2)),
-          ),
-          const SizedBox(width: 40),
-        ]),
+    final color = isDone ? AppColors.success : AppColors.primary;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.lg,
+        AppSpacing.lg,
+        0,
       ),
-
-      // Summary card
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFFEFD),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFE5DDD9)),
-          ),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFEAE3),
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Icon(
-                  isDone ? Icons.verified_user_rounded : Icons.shield_rounded,
-                  color: const Color(0xFF17110F),
-                  size: 22,
-                ),
+      child: AppSurfaceCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: .10),
+                borderRadius: BorderRadius.circular(AppRadius.md),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isDone ? 'Hồ sơ hoàn thiện' : 'Hoàn thiện hồ sơ',
-                        style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        isDone
-                            ? 'Bạn có thể nhận tất cả loại đơn hàng'
-                            : 'Điền đủ thông tin để nhận nhiều đơn hơn',
-                        style: const TextStyle(
-                            fontSize: 12, color: AppColors.textSecondary),
-                      ),
-                    ]),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF6035),
-                  borderRadius: BorderRadius.circular(0),
-                ),
-                child: Text('$steps/2',
-                    style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white)),
-              ),
-            ]),
-            const SizedBox(height: 14),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: steps / 2,
-                minHeight: 6,
-                backgroundColor: AppColors.divider,
-                valueColor:
-                    const AlwaysStoppedAnimation<Color>(Color(0xFFFF6035)),
+              child: Icon(
+                isDone ? Icons.verified_user_rounded : Icons.shield_rounded,
+                color: color,
+                size: 22,
               ),
             ),
-            const SizedBox(height: 10),
-            Row(children: [
-              _StepStatus(label: 'CCCD', done: _cccdStatus == 'approved'),
-              const SizedBox(width: 20),
-              _StepStatus(
-                  label: 'Bằng lái', done: _licenseStatus == 'approved'),
-            ]),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isDone ? 'Hồ sơ hoàn thiện' : 'Hoàn thiện hồ sơ',
+                      style: AppTextStyles.sectionTitle
+                          .copyWith(color: AppColors.textPrimary),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      isDone
+                          ? 'Bạn có thể nhận tất cả loại đơn hàng'
+                          : 'Điền đủ thông tin để nhận nhiều đơn hơn',
+                      style: AppTextStyles.label
+                          .copyWith(color: AppColors.textSecondary),
+                    ),
+                  ]),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: .10),
+                borderRadius: BorderRadius.circular(AppRadius.full),
+              ),
+              child: Text('$steps/2',
+                  style: AppTextStyles.bodyStrong.copyWith(color: color)),
+            ),
           ]),
-        ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: steps / 2,
+              minHeight: 6,
+              backgroundColor: AppColors.divider,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(children: [
+            _StepStatus(label: 'CCCD', done: _cccdStatus == 'approved'),
+            const SizedBox(width: 20),
+            _StepStatus(label: 'Bằng lái', done: _licenseStatus == 'approved'),
+          ]),
+        ]),
       ),
-    ]);
+    );
   }
 
   // ── Docs card ─────────────────────────────────────────────────────────────────
 
   Widget _buildDocsCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFEFD),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE5DDD9)),
+    return Column(children: [
+      _DocCard(
+        icon: Icons.badge_rounded,
+        label: 'CCCD / CMND',
+        status: _cccdStatus,
+        imageUrl: _cccdImageUrl,
+        rejectionReason: _cccdRejectionReason,
+        isUploading: _uploadingCccd,
+        onTap: () => _showUploadSheet(
+          title: 'Tải lên hình CCCD / CMND',
+          onCamera: () => _pickAndUploadCccd(ImageSource.camera),
+          onGallery: () => _pickAndUploadCccd(ImageSource.gallery),
+        ),
       ),
-      padding: const EdgeInsets.all(12),
-      child: Row(children: [
-        Expanded(
-          child: _DocCard(
-            icon: Icons.badge_rounded,
-            label: 'CCCD / CMND',
-            status: _cccdStatus,
-            imageUrl: _cccdImageUrl,
-            rejectionReason: _cccdRejectionReason,
-            isUploading: _uploadingCccd,
-            onTap: () => _showUploadSheet(
-              title: 'Tải lên hình CCCD / CMND',
-              onCamera: () => _pickAndUploadCccd(ImageSource.camera),
-              onGallery: () => _pickAndUploadCccd(ImageSource.gallery),
-            ),
-          ),
+      const SizedBox(height: AppSpacing.md),
+      _DocCard(
+        icon: Icons.drive_eta_rounded,
+        label: 'Bằng lái xe',
+        status: _licenseStatus,
+        imageUrl: _licenseImageUrl,
+        rejectionReason: _licenseRejectionReason,
+        isUploading: _uploadingLicense,
+        onTap: () => _showUploadSheet(
+          title: 'Tải lên bằng lái xe',
+          onCamera: () => _pickAndUploadLicense(ImageSource.camera),
+          onGallery: () => _pickAndUploadLicense(ImageSource.gallery),
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _DocCard(
-            icon: Icons.drive_eta_rounded,
-            label: 'Bằng lái xe',
-            status: _licenseStatus,
-            imageUrl: _licenseImageUrl,
-            rejectionReason: _licenseRejectionReason,
-            isUploading: _uploadingLicense,
-            onTap: () => _showUploadSheet(
-              title: 'Tải lên bằng lái xe',
-              onCamera: () => _pickAndUploadLicense(ImageSource.camera),
-              onGallery: () => _pickAndUploadLicense(ImageSource.gallery),
-            ),
-          ),
-        ),
-      ]),
-    );
+      ),
+    ]);
   }
 
   Widget _sectionLabel(String text) => Text(
         text,
-        style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF6A605C),
-            letterSpacing: 0.5),
+        style: AppTextStyles.label.copyWith(
+          color: AppColors.textSecondary,
+        ),
       );
 }
 
@@ -456,7 +383,7 @@ class _StepStatus extends StatelessWidget {
       const SizedBox(width: 5),
       Text(label,
           style: TextStyle(
-              fontSize: 11.5, fontWeight: FontWeight.w600, color: color)),
+              fontSize: 12, fontWeight: FontWeight.w600, color: color)),
     ]);
   }
 }
@@ -504,6 +431,7 @@ class _DocCard extends StatelessWidget {
           color: const Color(0xFFFFFAF7),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: color.withValues(alpha: 0.22)),
+          boxShadow: AppShadows.soft,
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           // Thumbnail / icon area
@@ -523,7 +451,7 @@ class _DocCard extends StatelessWidget {
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(label,
                   style: const TextStyle(
-                      fontSize: 12.5,
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
                       height: 1.3)),
@@ -540,7 +468,7 @@ class _DocCard extends StatelessWidget {
                   Flexible(
                     child: Text(statusLabel,
                         style: TextStyle(
-                            fontSize: 10.5,
+                            fontSize: 10,
                             fontWeight: FontWeight.w600,
                             color: color)),
                   ),
@@ -554,7 +482,7 @@ class _DocCard extends StatelessWidget {
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 10.5,
+                    fontSize: 10,
                     color: AppColors.textSecondary,
                     height: 1.35,
                   ),
@@ -590,7 +518,7 @@ class _DocCard extends StatelessWidget {
                               ? 'Đang tải lên...'
                               : (status == null ? 'Tải lên' : 'Cập nhật'),
                           style: const TextStyle(
-                              fontSize: 11.5,
+                              fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: Colors.white),
                         ),

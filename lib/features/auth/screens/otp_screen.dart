@@ -83,89 +83,73 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFDFC),
+      backgroundColor: AppColors.background,
       resizeToAvoidBottomInset: false,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ── Scrollable content ────────────────────────────────────
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(24, 16, 24, bottom + 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    AuthBackButton(
-                        onTap: () => Navigator.of(context).maybePop()),
-
-                    const SizedBox(height: 24),
-
-                    const _OtpProgress(),
-
-                    const SizedBox(height: 24),
-
-                    AuthHeader(
-                      title: 'Xác nhận OTP',
-                      titleFontSize: 24,
-                      subtitleSpans: [
-                        const TextSpan(
-                            text: 'Nhập mã 6 số đã gửi qua Zalo/SMS tới '),
-                        TextSpan(
-                          text: _maskedPhone,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg,
+              AppSpacing.lg, bottom + AppSpacing.xl2),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            AuthBackButton(onTap: () => Navigator.of(context).maybePop()),
+            const SizedBox(height: AppSpacing.lg),
+            const Center(child: AuthBrandHeader(compact: true)),
+            const SizedBox(height: AppSpacing.xl2),
+            const _OtpProgress(),
+            const SizedBox(height: AppSpacing.md),
+            AuthContentCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AuthHeader(
+                    title: 'Xác nhận OTP',
+                    subtitleSpans: [
+                      const TextSpan(text: 'Nhập mã 6 số đã gửi tới '),
+                      TextSpan(
+                        text: _maskedPhone,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
                         ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 28),
-
-                    // OTP boxes
-                    OtpInputRow(
-                      controller: _otpCtrl,
-                      enabled: !_loading,
-                      onFilled: () {
-                        setState(() => _error = null);
-                        _submit();
-                      },
-                      onChanged: () => setState(() => _error = null),
-                    ),
-
-                    // Error
-                    if (_error != null) ...[
-                      const SizedBox(height: 14),
-                      AuthErrorBanner(message: _error!),
+                      ),
                     ],
-
-                    const SizedBox(height: 26),
-
-                    ResendCountdownLink(
-                      onResend: _resend,
-                      actionLabel: 'Gửi lại mã',
-                      initialSeconds: 38,
-                    ),
-
-                    const SizedBox(height: 18),
-
-                    AuthPrimaryButton(
-                      label: 'Xác nhận',
-                      loading: _loading,
-                      onPressed: _submit,
-                      height: 54,
-                      color: const Color(0xFFFF6035),
-                      fontSize: 16,
-                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xl2),
+                  OtpInputRow(
+                    controller: _otpCtrl,
+                    enabled: !_loading,
+                    onFilled: () {
+                      setState(() => _error = null);
+                      _submit();
+                    },
+                    onChanged: () => setState(() => _error = null),
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    AuthErrorBanner(message: _error!),
                   ],
-                ),
+                  const SizedBox(height: AppSpacing.xl),
+                  ResendCountdownLink(
+                    onResend: _resend,
+                    actionLabel: 'Gửi lại mã',
+                    initialSeconds: 38,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  AuthPrimaryButton(
+                    label: 'Xác nhận',
+                    loading: _loading,
+                    onPressed: _submit,
+                    height: 52,
+                    borderRadius: AppRadius.md,
+                    fontSize: AppFontSize.md,
+                  ),
+                ],
               ),
             ),
-          ],
+          ]),
         ),
       ),
     );
@@ -185,7 +169,7 @@ class _OtpProgress extends StatelessWidget {
   Widget _bar() => Container(
         height: 5,
         decoration: BoxDecoration(
-          color: const Color(0xFFFF6035),
+          color: AppColors.primary,
           borderRadius: BorderRadius.circular(3),
         ),
       );

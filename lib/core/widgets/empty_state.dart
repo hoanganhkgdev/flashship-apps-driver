@@ -24,9 +24,9 @@ class EmptyState extends StatelessWidget {
     required this.iconColor,
     required this.iconBgColor,
     this.circleSize = 80,
-    this.iconSize = 40,
+    this.iconSize = AppSpacing.xl4,
     required this.title,
-    this.titleFontSize = 17,
+    this.titleFontSize = AppFontSize.lg,
     required this.subtitle,
     this.actionLabel,
     this.onAction,
@@ -39,34 +39,37 @@ class EmptyState extends StatelessWidget {
     return Center(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Container(
-          width: circleSize, height: circleSize,
+          width: circleSize,
+          height: circleSize,
           decoration: BoxDecoration(color: iconBgColor, shape: BoxShape.circle),
           child: Icon(icon, color: iconColor, size: iconSize),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         Text(title,
             style: TextStyle(
-              fontSize: titleFontSize, fontWeight: FontWeight.w800,
+              fontSize: titleFontSize,
+              fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
             )),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpacing.sm),
         Text(subtitle,
-            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            style: const TextStyle(
+              fontSize: AppFontSize.base,
+              color: AppColors.textSecondary,
+            )),
         if (actionLabel != null && onAction != null) ...[
-          const SizedBox(height: 20),
-          GestureDetector(
+          const SizedBox(height: AppSpacing.xl),
+          Semantics(
+            button: true,
             onTap: onAction,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              decoration: BoxDecoration(
-                border: Border.all(color: btnColor.withValues(alpha: 0.4)),
-                borderRadius: BorderRadius.circular(20),
+            child: OutlinedButton(
+              onPressed: onAction,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: btnColor,
+                side: BorderSide(color: btnColor.withValues(alpha: 0.4)),
+                minimumSize: const Size(0, AppSize.minTouchTarget),
               ),
-              child: Text(actionLabel!,
-                  style: TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w600,
-                    color: btnColor,
-                  )),
+              child: Text(actionLabel!),
             ),
           ),
         ],

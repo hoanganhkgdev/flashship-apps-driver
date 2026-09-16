@@ -27,11 +27,7 @@ class HistoryCard extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Padding(
           padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
-          child: Text('Lịch sử điểm',
-              style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary)),
+          child: Text('Lịch sử điểm', style: AppTextStyles.sectionTitle),
         ),
         const Divider(height: 1, color: Color(0xFFF5F5F5)),
         if (loading)
@@ -59,7 +55,7 @@ class HistoryCard extends StatelessWidget {
                 const SizedBox(height: 10),
                 const Text('Chưa có lịch sử điểm',
                     style: TextStyle(
-                        color: AppColors.textSecondary, fontSize: 13)),
+                        color: AppColors.textSecondary, fontSize: 14)),
               ]),
             ),
           )
@@ -193,15 +189,13 @@ class HistoryItem extends StatelessWidget {
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(entry.label,
-                style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary)),
+                style: AppTextStyles.bodyStrong
+                    .copyWith(color: AppColors.textPrimary)),
             const SizedBox(height: 3),
             Row(children: [
               Text('${entry.scoreBefore} → ${entry.scoreAfter}',
                   style: const TextStyle(
-                      fontSize: 11.5, color: AppColors.textSecondary)),
+                      fontSize: 12, color: AppColors.textSecondary)),
               Container(
                 width: 3,
                 height: 3,
@@ -211,7 +205,7 @@ class HistoryItem extends StatelessWidget {
               ),
               Text(time,
                   style: const TextStyle(
-                      fontSize: 11.5, color: AppColors.textSecondary)),
+                      fontSize: 12, color: AppColors.textSecondary)),
             ]),
           ]),
         ),

@@ -61,7 +61,7 @@ class CityPickerField extends StatelessWidget {
                           const SizedBox(width: 8),
                           const Text('Đang tải...',
                               style: TextStyle(
-                                  fontSize: 17,
+                                  fontSize: 18,
                                   color: AppColors.textSecondary)),
                         ])
                       : Text(

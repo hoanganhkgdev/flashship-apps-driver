@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_section_header.dart';
 import '../models/order_model.dart';
 import 'order_card_shell.dart';
 
@@ -54,6 +55,16 @@ class RouteCard extends StatelessWidget {
 
     return orderCardShell(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        AppSectionHeader(
+          title: isPickup ? 'Đi đến điểm lấy' : 'Đi đến điểm giao',
+          subtitle: isPickup
+              ? 'Lấy hàng trước khi bắt đầu giao'
+              : 'Hàng đã lấy, tiếp tục giao cho khách',
+          icon: isPickup ? Icons.storefront_rounded : Icons.route_rounded,
+          color: isPickup ? AppColors.primary : AppColors.secondary,
+          trailing: const SizedBox.shrink(),
+        ),
+        const SizedBox(height: AppSpacing.xl),
         // ── Pickup stop ────────────────────────────────────────────
         RouteStop(
           isOrigin: true,
@@ -75,7 +86,7 @@ class RouteCard extends StatelessWidget {
             height: 32,
             decoration: BoxDecoration(
               color: isPickup
-                  ? const Color(0xFFE0E0E0)
+                  ? AppColors.divider
                   : AppColors.success.withValues(alpha: 0.35),
               borderRadius: BorderRadius.circular(1),
             ),
@@ -128,7 +139,7 @@ class RouteStop extends StatelessWidget {
   Color get _dotColor {
     if (isActive) return AppColors.primary;
     if (isDone) return AppColors.success;
-    return const Color(0xFFE0E0E0);
+    return AppColors.divider;
   }
 
   @override
@@ -149,32 +160,38 @@ class RouteStop extends StatelessWidget {
         ),
       ),
 
-      const SizedBox(width: 12),
+      const SizedBox(width: AppSpacing.md),
 
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Label + active badge
+          // Stop label + quick actions
           Row(children: [
-            Text(label,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: isActive ? AppColors.primary : AppColors.textTertiary,
-                )),
-            if (isActive) ...[
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(10),
+            Text(
+              label,
+              style: AppTextStyles.label.copyWith(
+                color: isActive ? AppColors.primary : AppColors.textTertiary,
+              ),
+            ),
+            const Spacer(),
+            _RouteTextAction(
+              label: 'Dẫn đường',
+              color: AppColors.primary,
+              onTap: onNav,
+            ),
+            if (phone != null && phone!.isNotEmpty && onCall != null) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 5),
+                child: Text(
+                  '•',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textTertiary,
+                  ),
                 ),
-                child: const Text('Đang đến',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFFFF6035),
-                    )),
+              ),
+              _RouteTextAction(
+                label: 'Gọi điện',
+                color: AppColors.success,
+                onTap: onCall!,
               ),
             ],
           ]),
@@ -184,113 +201,60 @@ class RouteStop extends StatelessWidget {
           // Place name
           if (placeName != null && placeName!.isNotEmpty) ...[
             Text(placeName!,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                )),
-            const SizedBox(height: 2),
+                style: AppTextStyles.sectionTitle
+                    .copyWith(color: AppColors.textPrimary)),
+            const SizedBox(height: AppSpacing.xxs),
           ],
 
-          // Address
-          Text(address,
-              style: const TextStyle(
-                fontSize: 12.5,
-                color: AppColors.textSecondary,
-                height: 1.4,
-              )),
-
-          // Phone — tappable
+          Text(
+            address,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+          ),
           if (phone != null && phone!.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            GestureDetector(
-              onTap: onCall,
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: AppColors.info.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.phone_rounded,
-                      size: 11, color: AppColors.info),
-                ),
-                const SizedBox(width: 6),
-                Text(phone!,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.info,
-                    )),
-              ]),
+            const SizedBox(height: AppSpacing.xxs),
+            Text(
+              phone!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.label.copyWith(color: AppColors.info),
             ),
           ],
-
-          const SizedBox(height: 12),
-
-          // Action pill buttons — outline xám, chỉ icon có màu, không cạnh
-          // tranh thị giác với nút hành động chính cam đặc ở cuối màn hình.
-          Row(children: [
-            PillBtn(
-              icon: Icons.near_me_rounded,
-              label: 'Dẫn đường',
-              color: AppColors.primary,
-              onTap: onNav,
-            ),
-            if (onCall != null) ...[
-              const SizedBox(width: 8),
-              PillBtn(
-                icon: Icons.call_rounded,
-                label: 'Gọi điện',
-                color: AppColors.success,
-                onTap: onCall,
-              ),
-            ],
-          ]),
-
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
         ]),
       ),
     ]);
   }
 }
 
-// Nút phụ outline — nền trong suốt, viền xám, chỉ icon tô màu theo [color],
-// chữ luôn xám đậm. Trước đây nền+viền+chữ đều tô theo [color] (cam/xanh
-// mint đặc), nay chỉ icon giữ màu để nút hành động chính cam ở cuối màn hình
-// vẫn là điểm nhấn mạnh nhất, duy nhất trên màn hình.
-class PillBtn extends StatelessWidget {
-  final IconData icon;
+class _RouteTextAction extends StatelessWidget {
   final String label;
   final Color color;
-  final VoidCallback? onTap;
-  const PillBtn(
-      {super.key,
-      required this.icon,
-      required this.label,
-      required this.color,
-      required this.onTap});
+  final VoidCallback onTap;
+
+  const _RouteTextAction({
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.divider),
+  Widget build(BuildContext context) => Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child: Text(
+              label,
+              style: AppTextStyles.caption.copyWith(
+                color: color,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 5),
-            Text(label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textSecondary,
-                )),
-          ]),
         ),
       );
 }

@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +11,7 @@ import 'package:geolocator/geolocator.dart';
 import '../../../core/services/location_push_service.dart';
 import '../../../core/services/offer_listener_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_status_banner.dart';
 import '../providers/home_providers.dart';
 import '../widgets/bottom_nav.dart';
 import '../widgets/dashboard_banners.dart';
@@ -18,6 +22,7 @@ import '../widgets/score_card.dart';
 import '../widgets/shift_card.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../orders/providers/order_provider.dart';
+import '../../orders/widgets/history_active_order_card.dart';
 import '../../wallet/providers/wallet_provider.dart';
 import '../../wallet/screens/debt_screen.dart';
 import '../../profile/screens/kyc_screen.dart';
@@ -36,9 +41,13 @@ class DashboardPage extends ConsumerStatefulWidget {
 class _DashboardPageState extends ConsumerState<DashboardPage>
     with WidgetsBindingObserver {
   bool _togglingOnline = false;
+  Timer? _forceOfflineRetryTimer;
   Map<String, dynamic> _stats = {};
   int _todayEarnings = 0;
   int _yesterdayEarnings = 0;
+  bool _statsLoadError = false;
+  bool _earningsLoadError = false;
+  bool _weeklyLoadError = false;
   // 7 giá trị của tuần này (Thứ Hai → Chủ Nhật), lấy trực tiếp từ
   // earnings/weekly — thu nhập đơn hàng thật theo ngày, không còn xấp xỉ từ
   // giao dịch ví.
@@ -73,6 +82,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
 
   @override
   void dispose() {
+    _forceOfflineRetryTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     OfferListenerService.instance.onOfferDismissed = null;
     super.dispose();
@@ -90,8 +100,15 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     try {
       final res = await ref.read(apiClientProvider).get('/orders/dashboard');
       final data = (res.data['data'] ?? res.data) as Map<String, dynamic>;
-      if (mounted) setState(() => _stats = data);
-    } catch (_) {}
+      if (mounted) {
+        setState(() {
+          _stats = data;
+          _statsLoadError = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _statsLoadError = true);
+    }
   }
 
   Future<void> _loadEarnings() async {
@@ -103,9 +120,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
           _todayEarnings = (data['today']?['total'] as num?)?.toInt() ?? 0;
           _yesterdayEarnings =
               (data['yesterday']?['total'] as num?)?.toInt() ?? 0;
+          _earningsLoadError = false;
         });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() => _earningsLoadError = true);
+    }
   }
 
   Future<void> _loadWeeklyEarnings() async {
@@ -127,8 +147,15 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
             '${day.day.toString().padLeft(2, '0')}';
         return byDate[key] ?? 0;
       });
-      if (mounted) setState(() => _last7Days = values);
-    } catch (_) {}
+      if (mounted) {
+        setState(() {
+          _last7Days = values;
+          _weeklyLoadError = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _weeklyLoadError = true);
+    }
   }
 
   Future<bool> _ensureLocationPermission() async {
@@ -144,8 +171,16 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     if (perm == LocationPermission.denied) {
       perm = await Geolocator.requestPermission();
     }
+    if (Platform.isAndroid && perm == LocationPermission.whileInUse) {
+      if (mounted) {
+        ref.read(locationIssueProvider.notifier).state =
+            'background_permission';
+        await showLocationPermissionGuide(context);
+      }
+      return false;
+    }
     if (perm == LocationPermission.always ||
-        perm == LocationPermission.whileInUse) {
+        (!Platform.isAndroid && perm == LocationPermission.whileInUse)) {
       // Vừa cấp quyền xong ngay tại đây — banner "Chưa cấp quyền vị trí" trên
       // dashboard (locationIssueProvider) chỉ tự làm mới lúc app resume hoặc
       // GPS service đổi trạng thái, KHÔNG có sự kiện nào bắn khi permission
@@ -220,7 +255,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     return (isOnline, onlineSince);
   }
 
-  Future<void> _forceOffline() async {
+  Future<void> _forceOffline({bool isRetry = false}) async {
     final isOnline = ref.read(authProvider).user?.isOnline ?? false;
     if (!isOnline || _togglingOnline) return;
     if (mounted) setState(() => _togglingOnline = true);
@@ -235,6 +270,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
             nowOnline,
             onlineSince: onlineSince,
           );
+      if (nowOnline) {
+        await _restoreOnlineServicesAndRetry();
+        return;
+      }
+      _forceOfflineRetryTimer?.cancel();
+      _forceOfflineRetryTimer = null;
+      await ref.read(shiftProvider.notifier).fetch();
       final uid = ref.read(authProvider).user?.id;
       if (uid != null) {
         FirebaseDatabase.instance
@@ -242,8 +284,41 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
             .remove()
             .ignore();
       }
-    } catch (_) {}
-    if (mounted) setState(() => _togglingOnline = false);
+    } catch (_) {
+      // Request có thể chưa tới server, hoặc server đã xử lý nhưng response
+      // bị mất. Đọc lại nguồn sự thật trước khi quyết định giữ dịch vụ dừng.
+      // Nếu vẫn online, phải khôi phục GPS + listener đơn ngay; nếu không app
+      // sẽ rơi vào trạng thái "online giả" và tài xế âm thầm mất đơn.
+      await ref.read(authProvider.notifier).refreshUser();
+      final serverOnline = ref.read(authProvider).user?.isOnline ?? true;
+      if (serverOnline) {
+        await _restoreOnlineServicesAndRetry();
+        if (mounted && !isRetry) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                'Kết nối không ổn định. Hệ thống đang thử tắt online lại.'),
+            backgroundColor: AppColors.warning,
+          ));
+        }
+      } else {
+        _forceOfflineRetryTimer?.cancel();
+        _forceOfflineRetryTimer = null;
+      }
+    } finally {
+      if (mounted) setState(() => _togglingOnline = false);
+    }
+  }
+
+  Future<void> _restoreOnlineServicesAndRetry() async {
+    final driver = ref.read(authProvider).user;
+    if (driver?.isOnline == true) {
+      await LocationPushService.instance.start(driver!.id);
+      OfferListenerService.instance.start(driver.id);
+    }
+    _forceOfflineRetryTimer?.cancel();
+    _forceOfflineRetryTimer = Timer(const Duration(seconds: 10), () {
+      if (mounted) _forceOffline(isRetry: true);
+    });
   }
 
   Future<void> _toggleOnline() async {
@@ -290,6 +365,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
             isOnline,
             onlineSince: onlineSince,
           );
+      await ref.read(shiftProvider.notifier).fetch();
       if (isOnline) {
         final uid = ref.read(authProvider).user?.id;
         if (uid != null) {
@@ -375,6 +451,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     final notifDenied = ref.watch(notifDeniedProvider);
     final locationIssue = ref.watch(locationIssueProvider);
     final shiftState = ref.watch(shiftProvider);
+    final activeOrders = ref.watch(activeOrderProvider).orders;
+    final dashboardDataError =
+        _statsLoadError || _earningsLoadError || _weeklyLoadError;
 
     ref.listen<WalletState>(walletProvider, (prev, next) {
       final hadOverdue = prev?.debts.any((d) => d.isOverdue) ?? false;
@@ -398,7 +477,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     final hasOverdueDebt = wallet.debts.any((d) => d.isOverdue);
     // Công nợ = tổng còn lại (amount - đã trả) của các khoản chưa tất toán,
     // lấy từ walletProvider (cùng nguồn với banner & màn công nợ).
-    final codPending = wallet.debts.fold<int>(0, (s, d) => s + d.remaining);
+    final debtPending = wallet.debts.fold<int>(0, (s, d) => s + d.remaining);
     final debtCount = wallet.debts.length;
 
     final todayOrders = ((_stats['today_orders'] as num?) ?? 0).toInt();
@@ -411,92 +490,136 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         statusBarIconBrightness: Brightness.dark,
         statusBarBrightness: Brightness.light,
       ),
-      child: RefreshIndicator(
-        color: AppColors.primary,
-        onRefresh: _loadAll,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ── Header + toggle ────────────────────────────────────────
-              DashboardHeader(
-                user: user,
-                isOnline: isOnline,
-                toggling: _togglingOnline,
-                locked: hasOverdueDebt,
-                onToggle: _toggleOnline,
-              ),
-
-              // ── Location / GPS banner ─────────────────────────────────
-              if (locationIssue != null)
-                LocationIssueBanner(issue: locationIssue),
-
-              // ── Notification permission banner ────────────────────────
-              if (notifDenied) const NotifDeniedBanner(),
-
-              // ── Overdue debt banner ───────────────────────────────────
-              if (wallet.debts.any((d) => d.isOverdue))
-                OverdueBanner(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const DebtScreen()),
-                  ),
-                ),
-
-              // ── Content cards ────────────────────────────────────────
-              Padding(
-                padding: EdgeInsets.fromLTRB(16, 16, 16, navClearance + 16),
+      child: Column(
+        children: [
+          // Cố định thông tin tài xế và nút Online; chỉ phần nội dung bên
+          // dưới cuộn để tài xế luôn nhìn thấy và đổi trạng thái nhanh.
+          DashboardHeader(
+            user: user,
+            isOnline: isOnline,
+            toggling: _togglingOnline,
+            locked: hasOverdueDebt,
+            locationIssue: locationIssue,
+            onToggle: _toggleOnline,
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: _loadAll,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Earnings
-                    EarningsCard(
-                      todayEarnings: _todayEarnings,
-                      yesterdayEarnings: _yesterdayEarnings,
-                      todayOrders: todayOrders,
-                      rating: rating,
-                      ratingCount: ratingCount,
-                      onTap: widget.onGoToWallet,
-                      last7Days: _last7Days,
-                    ),
+                    // ── Location / GPS banner ───────────────────────────
+                    if (locationIssue != null)
+                      LocationIssueBanner(issue: locationIssue),
 
-                    const SizedBox(height: 16),
+                    // ── Notification permission banner ─────────────────
+                    if (notifDenied) const NotifDeniedBanner(),
 
-                    // Score
-                    DashboardScoreCard(
-                      score: scoreState.score,
-                      onTap: () => context.push('/score'),
-                    ),
+                    // ── Overdue debt banner ─────────────────────────────
+                    if (wallet.debts.any((d) => d.isOverdue))
+                      OverdueBanner(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const DebtScreen()),
+                        ),
+                      ),
 
-                    const SizedBox(height: 16),
+                    // ── Content cards ──────────────────────────────────
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg,
+                          AppSpacing.lg, navClearance + AppSpacing.lg),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (dashboardDataError) ...[
+                            AppStatusBanner(
+                              icon: Icons.cloud_off_rounded,
+                              color: AppColors.warning,
+                              title: 'Một số dữ liệu chưa được cập nhật',
+                              message:
+                                  'Ứng dụng đang giữ số liệu gần nhất trên máy.',
+                              actionLabel: 'Thử lại',
+                              onTap: _loadAll,
+                            ),
+                            const SizedBox(height: AppSpacing.lg),
+                          ],
+                          if (activeOrders.isNotEmpty) ...[
+                            ...List.generate(activeOrders.length, (index) {
+                              final order = activeOrders[index];
+                              return Padding(
+                                padding: EdgeInsets.only(
+                                    bottom: index == activeOrders.length - 1
+                                        ? 0
+                                        : AppSpacing.md),
+                                child: ActiveOrderCard(
+                                  order: order,
+                                  orderIndex: index,
+                                  totalCount: activeOrders.length,
+                                  isPriority: index == 0,
+                                ),
+                              );
+                            }),
+                            const SizedBox(height: AppSpacing.lg),
+                          ],
+                          // Earnings
+                          EarningsCard(
+                            todayEarnings: _todayEarnings,
+                            yesterdayEarnings: _yesterdayEarnings,
+                            todayOrders: todayOrders,
+                            rating: rating,
+                            ratingCount: ratingCount,
+                            onTap: widget.onGoToWallet,
+                            last7Days: _last7Days,
+                          ),
 
-                    // Finance
-                    FinanceCard(
-                      balance: wallet.balance,
-                      codPending: codPending,
-                      debtCount: debtCount,
-                      onWalletTap: () => context.push('/wallet'),
-                      onDebtTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                              builder: (_) => const DebtScreen())),
-                    ),
+                          const SizedBox(height: AppSpacing.lg),
 
-                    const SizedBox(height: 16),
+                          // Shift
+                          ShiftCard(
+                            shifts: shiftState.shifts,
+                            currentShiftIds: shiftState.currentShiftIds,
+                            hasLoadedOnce: shiftState.hasLoadedOnce,
+                            isOnline: isOnline,
+                            onlineSeconds: shiftState.currentShiftOnlineSeconds,
+                            onlineMeasuredAt: shiftState.onlineMeasuredAt,
+                            shiftEndAt: shiftState.currentShiftEndAt,
+                            onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        const ShiftRegistrationScreen())),
+                          ),
 
-                    // Shift
-                    ShiftCard(
-                      shifts: shiftState.shifts,
-                      currentShiftIds: shiftState.currentShiftIds,
-                      hasLoadedOnce: shiftState.hasLoadedOnce,
-                      onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => const ShiftRegistrationScreen())),
+                          const SizedBox(height: AppSpacing.lg),
+
+                          // Score
+                          DashboardScoreCard(
+                            score: scoreState.score,
+                            onTap: () => context.push('/score'),
+                          ),
+
+                          const SizedBox(height: AppSpacing.lg),
+
+                          // Finance
+                          FinanceCard(
+                            balance: wallet.balance,
+                            debtPending: debtPending,
+                            debtCount: debtCount,
+                            onWalletTap: () => context.push('/wallet'),
+                            onDebtTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                    builder: (_) => const DebtScreen())),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

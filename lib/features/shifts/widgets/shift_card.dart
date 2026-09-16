@@ -24,21 +24,21 @@ class ShiftCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFFFFFEFD),
-      borderRadius: BorderRadius.circular(18),
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(AppRadius.card),
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         onTap: enabled ? onTap : null,
         child: Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(
-              color:
-                  selected ? const Color(0xFFFFB23E) : const Color(0xFFE5DDD9),
-              width: selected ? 1.5 : 1,
+              color: selected ? AppColors.primary : AppColors.divider,
+              width: selected ? 2 : 1,
             ),
-            color: selected ? const Color(0xFFFFF8EC) : const Color(0xFFFFFEFD),
+            color: selected ? AppColors.primarySoft : AppColors.surface,
+            boxShadow: AppShadows.soft,
           ),
           child: Row(children: [
             Container(
@@ -50,20 +50,21 @@ class ShiftCard extends StatelessWidget {
               ),
               child: Icon(icon, color: color, size: 21),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(shift.name,
-                        style: const TextStyle(
-                            fontSize: 15.5,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF1B1411))),
-                    const SizedBox(height: 2),
-                    Text(shift.timeRange,
-                        style: const TextStyle(
-                            fontSize: 12.5, color: AppColors.textSecondary)),
+                    Text(shift.name, style: AppTextStyles.sectionTitle),
+                    const SizedBox(height: AppSpacing.xs),
+                    Row(children: [
+                      const Icon(Icons.schedule_rounded,
+                          size: 14, color: AppColors.textSecondary),
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(shift.timeRange,
+                          style: AppTextStyles.label
+                              .copyWith(color: AppColors.textSecondary)),
+                    ]),
                   ]),
             ),
             Container(
@@ -71,11 +72,9 @@ class ShiftCard extends StatelessWidget {
               height: 24,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: selected ? const Color(0xFFBE5900) : Colors.transparent,
+                color: selected ? AppColors.primary : Colors.transparent,
                 border: Border.all(
-                    color: selected
-                        ? const Color(0xFFBE5900)
-                        : const Color(0xFFE5DDD9),
+                    color: selected ? AppColors.primary : AppColors.divider,
                     width: 1.5),
               ),
               child: selected

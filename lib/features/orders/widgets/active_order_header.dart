@@ -27,14 +27,28 @@ class ActiveOrderHeader extends StatelessWidget {
     final top = MediaQuery.of(context).padding.top;
     final stepLabel = order.status == 'assigned' ? 'Bước 1/2' : 'Bước 2/2';
 
+    final completedDate = order.completedAt?.toLocal();
+    final detail = completed
+        ? '${order.displayTitle} · ${order.code.startsWith('#') ? order.code : '#${order.code}'}'
+        : order.code.startsWith('#')
+            ? order.code
+            : '#${order.code}';
+    final date = completedDate == null
+        ? ''
+        : '${completedDate.day.toString().padLeft(2, '0')}/${completedDate.month.toString().padLeft(2, '0')}/${completedDate.year}';
+
     return Container(
-      color: const Color(0xFFFFFEFD),
-      padding: EdgeInsets.fromLTRB(16, top + 16, 16, 16),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(bottom: BorderSide(color: AppColors.divider)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+          AppSpacing.lg, top + AppSpacing.lg, AppSpacing.lg, AppSpacing.lg),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // Back button
         AppBackButton(onTap: onBack ?? () => context.go('/home')),
 
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpacing.md),
 
         // Service name + code
         Expanded(
@@ -43,49 +57,42 @@ class ActiveOrderHeader extends StatelessWidget {
             Row(children: [
               Flexible(
                 child: Text(
-                  order.displayTitle,
+                  completed ? 'Chi tiết đơn' : order.displayTitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                    letterSpacing: -0.3,
-                  ),
+                  style: AppTextStyles.screenTitle
+                      .copyWith(color: AppColors.textPrimary),
                 ),
               ),
               if (order.isShopOrder) ...[
                 const SizedBox(width: 6),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 6, vertical: AppSpacing.xxs),
                   decoration: BoxDecoration(
                     color: AppColors.primary,
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: Text(
                     order.isBatch ? 'SHOP•${order.stopsCount} điểm' : 'SHOP',
-                    style: const TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white),
+                    style: AppTextStyles.caption.copyWith(
+                        fontWeight: FontWeight.w800, color: Colors.white),
                   ),
                 ),
               ],
             ]),
             const SizedBox(height: 3),
             Text(
-              '${order.code.startsWith('#') ? order.code : '#${order.code}'}${completed ? ' · ${order.completedAt?.toLocal().day.toString().padLeft(2, '0')}/${order.completedAt?.toLocal().month.toString().padLeft(2, '0')}/${order.completedAt?.toLocal().year}' : ''}',
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textTertiary,
-              ),
+              '$detail${date.isEmpty ? '' : ' · $date'}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style:
+                  AppTextStyles.label.copyWith(color: AppColors.textTertiary),
             ),
           ]),
         ),
 
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.sm),
 
         // Step badge / trạng thái hoàn thành
         Container(
@@ -96,8 +103,7 @@ class ActiveOrderHeader extends StatelessWidget {
           ),
           child: Text(
             completed ? 'Hoàn thành' : stepLabel,
-            style: TextStyle(
-                fontSize: 12,
+            style: AppTextStyles.label.copyWith(
                 fontWeight: FontWeight.w800,
                 color: completed ? AppColors.success : AppColors.primary),
           ),

@@ -37,7 +37,7 @@ class AuthField extends StatelessWidget {
     this.validator,
     this.fillColor,
     this.borderSide,
-    this.borderRadius = 14,
+    this.borderRadius = AppRadius.md,
     this.contentPadding,
   });
 
@@ -51,7 +51,7 @@ class AuthField extends StatelessWidget {
         onFieldSubmitted: onFieldSubmitted,
         inputFormatters: inputFormatters,
         style: const TextStyle(
-          fontSize: 17,
+          fontSize: AppFontSize.lg,
           fontWeight: FontWeight.w500,
           color: AppColors.textPrimary,
         ),
@@ -59,13 +59,16 @@ class AuthField extends StatelessWidget {
           hintText: hint,
           hintStyle: const TextStyle(
             color: AppColors.textSecondary,
-            fontSize: 17,
+            fontSize: AppFontSize.lg,
             fontWeight: FontWeight.w400,
           ),
-          errorStyle: const TextStyle(fontSize: 14),
+          errorStyle: const TextStyle(fontSize: AppFontSize.base),
           prefixIcon: prefixIcon != null
               ? Padding(
-                  padding: const EdgeInsets.only(left: 14, right: 10),
+                  padding: const EdgeInsets.only(
+                    left: AppSpacing.lg,
+                    right: AppSpacing.sm,
+                  ),
                   child: prefixIcon,
                 )
               : null,

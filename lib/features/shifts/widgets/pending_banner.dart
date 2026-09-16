@@ -24,6 +24,7 @@ class PendingBanner extends StatelessWidget {
         color: AppColors.warningSoft,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+        boxShadow: AppShadows.soft,
       ),
       child: Row(children: [
         const Icon(Icons.hourglass_top_rounded,
@@ -34,13 +35,13 @@ class PendingBanner extends StatelessWidget {
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('Yêu cầu đổi ca đang chờ duyệt',
                 style: TextStyle(
-                    fontSize: 13,
+                    fontSize: AppFontSize.base,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary)),
             const SizedBox(height: 3),
             Text(names.isEmpty ? 'Đang xử lý...' : 'Ca yêu cầu: $names',
                 style: const TextStyle(
-                    fontSize: 12, color: AppColors.textSecondary)),
+                    fontSize: AppFontSize.sm, color: AppColors.textSecondary)),
           ]),
         ),
       ]),

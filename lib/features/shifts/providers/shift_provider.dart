@@ -25,15 +25,21 @@ class ShiftState {
   // biệt với trường hợp khu vực THẬT SỰ chưa có ca nào được thiết lập
   // (2 trường hợp trước đây trả về cùng 1 danh sách rỗng, hiện y hệt nhau).
   final bool loadError;
+  final int currentShiftOnlineSeconds;
+  final DateTime? onlineMeasuredAt;
+  final DateTime? currentShiftEndAt;
 
   const ShiftState({
-    this.shifts           = const [],
-    this.currentShiftIds  = const [],
+    this.shifts = const [],
+    this.currentShiftIds = const [],
     this.changeRequest,
-    this.loading          = false,
-    this.submitting       = false,
-    this.hasLoadedOnce    = false,
-    this.loadError        = false,
+    this.loading = false,
+    this.submitting = false,
+    this.hasLoadedOnce = false,
+    this.loadError = false,
+    this.currentShiftOnlineSeconds = 0,
+    this.onlineMeasuredAt,
+    this.currentShiftEndAt,
   });
 
   bool get isRegistered => currentShiftIds.isNotEmpty;
@@ -48,16 +54,29 @@ class ShiftState {
     bool? submitting,
     bool? hasLoadedOnce,
     bool? loadError,
-  }) => ShiftState(
-        shifts:          shifts          ?? this.shifts,
+    int? currentShiftOnlineSeconds,
+    DateTime? onlineMeasuredAt,
+    DateTime? currentShiftEndAt,
+    bool clearCurrentShiftOnline = false,
+  }) =>
+      ShiftState(
+        shifts: shifts ?? this.shifts,
         currentShiftIds: currentShiftIds ?? this.currentShiftIds,
-        changeRequest: resetChangeRequest
-            ? null
-            : (changeRequest ?? this.changeRequest),
-        loading:       loading       ?? this.loading,
-        submitting:    submitting    ?? this.submitting,
+        changeRequest:
+            resetChangeRequest ? null : (changeRequest ?? this.changeRequest),
+        loading: loading ?? this.loading,
+        submitting: submitting ?? this.submitting,
         hasLoadedOnce: hasLoadedOnce ?? this.hasLoadedOnce,
-        loadError:     loadError     ?? this.loadError,
+        loadError: loadError ?? this.loadError,
+        currentShiftOnlineSeconds: clearCurrentShiftOnline
+            ? 0
+            : (currentShiftOnlineSeconds ?? this.currentShiftOnlineSeconds),
+        onlineMeasuredAt: clearCurrentShiftOnline
+            ? null
+            : (onlineMeasuredAt ?? this.onlineMeasuredAt),
+        currentShiftEndAt: clearCurrentShiftOnline
+            ? null
+            : (currentShiftEndAt ?? this.currentShiftEndAt),
       );
 }
 
@@ -68,32 +87,47 @@ class ShiftNotifier extends StateNotifier<ShiftState> {
   Future<void> fetch() async {
     state = state.copyWith(loading: true);
     try {
-      final res  = await _ref.read(apiClientProvider).get('/driver/shifts');
-      final list = (res.data['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-      final ids  = (res.data['current_shift_ids'] as List?)
+      final res = await _ref.read(apiClientProvider).get('/driver/shifts');
+      final list =
+          (res.data['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      final ids = (res.data['current_shift_ids'] as List?)
               ?.map((e) => (e as num).toInt())
               .toList() ??
           [];
+      final currentOnline =
+          res.data['current_shift_online'] as Map<String, dynamic>?;
       state = state.copyWith(
-        shifts:          list.map(ShiftModel.fromJson).toList(),
+        shifts: list.map(ShiftModel.fromJson).toList(),
         currentShiftIds: ids,
-        loading:         false,
-        hasLoadedOnce:   true,
-        loadError:       false,
+        loading: false,
+        hasLoadedOnce: true,
+        loadError: false,
+        currentShiftOnlineSeconds:
+            (currentOnline?['online_seconds'] as num?)?.toInt(),
+        onlineMeasuredAt: currentOnline?['measured_at'] != null
+            ? DateTime.tryParse(currentOnline!['measured_at'] as String)
+            : null,
+        currentShiftEndAt: currentOnline?['shift_end_at'] != null
+            ? DateTime.tryParse(currentOnline!['shift_end_at'] as String)
+            : null,
+        clearCurrentShiftOnline: currentOnline == null,
       );
     } catch (_) {
-      state = state.copyWith(loading: false, hasLoadedOnce: true, loadError: true);
+      state =
+          state.copyWith(loading: false, hasLoadedOnce: true, loadError: true);
     }
     await fetchChangeRequestStatus();
   }
 
   Future<void> fetchChangeRequestStatus() async {
     try {
-      final res  = await _ref.read(apiClientProvider)
+      final res = await _ref
+          .read(apiClientProvider)
           .get('/driver/shifts/change-request/status');
       final data = res.data['data'] as Map<String, dynamic>?;
       state = state.copyWith(
-        changeRequest: data != null ? ShiftChangeRequestModel.fromJson(data) : null,
+        changeRequest:
+            data != null ? ShiftChangeRequestModel.fromJson(data) : null,
         resetChangeRequest: data == null,
       );
     } catch (_) {}
@@ -102,42 +136,50 @@ class ShiftNotifier extends StateNotifier<ShiftState> {
   Future<ShiftActionResult> selectShift(List<int> shiftIds) async {
     state = state.copyWith(submitting: true);
     try {
-      final res = await _ref.read(apiClientProvider)
+      final res = await _ref
+          .read(apiClientProvider)
           .post('/driver/shifts/select', data: {'shift_ids': shiftIds});
       state = state.copyWith(submitting: false, currentShiftIds: shiftIds);
-      return ShiftActionResult(success: true, message: res.data['message'] as String?);
+      return ShiftActionResult(
+          success: true, message: res.data['message'] as String?);
     } on DioException catch (e) {
       state = state.copyWith(submitting: false);
       final data = e.response?.data;
       return ShiftActionResult(
         success: false,
-        message: (data is Map ? data['message'] as String? : null) ?? 'Đăng ký ca thất bại',
-        code:    (data is Map ? data['code'] as String? : null),
+        message: (data is Map ? data['message'] as String? : null) ??
+            'Đăng ký ca thất bại',
+        code: (data is Map ? data['code'] as String? : null),
       );
     } catch (_) {
       state = state.copyWith(submitting: false);
-      return const ShiftActionResult(success: false, message: 'Đã xảy ra lỗi. Thử lại sau.');
+      return const ShiftActionResult(
+          success: false, message: 'Đã xảy ra lỗi. Thử lại sau.');
     }
   }
 
   Future<ShiftActionResult> submitChangeRequest(List<int> shiftIds) async {
     state = state.copyWith(submitting: true);
     try {
-      final res = await _ref.read(apiClientProvider)
+      final res = await _ref
+          .read(apiClientProvider)
           .post('/driver/shifts/change-request', data: {'shift_ids': shiftIds});
       state = state.copyWith(submitting: false);
       await fetchChangeRequestStatus();
-      return ShiftActionResult(success: true, message: res.data['message'] as String?);
+      return ShiftActionResult(
+          success: true, message: res.data['message'] as String?);
     } on DioException catch (e) {
       state = state.copyWith(submitting: false);
       final data = e.response?.data;
       return ShiftActionResult(
         success: false,
-        message: (data is Map ? data['message'] as String? : null) ?? 'Gửi yêu cầu thất bại',
+        message: (data is Map ? data['message'] as String? : null) ??
+            'Gửi yêu cầu thất bại',
       );
     } catch (_) {
       state = state.copyWith(submitting: false);
-      return const ShiftActionResult(success: false, message: 'Đã xảy ra lỗi. Thử lại sau.');
+      return const ShiftActionResult(
+          success: false, message: 'Đã xảy ra lỗi. Thử lại sau.');
     }
   }
 }

@@ -14,141 +14,106 @@ class EarningCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return orderCardShell(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // ── Header ──────────────────────────────────────────────────
-        const Text('Thu nhập đơn này',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-            )),
-
-        const SizedBox(height: 14),
-
-        // ── Earning hero (1 card nền xám nhạt duy nhất) ───────────────
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceAlt,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-            Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Tài xế nhận',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
-                        )),
-                    const SizedBox(height: 3),
-                    Text(Fmt.currency(order.driverEarning),
-                        style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.success,
-                          letterSpacing: -0.5,
-                        )),
-                    if (order.hasDiscount && order.discountAmount > 0) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        order.driverEarning == 0
-                            ? 'Tiền ship cộng vào ví sau hoàn thành'
-                            : '+ ${Fmt.currency(order.discountAmount)} cộng thêm vào ví',
-                        style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.success,
-                            fontWeight: FontWeight.w500),
-                      ),
-                    ],
-                  ]),
+        Row(children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: .10),
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            if (order.isCod) ...[
-              const SizedBox(width: 10),
-              // Chỉ mang tính thông báo "đơn này cần thu tiền COD" — không có
-              // hành động bấm riêng (giữ nguyên như bản gốc), chỉ đổi kiểu
-              // hiển thị sang outline nhỏ cho đỡ nổi hơn nút hành động chính.
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.divider),
+            child: const Icon(
+              Icons.payments_rounded,
+              size: 19,
+              color: AppColors.success,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Tiền đơn hàng', style: AppTextStyles.sectionTitle),
+                const SizedBox(height: 2),
+                Text(
+                  'Tài xế nhận',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textTertiary,
+                  ),
                 ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.monetization_on_rounded,
-                      size: 15, color: AppColors.primary),
-                  const SizedBox(width: 5),
-                  const Text('Thu tiền',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary,
-                      )),
-                ]),
-              ),
-            ],
-          ]),
-        ),
+              ],
+            ),
+          ),
+          Text(
+            Fmt.currency(order.driverEarning),
+            style: AppTextStyles.metricLarge.copyWith(
+              color: AppColors.success,
+            ),
+          ),
+        ]),
+
+        if (order.hasDiscount && order.discountAmount > 0) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              order.driverEarning == 0
+                  ? 'Cộng vào ví sau khi hoàn thành'
+                  : '+ ${Fmt.currency(order.discountAmount)} cộng vào ví',
+              style: AppTextStyles.caption.copyWith(color: AppColors.success),
+            ),
+          ),
+        ],
 
         if (order.isCod) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.22),
-              ),
+              color: AppColors.primary.withValues(alpha: .07),
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: Row(children: [
               const Icon(
-                Icons.payments_rounded,
+                Icons.account_balance_wallet_rounded,
+                size: 18,
                 color: AppColors.primary,
-                size: 22,
               ),
-              const SizedBox(width: 10),
-              const Expanded(
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
                 child: Text(
-                  'Tổng cần thu khách',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
+                  'Cần thu khách',
+                  style: AppTextStyles.bodyStrong.copyWith(
                     color: AppColors.textPrimary,
                   ),
                 ),
               ),
               Text(
                 Fmt.currency(order.customerCollectionAmount),
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.primary,
-                ),
+                style: AppTextStyles.metric.copyWith(color: AppColors.primary),
               ),
             ]),
           ),
           if (order.nightSurcharge > 0) ...[
-            const SizedBox(height: 5),
-            Text(
-              'Đã gồm ${Fmt.currency(order.nightSurcharge)} phụ phí đêm khuya',
-              style: const TextStyle(
-                fontSize: 11,
-                color: AppColors.textSecondary,
+            const SizedBox(height: AppSpacing.xs),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                'Đã gồm ${Fmt.currency(order.nightSurcharge)} phụ phí đêm',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
             ),
           ],
         ],
 
-        // ── Fee breakdown ─────────────────────────────────────────────
-        const SizedBox(height: 14),
-        const Divider(height: 1, color: Color(0xFFF5F5F5)),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
+        const Divider(height: 1, color: AppColors.surfaceAlt),
+        const SizedBox(height: AppSpacing.sm),
 
         FeeRow(
           label: 'Phí giao hàng',
@@ -158,15 +123,15 @@ class EarningCard extends StatelessWidget {
         // tính fee = base + surcharge) — hiện tách dòng để tài xế biết vì sao
         // phí cao hơn bình thường, không phải cộng thêm vào tổng.
         if (order.nightSurcharge > 0) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           FeeRow(
-            label: '· Gồm phụ phí đêm khuya',
+            label: 'Gồm phụ phí đêm',
             value: Fmt.currency(order.nightSurcharge),
             valueColor: AppColors.textSecondary,
           ),
         ],
         if (order.hasDiscount) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           FeeRow(
             label: order.voucherCode != null
                 ? 'Giảm giá (${order.voucherCode})'
@@ -176,7 +141,7 @@ class EarningCard extends StatelessWidget {
           ),
         ],
         if (order.bonusFee > 0) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           FeeRow(
             label: 'Thưởng thêm',
             value: '+ ${Fmt.currency(order.bonusFee)}',
@@ -184,53 +149,47 @@ class EarningCard extends StatelessWidget {
           ),
         ],
         if (order.rainBonusEligible && order.rainBonusConfirmedAmount > 0) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           FeeRow(
-            label: '🌧️ Thưởng trời mưa',
+            label: 'Thưởng trời mưa',
             value: '+ ${Fmt.currency(order.rainBonusConfirmedAmount)}',
             valueColor: AppColors.success,
           ),
         ],
 
-        // ── Shopping advance ──────────────────────────────────────────
         if (order.serviceType == 'shopping' && (order.codAmount ?? 0) > 0) ...[
-          const SizedBox(height: 12),
-          const Divider(height: 1, color: Color(0xFFF5F5F5)),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
+          const Divider(height: 1, color: AppColors.surfaceAlt),
+          const SizedBox(height: AppSpacing.sm),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
             decoration: BoxDecoration(
               color: AppColors.warning.withValues(alpha: 0.07),
-              borderRadius: BorderRadius.circular(12),
-              border:
-                  Border.all(color: AppColors.warning.withValues(alpha: 0.2)),
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: Row(children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.shopping_cart_checkout_rounded,
-                    size: 18, color: AppColors.warning),
+              const Icon(
+                Icons.shopping_cart_checkout_rounded,
+                size: 18,
+                color: AppColors.warning,
               ),
-              const SizedBox(width: 12),
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Tiền ứng mua hàng',
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.warning,
-                        fontWeight: FontWeight.w600)),
-                const SizedBox(height: 3),
-                Text(Fmt.currency(order.codAmount!),
-                    style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.warning)),
-              ]),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Tiền ứng mua hàng',
+                  style: AppTextStyles.bodyStrong.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              Text(
+                Fmt.currency(order.codAmount!),
+                style: AppTextStyles.metric.copyWith(color: AppColors.warning),
+              ),
             ]),
           ),
         ],
@@ -255,11 +214,13 @@ class FeeRow extends StatelessWidget {
   Widget build(BuildContext context) => Row(children: [
         Expanded(
           child: Text(label,
-              style: const TextStyle(
-                  fontSize: 13, color: AppColors.textSecondary)),
+              style:
+                  AppTextStyles.label.copyWith(color: AppColors.textSecondary)),
         ),
         Text(value,
-            style: TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w700, color: valueColor)),
+            style: AppTextStyles.label.copyWith(
+              color: valueColor,
+              fontWeight: FontWeight.w700,
+            )),
       ]);
 }

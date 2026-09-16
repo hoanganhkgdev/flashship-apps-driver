@@ -28,19 +28,17 @@ class StreakCard extends StatelessWidget {
           child: const Icon(Icons.local_fire_department_rounded,
               color: AppColors.primary, size: 23),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: AppSpacing.md),
         Expanded(
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(title,
-                style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary)),
-            const SizedBox(height: 3),
+                style: AppTextStyles.bodyStrong
+                    .copyWith(color: AppColors.primary)),
+            const SizedBox(height: AppSpacing.xs),
             Text(subtitle,
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.textSecondary, height: 1.4)),
+                style: AppTextStyles.label
+                    .copyWith(color: AppColors.textSecondary)),
           ]),
         ),
       ]),
@@ -113,17 +111,15 @@ class WeekCard extends StatelessWidget {
           ),
           child: Icon(icon, color: color, size: 23),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: AppSpacing.md),
         Expanded(
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title,
-                style: TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.w700, color: color)),
-            const SizedBox(height: 3),
+            Text(title, style: AppTextStyles.bodyStrong.copyWith(color: color)),
+            const SizedBox(height: AppSpacing.xs),
             Text(subtitle,
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.textSecondary, height: 1.4)),
+                style: AppTextStyles.label
+                    .copyWith(color: AppColors.textSecondary)),
           ]),
         ),
       ]),
@@ -141,11 +137,12 @@ class ScoreSectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         width: double.infinity,
-        padding: padding ?? const EdgeInsets.all(16),
+        padding: padding ?? const EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFFEFD),
-          borderRadius: BorderRadius.circular(18),
-          border: border ?? Border.all(color: const Color(0xFFE5DDD9)),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          border: border ?? Border.all(color: AppColors.divider),
+          boxShadow: AppShadows.soft,
         ),
         child: child,
       );

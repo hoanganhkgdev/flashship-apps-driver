@@ -64,6 +64,9 @@ class LocationPushService {
   double? _lastPushedLat;
   double? _lastPushedLng;
   DateTime? _noGoodFixSince;
+  String? _lastDiagnosticStatus;
+  String? _pendingFailure;
+  DateTime? _pendingFailureAt;
 
   /// Tăng mỗi lần start()/stop() — mọi tác vụ bất đồng bộ đều chụp lại giá
   /// trị này lúc bắt đầu và bỏ kết quả nếu đã lệch, để lệnh ghi dở dang của
@@ -113,6 +116,9 @@ class LocationPushService {
     _lastPushedLat = null;
     _lastPushedLng = null;
     _noGoodFixSince = null;
+    _lastDiagnosticStatus = null;
+    _pendingFailure = null;
+    _pendingFailureAt = null;
     LocationService.instance.stop();
   }
 
@@ -125,7 +131,7 @@ class LocationPushService {
       {bool force = false}) async {
     if (accuracy <= _accuracyMaxMeter) {
       _noGoodFixSince = null;
-      await _push(lat, lng, bearing, force: force);
+      await _push(lat, lng, bearing, accuracy: accuracy, force: force);
       return;
     }
 
@@ -136,7 +142,7 @@ class LocationPushService {
           '[LocationPush] ${_degradedAfter.inSeconds}s không có fix ≤${_accuracyMaxMeter}m '
           '→ đẩy tạm fix accuracy=${accuracy.round()}m để không bị tàng hình');
       _noGoodFixSince = now; // đặt lại đồng hồ, tránh spam fix kém liên tục
-      await _push(lat, lng, bearing, force: force);
+      await _push(lat, lng, bearing, accuracy: accuracy, force: force);
     }
   }
 
@@ -147,6 +153,7 @@ class LocationPushService {
       final perm = await Geolocator.checkPermission();
       if (perm == LocationPermission.denied ||
           perm == LocationPermission.deniedForever) {
+        await _recordDiagnostic('permission_denied', perm.name);
         return;
       }
       final pos = await Geolocator.getCurrentPosition(
@@ -161,6 +168,7 @@ class LocationPushService {
       await _onFix(pos.latitude, pos.longitude,
           pos.heading < 0 ? 0.0 : pos.heading, pos.accuracy);
     } catch (e) {
+      await _recordDiagnostic('gps_error', _errorCode(e));
       debugPrint(
           '[LocationPush] getCurrentPosition failed: $e'); // hết giờ/không có GPS → luồng sẽ tự cập nhật
     }
@@ -171,10 +179,14 @@ class LocationPushService {
   /// updated_at cũ và ngừng phát đơn/tính giờ.
   Future<void> _refreshFromGps(int gen) async {
     try {
-      if (!await Geolocator.isLocationServiceEnabled()) return;
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        await _recordDiagnostic('gps_disabled', 'location_service_disabled');
+        return;
+      }
       final perm = await Geolocator.checkPermission();
       if (perm == LocationPermission.denied ||
           perm == LocationPermission.deniedForever) {
+        await _recordDiagnostic('permission_denied', perm.name);
         return;
       }
       final pos = await Geolocator.getCurrentPosition(
@@ -192,6 +204,7 @@ class LocationPushService {
         force: true,
       );
     } catch (e) {
+      await _recordDiagnostic('gps_error', _errorCode(e));
       debugPrint('[LocationPush] Không lấy được GPS heartbeat: $e');
     }
   }
@@ -218,7 +231,7 @@ class LocationPushService {
   }
 
   Future<void> _push(double lat, double lng, double bearing,
-      {bool force = false}) async {
+      {double? accuracy, bool force = false}) async {
     final driverId = _driverId;
     if (driverId == null) return;
     // Toạ độ y hệt lần đẩy gần nhất (luồng vẫn có thể bắn lại dù chưa đổi
@@ -245,6 +258,14 @@ class LocationPushService {
         'updated_at': ServerValue.timestamp,
         if (_deviceId != null) 'device_id': _deviceId,
         'platform': Platform.isAndroid ? 'android' : 'ios',
+        'diagnostic': {
+          'status': 'healthy',
+          'accuracy_m': accuracy,
+          'status_at': ServerValue.timestamp,
+          if (_pendingFailure != null) 'recovered_from': _pendingFailure,
+          if (_pendingFailureAt != null)
+            'failure_at': _pendingFailureAt!.millisecondsSinceEpoch,
+        },
       });
       // Đã stop() hoặc start() lại trong lúc chờ mạng — bỏ kết quả này, KHÔNG
       // ghi lại trạng thái và KHÔNG hẹn đồng hồ (đây chính là chỗ sinh ra
@@ -252,6 +273,9 @@ class LocationPushService {
       if (gen != _generation) return;
       _lastPushedLat = lat;
       _lastPushedLng = lng;
+      _lastDiagnosticStatus = 'healthy';
+      _pendingFailure = null;
+      _pendingFailureAt = null;
     } on FirebaseException catch (e) {
       // Security Rules từ chối = thiết bị này không còn là phiên hiện hành
       // (máy khác vừa đăng nhập đè). Đây là câu trả lời CHẮC CHẮN từ máy chủ,
@@ -275,9 +299,11 @@ class LocationPushService {
             '[LocationPush] Bị từ chối ghi do chưa có phiên Firebase Auth '
             '(không phải bị đăng nhập đè) — giữ nguyên đăng nhập, sẽ thử lại sau');
       } else {
+        _rememberWriteFailure('firebase_${e.code}');
         debugPrint('[LocationPush] Firebase write failed: $e');
       }
     } catch (e) {
+      _rememberWriteFailure('firebase_write_error');
       debugPrint('[LocationPush] Firebase write failed: $e');
     }
 
@@ -286,5 +312,36 @@ class LocationPushService {
     // giữ nhịp: tài xế đứng yên sẽ không bao giờ làm mới updated_at nữa, và
     // sau 10 phút bị backend coi như mất tích, không nhận được đơn nào.
     if (gen == _generation && _driverId != null) _scheduleRefresh();
+  }
+
+  Future<void> _recordDiagnostic(String status, String detail) async {
+    final driverId = _driverId;
+    if (driverId == null || _lastDiagnosticStatus == status) return;
+    _lastDiagnosticStatus = status;
+    _pendingFailure ??= status;
+    _pendingFailureAt ??= DateTime.now();
+    try {
+      await _rawWrite(driverId, {
+        'diagnostic': {
+          'status': status,
+          'detail': detail.length > 160 ? detail.substring(0, 160) : detail,
+          'status_at': ServerValue.timestamp,
+          if (_deviceId != null) 'device_id': _deviceId,
+          'platform': Platform.isAndroid ? 'android' : 'ios',
+        },
+      });
+    } catch (_) {
+      _rememberWriteFailure('firebase_write_error');
+    }
+  }
+
+  void _rememberWriteFailure(String status) {
+    _pendingFailure ??= status;
+    _pendingFailureAt ??= DateTime.now();
+  }
+
+  String _errorCode(Object error) {
+    if (error is TimeoutException) return 'timeout';
+    return error.runtimeType.toString();
   }
 }

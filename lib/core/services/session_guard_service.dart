@@ -15,7 +15,7 @@ class SessionGuardService {
 
   StreamSubscription? _sessionSub;
   StreamSubscription? _lockSub;
-  int?    _driverId;
+  int? _driverId;
   String? _deviceId;
 
   VoidCallback? onForceLogout;
@@ -61,9 +61,9 @@ class SessionGuardService {
     _sessionSub?.cancel();
     _lockSub?.cancel();
     _sessionSub = null;
-    _lockSub    = null;
-    _driverId   = null;
-    _deviceId   = null;
+    _lockSub = null;
+    _driverId = null;
+    _deviceId = null;
   }
 
   // ── Internal ──────────────────────────────────────────────────────────────────
@@ -78,7 +78,7 @@ class SessionGuardService {
   }
 
   void _onLockEvent(DatabaseEvent event) {
-    final value  = event.snapshot.value;
+    final value = event.snapshot.value;
     final locked = value == true || value == 1;
     if (locked) {
       stop();

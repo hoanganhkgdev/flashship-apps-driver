@@ -43,14 +43,14 @@ class BalanceRow extends StatelessWidget {
             const Expanded(
               child: Text('Số dư ví',
                   style: TextStyle(
-                      fontSize: 14.5,
+                      fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary)),
             ),
             Text(
               _fmt(amt),
               style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF1B1411)),
             ),

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/widgets/app_labeled_icon_action.dart';
 import '../models/order_model.dart';
 import 'order_card_shell.dart';
-import 'route_card.dart';
 
 class TopupCard extends StatelessWidget {
   final OrderModel order;
@@ -25,19 +25,17 @@ class TopupCard extends StatelessWidget {
     return orderCardShell(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // ── Header ──────────────────────────────────────────────────
-        const Text('Thông tin nạp tiền',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-            )),
+        Text('Thông tin nạp tiền',
+            style: AppTextStyles.sectionTitle
+                .copyWith(color: AppColors.textPrimary)),
 
         // ── Amount hero ───────────────────────────────────────────
         if ((order.codAmount ?? 0) > 0) ...[
           const SizedBox(height: 14),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg, vertical: 14),
             decoration: BoxDecoration(
               color: AppColors.warning.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(14),
@@ -57,27 +55,20 @@ class TopupCard extends StatelessWidget {
               ),
               const SizedBox(width: 14),
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Số tiền cần nạp',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.warning,
-                    )),
+                Text('Số tiền cần nạp',
+                    style:
+                        AppTextStyles.label.copyWith(color: AppColors.warning)),
                 const SizedBox(height: 3),
                 Text(Fmt.currency(order.codAmount!),
-                    style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.warning,
-                      letterSpacing: -0.5,
-                    )),
+                    style: AppTextStyles.metricLarge
+                        .copyWith(color: AppColors.warning)),
               ]),
             ]),
           ),
         ],
 
         const SizedBox(height: 14),
-        const Divider(height: 1, color: Color(0xFFF5F5F5)),
+        const Divider(height: 1, color: AppColors.surfaceAlt),
         const SizedBox(height: 14),
 
         // ── Phone row ────────────────────────────────────────────
@@ -87,36 +78,29 @@ class TopupCard extends StatelessWidget {
             height: 34,
             decoration: BoxDecoration(
               color: AppColors.success.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
             child: const Icon(Icons.smartphone_rounded,
                 size: 16, color: AppColors.success),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                const Text('SĐT cần nạp',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w500,
-                    )),
+                Text('SĐT cần nạp',
+                    style: AppTextStyles.label
+                        .copyWith(color: AppColors.textSecondary)),
                 const SizedBox(height: 3),
                 Text(order.deliveryPhone,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.3,
-                    )),
+                    style: AppTextStyles.metric
+                        .copyWith(color: AppColors.textPrimary)),
               ])),
         ]),
 
-        const SizedBox(height: 12),
-        const Divider(height: 1, color: Color(0xFFF5F5F5)),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
+        const Divider(height: 1, color: AppColors.surfaceAlt),
+        const SizedBox(height: AppSpacing.md),
 
         // ── Location row ─────────────────────────────────────────
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -125,51 +109,43 @@ class TopupCard extends StatelessWidget {
             height: 34,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
             child: Icon(Icons.location_on_rounded, size: 16, color: color),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                 Text('Điểm nạp tiền',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: color,
-                    )),
+                    style: AppTextStyles.label.copyWith(color: color)),
                 const SizedBox(height: 3),
                 Text(order.pickupAddress,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                      height: 1.4,
-                    )),
+                    style: AppTextStyles.bodyStrong
+                        .copyWith(color: AppColors.textPrimary)),
               ])),
         ]),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
 
         // ── Action pills ─────────────────────────────────────────
         Row(children: [
           Expanded(
-            child: PillBtn(
+            child: AppLabeledIconAction(
               icon: Icons.near_me_rounded,
               label: 'Dẫn đường',
               color: AppColors.info,
-              onTap: onNavigate,
+              onPressed: onNavigate,
             ),
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: PillBtn(
+            child: AppLabeledIconAction(
               icon: Icons.call_rounded,
               label: 'Gọi điện',
               color: AppColors.success,
-              onTap: onCall,
+              onPressed: onCall,
             ),
           ),
         ]),

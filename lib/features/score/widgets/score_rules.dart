@@ -25,11 +25,7 @@ class _RulesCardState extends ConsumerState<RulesCard> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
           child: Row(children: [
-            const Text('Cách tính điểm',
-                style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary)),
+            const Text('Cách tính điểm', style: AppTextStyles.sectionTitle),
             const Spacer(),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -150,13 +146,13 @@ class TabChip extends StatelessWidget {
   Widget build(BuildContext context) => GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
+          duration: AppDuration.normal,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
             color: active
                 ? activeColor.withValues(alpha: 0.1)
                 : const Color(0xFFF5F5F5),
-            borderRadius: BorderRadius.circular(0),
+            borderRadius: BorderRadius.circular(AppRadius.full),
             border: Border.all(
               color: active
                   ? activeColor.withValues(alpha: 0.35)
@@ -166,8 +162,7 @@ class TabChip extends StatelessWidget {
           child: Text(
             label,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
+            style: AppTextStyles.label.copyWith(
               fontWeight: FontWeight.w600,
               color: active ? activeColor : AppColors.textSecondary,
             ),
@@ -208,8 +203,8 @@ class RulesList extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(label,
-                    style: const TextStyle(
-                        fontSize: 14, color: AppColors.textPrimary)),
+                    style: AppTextStyles.body
+                        .copyWith(color: AppColors.textPrimary)),
               ),
             ]),
           ),

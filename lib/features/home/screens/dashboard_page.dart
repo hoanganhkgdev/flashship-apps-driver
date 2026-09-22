@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:offer_overlay/offer_overlay.dart';
 
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
@@ -165,9 +166,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     // đã tự phản ánh đúng trạng thái này rồi (kèm nút "Bật GPS").
     if (!await Geolocator.isLocationServiceEnabled()) return false;
     var perm = await Geolocator.checkPermission();
-    // Chưa từng hỏi hoặc mới bị từ chối 1 lần (chưa khoá hẳn) → gọi thẳng
-    // requestPermission() để HỆ ĐIỀU HÀNH tự hiện dialog gốc "Cho phép khi
-    // dùng ứng dụng / Luôn luôn / Không cho phép" — không cần popup tự vẽ.
+    // Bước 1: xin quyền foreground. Từ Android 11, dialog hệ thống KHÔNG còn
+    // lựa chọn "Luôn cho phép"; người dùng chỉ có thể cấp quyền đó trong
+    // trang Cài đặt của ứng dụng sau khi đã cấp "Khi dùng ứng dụng".
     if (perm == LocationPermission.denied) {
       perm = await Geolocator.requestPermission();
     }
@@ -175,7 +176,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       if (mounted) {
         ref.read(locationIssueProvider.notifier).state =
             'background_permission';
-        await showLocationPermissionGuide(context);
+        await showLocationPermissionGuide(
+          context,
+          backgroundPermission: true,
+        );
       }
       return false;
     }
@@ -343,6 +347,93 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       if (!hasShift) {
         if (mounted) setState(() => _togglingOnline = false);
         return;
+      }
+      if (Platform.isAndroid && !await OfferOverlay.allowed()) {
+        if (!mounted) return;
+        final openSettings = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Hiển thị thẻ đơn nổi'),
+            content: const Text(
+              'Cho phép Flash Driver hiển thị trên ứng dụng khác để thẻ đơn '
+              'và thời gian còn lại luôn dễ thấy khi bạn đang dùng ứng dụng khác. '
+              'Thẻ tự đóng khi hết hạn hoặc khi bạn mở app.\n\n'
+              'Trong Cài đặt, chọn Flash Driver và bật quyền hiển thị trên ứng dụng khác. '
+              'Nếu bỏ qua, bạn vẫn nhận thông báo trong khay.',
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Để sau')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  child: const Text('Mở cài đặt')),
+            ],
+          ),
+        );
+        if (!mounted) return;
+        if (openSettings == true) {
+          await OfferOverlay.settings();
+          if (mounted) setState(() => _togglingOnline = false);
+          return;
+        }
+      }
+      if (await OfferOverlay.isXiaomi()) {
+        if (!mounted) return;
+        await showDialog<void>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Nhận đơn khi chạy nền'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                      'Trên Xiaomi, hãy bật hai cài đặt sau cho Flash Driver để hạn chế bỏ lỡ đơn khi tắt màn hình. Chạy nền có thể dùng thêm pin.'),
+                  const SizedBox(height: 12),
+                  const Text(
+                      '1. Tự khởi động nền: bật Flash Driver trong danh sách.'),
+                  TextButton(
+                      onPressed: () async {
+                        final opened = await OfferOverlay.autostartSettings();
+                        if (!opened && dialogContext.mounted) {
+                          ScaffoldMessenger.of(dialogContext).showSnackBar(
+                              const SnackBar(
+                                  content: Text(
+                                      'Vào Cài đặt → Ứng dụng → Quyền → Tự khởi động nền.')));
+                        }
+                      },
+                      child: const Text('Mở tự khởi động nền')),
+                  const Text(
+                      '2. Tiết kiệm pin: chọn Không hạn chế. Nếu mở trang thông tin ứng dụng, vào mục Pin hoặc Tiết kiệm pin.'),
+                  TextButton(
+                      onPressed: () async {
+                        final opened = await OfferOverlay.batterySettings();
+                        if (!opened && dialogContext.mounted) {
+                          ScaffoldMessenger.of(dialogContext).showSnackBar(
+                              const SnackBar(
+                                  content: Text(
+                                      'Vào Cài đặt → Pin → Flash Driver → Không hạn chế.')));
+                        }
+                      },
+                      child: const Text('Mở cài đặt pin')),
+                  const Text(
+                      'Sau khi cài đặt, quay lại đây để tiếp tục Online.'),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Để sau')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Tiếp tục Online')),
+            ],
+          ),
+        );
+        if (!mounted) return;
       }
     } else {
       // Dừng gửi vị trí NGAY (trước khi gọi API) — nếu chờ tới lúc có phản

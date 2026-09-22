@@ -117,8 +117,11 @@ class LocationService {
     if (Platform.isAndroid) {
       return AndroidSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 10,
-        intervalDuration: const Duration(seconds: 5),
+        // Khi xe chạy nhanh, 5 giây có thể làm vị trí trễ 150–250 m. Giữ
+        // nhịp 3 giây/5 m để bản đồ và kiểm tra điểm giao luôn bám sát xe;
+        // heartbeat 20 giây ở LocationPushService chỉ dùng khi đứng yên.
+        distanceFilter: 5,
+        intervalDuration: const Duration(seconds: 3),
         forceLocationManager: false,
         // Không có foreground service, Android (Doze/tiết kiệm pin) đóng băng
         // GPS + timer heartbeat/vị trí sau vài phút tắt màn hình — tài xế vẫn
@@ -136,7 +139,7 @@ class LocationService {
     return AppleSettings(
       accuracy: LocationAccuracy.high,
       activityType: ActivityType.automotiveNavigation,
-      distanceFilter: 10,
+      distanceFilter: 5,
       pauseLocationUpdatesAutomatically: false,
       allowBackgroundLocationUpdates: true,
       showBackgroundLocationIndicator: true,

@@ -1,0 +1,14 @@
+name: offer_overlay
+version: 0.0.1
+publish_to: none
+environment:
+  sdk: '>=3.6.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: vn.flashship.offer_overlay
+        pluginClass: OfferOverlayPlugin

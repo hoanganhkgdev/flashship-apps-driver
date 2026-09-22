@@ -58,24 +58,36 @@ Future<bool?> showNotifPrimingDialog(BuildContext context) {
   );
 }
 
-Future<void> showLocationPermissionGuide(BuildContext context) {
+Future<void> showLocationPermissionGuide(
+  BuildContext context, {
+  bool backgroundPermission = false,
+}) {
   final isAndroid = Platform.isAndroid;
   return showDialog(
     context: context,
     builder: (_) => AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: const Row(children: [
-        Icon(Icons.location_on_rounded, color: Color(0xFF1565C0), size: 22),
-        SizedBox(width: 10),
-        Text('Cấp quyền vị trí',
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+      title: Row(children: [
+        const Icon(Icons.location_on_rounded,
+            color: Color(0xFF1565C0), size: 22),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            backgroundPermission ? 'Cho phép vị trí nền' : 'Cấp quyền vị trí',
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+          ),
+        ),
       ]),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Thiết lập để GPS hoạt động ổn định:',
-              style: TextStyle(fontSize: 16, color: Color(0xFF666666))),
+          Text(
+            backgroundPermission
+                ? 'Android không hiển thị “Luôn cho phép” ở hộp thoại đầu tiên. Hãy cấp quyền này trong Cài đặt để tiếp tục nhận đơn khi khóa màn hình.'
+                : 'Thiết lập để GPS hoạt động ổn định:',
+            style: const TextStyle(fontSize: 16, color: Color(0xFF666666)),
+          ),
           const SizedBox(height: 12),
           const GuideStep(number: '1', text: 'Bấm "Mở cài đặt" bên dưới'),
           const SizedBox(height: 8),
@@ -103,7 +115,7 @@ Future<void> showLocationPermissionGuide(BuildContext context) {
           },
           style:
               FilledButton.styleFrom(backgroundColor: const Color(0xFF1565C0)),
-          child: const Text('Mở cài đặt'),
+          child: Text(backgroundPermission ? 'Mở cài đặt quyền' : 'Mở cài đặt'),
         ),
       ],
     ),

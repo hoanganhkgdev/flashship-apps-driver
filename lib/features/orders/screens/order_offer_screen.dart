@@ -34,13 +34,26 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
   int _totalDuration = 30;
   int? _expiresAt;
   Timer? _timer;
+  StreamSubscription<(int, int)>? _deadlineSub;
+  DateTime? _viewSyncUntil;
+  int? _previewExpiresAt;
   late AnimationController _pulseCtrl;
   late OrderModel _order;
   final _player = AudioPlayer();
+  bool _soundPlaying = false;
+  int _soundGeneration = 0;
 
   @override
   void initState() {
     super.initState();
+    _deadlineSub = OfferListenerService.instance.deadlines.listen((event) {
+      if (event.$1 != widget.orderId || !mounted) return;
+      if (event.$2 <= (_expiresAt ?? 0)) return;
+      _expiresAt = event.$2;
+      _totalDuration = 30;
+      _viewSyncUntil = null;
+      _syncRemainingWithServerDeadline();
+    });
     _order = OrderModel.fromJson(widget.orderData.isNotEmpty
         ? <String, dynamic>{...widget.orderData, 'id': widget.orderId}
         : {
@@ -79,7 +92,12 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
     }
 
     WidgetsBinding.instance.addObserver(this);
-    _playOfferSound();
+    // RTDB vẫn có thể dựng màn hình offer khi app đang ở nền. Khi đó Android
+    // notification là nguồn phát chuông; không được phát thêm audio trong app
+    // vì nó sẽ tiếp tục reo dù heads-up banner đã thu gọn hoặc biến mất.
+    if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+      _playOfferSound();
+    }
     _startTimer();
     _markOfferViewed();
     Fmt.ensureLabelsLoaded();
@@ -88,8 +106,11 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _syncRemainingWithServerDeadline();
       _markOfferViewed();
+      _syncRemainingWithServerDeadline();
+      if (_remaining > 0) _playOfferSound();
+    } else {
+      _stopOfferSound();
     }
   }
 
@@ -97,18 +118,25 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
   bool _accepting = false;
   bool _declining = false;
 
-  // Tín hiệu đã xem không được thay đổi deadline. Hạn quyết định do server
-  // cấp trong expires_at là nguồn sự thật duy nhất; reset về 30 giây ở đây
-  // từng làm app hiện offer còn hạn trong khi backend đã thu hồi.
+  // Hiển thị ngay 30 giây trong lúc xác nhận, giữ riêng deadline server
+  // để quay về hạn thật nếu quá thời gian đồng bộ hoặc gia hạn thất bại.
   void _markOfferViewed() {
     if (_viewedCalled) return;
     if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
       return;
     }
     _viewedCalled = true;
+    // Cho request gia hạn đang chạy một khoảng đồng bộ hữu hạn. Không đóng
+    // màn hình bằng deadline cũ trước khi nhận deadline mới từ server.
+    _viewSyncUntil = DateTime.now().add(const Duration(seconds: 8));
+    _previewExpiresAt = DateTime.now().millisecondsSinceEpoch ~/ 1000 + 30;
+    setState(() {
+      _remaining = 30;
+      _totalDuration = 30;
+    });
 
-    // Tín hiệu "đã xem" gửi nền song song, không chặn đồng hồ/UI — chỉ để
-    // server ghi nhận offer_viewed_at (phân biệt từ chối/timeout/bỏ lỡ).
+    // Backend xác nhận và trả deadline có thẩm quyền; không gia hạn lại
+    // phần hiển thị khi retry hoặc khi người dùng resume lần tiếp theo.
     _sendViewedSignal();
   }
 
@@ -116,13 +144,24 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
     try {
       final res = await ref
           .read(apiClientProvider)
-          .post('/orders/${widget.orderId}/view-offer');
+          .post('/orders/${widget.orderId}/view-offer')
+          .timeout(const Duration(seconds: 6));
+      if (!mounted) return;
+      if (res.data['success'] == false) {
+        _viewSyncUntil = null;
+        _handleTimeout();
+        return;
+      }
       final raw = res.data['data'] ?? res.data;
       final expiresAt =
           raw is Map ? (raw['expires_at'] as num?)?.toInt() : null;
       if (expiresAt != null && mounted) {
-        _expiresAt = expiresAt;
+        _expiresAt = expiresAt > (_expiresAt ?? 0) ? expiresAt : _expiresAt;
         _totalDuration = 30;
+        _viewSyncUntil = null;
+        _syncRemainingWithServerDeadline();
+      } else if (mounted) {
+        _viewSyncUntil = null;
         _syncRemainingWithServerDeadline();
       }
     } catch (_) {
@@ -136,6 +175,12 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
   }
 
   Future<void> _playOfferSound() async {
+    if (_soundPlaying ||
+        WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+      return;
+    }
+    final generation = ++_soundGeneration;
+    _soundPlaying = true;
     try {
       await AudioPlayer.global.setAudioContext(AudioContext(
         iOS: AudioContextIOS(
@@ -152,18 +197,35 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
       ));
       await _player.setVolume(1.0);
       await _player.setReleaseMode(ReleaseMode.loop);
+      if (generation != _soundGeneration ||
+          WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+        _soundPlaying = false;
+        return;
+      }
       await _player.play(AssetSource('sounds/order_offer.mp3'));
+      if (generation != _soundGeneration) await _player.stop();
+    } catch (_) {
+      if (generation == _soundGeneration) _soundPlaying = false;
+    }
+  }
+
+  Future<void> _stopOfferSound() async {
+    _soundGeneration++;
+    _soundPlaying = false;
+    try {
+      await _player.stop();
     } catch (_) {}
   }
 
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      final expiresAt = _expiresAt;
+      final expiresAt = _displayExpiresAt;
       final remaining = expiresAt == null
           ? _remaining - 1
           : expiresAt - DateTime.now().millisecondsSinceEpoch ~/ 1000;
       if (remaining <= 0) {
+        if (_waitingForViewDeadline) return;
         t.cancel();
         _handleTimeout();
       } else if (mounted) {
@@ -173,12 +235,16 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
   }
 
   void _syncRemainingWithServerDeadline() {
-    final expiresAt = _expiresAt;
+    final expiresAt = _displayExpiresAt;
     if (!mounted) return;
     final remaining = expiresAt == null
         ? _remaining
         : expiresAt - DateTime.now().millisecondsSinceEpoch ~/ 1000;
     if (remaining <= 0) {
+      if (_waitingForViewDeadline) {
+        _startTimer();
+        return;
+      }
       _handleTimeout();
     } else {
       setState(() => _remaining = remaining);
@@ -188,6 +254,7 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
 
   @override
   void dispose() {
+    _deadlineSub?.cancel();
     _timer?.cancel();
     // Mở lại cờ "đang hiện offer" ở ĐÚNG 1 nơi CHẮC CHẮN luôn chạy khi màn
     // hình này biến mất, bất kể thoát bằng cách nào (nhận/từ chối/hết giờ/
@@ -202,6 +269,8 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
     OfferListenerService.instance.markOfferHandled(widget.orderId);
     WidgetsBinding.instance.removeObserver(this);
     _pulseCtrl.dispose();
+    _soundGeneration++;
+    _soundPlaying = false;
     _player.stop();
     _player.dispose();
     super.dispose();
@@ -210,9 +279,15 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
   void _handleTimeout() {
     if (!mounted) return;
     _timer?.cancel();
-    _player.stop();
+    _stopOfferSound();
     context.go('/home');
   }
+
+  bool get _waitingForViewDeadline =>
+      _viewSyncUntil?.isAfter(DateTime.now()) ?? false;
+
+  int? get _displayExpiresAt =>
+      _waitingForViewDeadline ? (_previewExpiresAt ?? _expiresAt) : _expiresAt;
 
   Future<void> _accept() async {
     if (_accepting) return;

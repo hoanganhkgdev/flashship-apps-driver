@@ -51,12 +51,15 @@ class LocationPushService {
   }
 
   static const _refreshInterval = Duration(seconds: 20);
-  static const _accuracyMaxMeter = 50.0;
+  // 50 m quá gắt trong phố/giữa các tòa nhà: app có thể nhận GPS liên tục
+  // nhưng bỏ hết và để vị trí trên Firebase đứng yên. 100 m vẫn đủ an toàn
+  // so với bán kính hoàn thành 300 m và tốt hơn nhiều so với một điểm cũ.
+  static const _accuracyMaxMeter = 100.0;
 
   /// Quá lâu không có fix nào đủ chính xác (hầm gửi xe, nhà cao tầng, máy cũ)
   /// thì chấp nhận dùng tạm fix kém — vị trí lệch vài trăm mét vẫn hơn hẳn
   /// việc tài xế "tàng hình" hoàn toàn với hệ thống phát đơn.
-  static const _degradedAfter = Duration(seconds: 60);
+  static const _degradedAfter = Duration(seconds: 20);
 
   int? _driverId;
   String? _deviceId;
@@ -99,13 +102,84 @@ class LocationPushService {
     _deviceId ??= await SessionGuardService.getDeviceId();
     if (gen != _generation) return;
 
-    await _fetchOnce();
-    if (gen != _generation) return;
-
+    // Khởi động foreground location service ngay khi người dùng còn đang ở
+    // trong app. Nếu chờ getCurrentPosition (có thể timeout 6s) trước rồi tài
+    // xế bấm Home/khóa màn hình, Android 14+ sẽ từ chối quyền location cho
+    // foreground service được mở trễ từ background.
     await LocationService.instance.start(_onFix);
     if (gen != _generation) return;
 
+    await _fetchOnce();
+    if (gen != _generation) return;
+
     _scheduleRefresh();
+  }
+
+  /// Phục hồi sau khi app resume mà không phá foreground service đang sống.
+  /// `start()` luôn stop trước nên dùng nó mỗi lần resume từng tạo một khoảng
+  /// trống GPS và có thể restart service sau khi app đã kịp xuống background.
+  Future<void> resume(int driverId) async {
+    if (_driverId != driverId) {
+      await start(driverId);
+      return;
+    }
+
+    if (!LocationService.instance.isRunning) {
+      await LocationService.instance.restart();
+    }
+    if (_driverId == driverId && _refreshTimer == null) {
+      _scheduleRefresh();
+    }
+  }
+
+  /// Lấy và đẩy một GPS fix mới ngay trước các thao tác cần xác minh vị trí
+  /// (ví dụ hoàn thành đơn). Không chờ heartbeat 20 giây vì vị trí lưu trên
+  /// Firebase có thể vẫn là điểm trước đó khi tài xế vừa tới nơi.
+  ///
+  /// Trả về mô tả lỗi để UI có thể báo đúng nguyên nhân; request hoàn thành
+  /// vẫn nên được gửi để backend giữ vai trò quyết định cuối cùng.
+  Future<String?> refreshForProximityCheck() async {
+    if (_driverId == null) {
+      return 'Chưa bật cập nhật vị trí. Vui lòng bật GPS và thử lại.';
+    }
+
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        await _recordDiagnostic('gps_disabled', 'location_service_disabled');
+        return 'GPS đang tắt. Vui lòng bật GPS và thử lại.';
+      }
+
+      final perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        await _recordDiagnostic('permission_denied', perm.name);
+        return 'Ứng dụng chưa có quyền vị trí. Vui lòng cấp quyền GPS và thử lại.';
+      }
+
+      final gen = _generation;
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+      if (gen != _generation || _driverId == null) {
+        return 'Phiên cập nhật vị trí vừa thay đổi. Vui lòng thử lại.';
+      }
+
+      await _push(
+        pos.latitude,
+        pos.longitude,
+        pos.heading < 0 ? 0.0 : pos.heading,
+        accuracy: pos.accuracy,
+        force: true,
+      );
+      return null;
+    } catch (e) {
+      await _recordDiagnostic('gps_error', _errorCode(e));
+      debugPrint('[LocationPush] Không lấy được GPS khi hoàn thành đơn: $e');
+      return 'Không lấy được vị trí hiện tại. Vui lòng ra nơi thoáng và thử lại.';
+    }
   }
 
   void stop() {

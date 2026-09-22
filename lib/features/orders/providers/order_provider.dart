@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/services/location_push_service.dart';
+import '../../../core/utils/api_error.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../models/order_model.dart';
 
@@ -245,18 +247,28 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
     }
   }
 
-  Future<bool> complete(int orderId) async {
+  /// `null` là thành công; ngược lại trả về đúng lý do để màn hình hiển thị.
+  Future<String?> complete(int orderId) async {
     _stateRevision++;
+    String? locationError;
     try {
+      // Backend kiểm tra vị trí trong Firebase. Chủ động ghi một GPS fix mới
+      // trước request để không dùng nhầm heartbeat cũ khi tài xế vừa tới nơi.
+      locationError =
+          await LocationPushService.instance.refreshForProximityCheck();
       await _ref.read(apiClientProvider).post('/orders/$orderId/complete');
       _stateRevision++;
       // Xóa đơn vừa hoàn thành khỏi danh sách
       final remaining = state.orders.where((o) => o.id != orderId).toList();
       state = ActiveOrderState(orders: remaining, isRestored: true);
       await _persist(remaining);
-      return true;
-    } catch (_) {
-      return false;
+      return null;
+    } catch (e) {
+      return parseApiError(
+        e,
+        fallback:
+            locationError ?? 'Không thể hoàn thành đơn. Vui lòng thử lại.',
+      );
     }
   }
 

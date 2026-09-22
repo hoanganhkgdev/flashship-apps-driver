@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/launch_utils.dart';
@@ -83,19 +82,7 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
   }
 
   Future<void> _navigateTo({double? lat, double? lng, String? address}) async {
-    final String dest;
-    if (lat != null && lng != null) {
-      dest = '$lat,$lng';
-    } else if (address != null && address.isNotEmpty) {
-      dest = Uri.encodeComponent(address);
-    } else {
-      return;
-    }
-    final uri = Uri.parse(
-        'https://www.google.com/maps/dir/?api=1&destination=$dest&travelmode=driving');
-    if (await canLaunchUrl(uri)) {
-      launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+    await launchNavigation(lat: lat, lng: lng, address: address);
   }
 
   Future<void> _callPhone(String phone) => launchPhoneCall(phone);
@@ -105,17 +92,17 @@ class _ActiveOrderScreenState extends ConsumerState<ActiveOrderScreen>
     final notifier = ref.read(activeOrderProvider.notifier);
     if (order.status == 'processing') {
       _completing = true;
-      final ok = await notifier.complete(order.id);
+      final error = await notifier.complete(order.id);
       if (mounted) {
-        if (ok) {
+        if (error == null) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text('Hoàn thành đơn hàng!'),
             backgroundColor: AppColors.success,
           ));
           context.go('/home');
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Không thể hoàn thành đơn. Vui lòng thử lại.'),
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(error),
             backgroundColor: AppColors.danger,
           ));
         }

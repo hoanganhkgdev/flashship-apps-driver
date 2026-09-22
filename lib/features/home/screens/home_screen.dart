@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
@@ -50,6 +51,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     with WidgetsBindingObserver {
   StreamSubscription<ServiceStatus>? _gpsStatusSub;
   Timer? _locationRecheckTimer;
+  bool _exitDialogOpen = false;
 
   @override
   void initState() {
@@ -181,15 +183,58 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       return;
     }
 
-    // Khởi động lại toàn bộ pipeline thay vì chỉ restart stream GPS thấp
-    // tầng: việc này phục hồi cả heartbeat 20s nếu timer đã bị OS đóng băng.
-    await LocationPushService.instance.start(user!.id);
+    // refreshUser là request mạng; trong lúc chờ tài xế có thể đã bấm Home
+    // hoặc khóa màn hình. Android 14+ không cho mở location foreground
+    // service trễ từ background, nên đợi lần resume kế tiếp thay vì cố mở.
+    if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+      return;
+    }
+
+    // Giữ nguyên foreground service nếu nó vẫn sống; chỉ phục hồi phần nào đã
+    // chết. Việc stop/start toàn bộ mỗi lần resume tạo ra khe hở mất GPS.
+    await LocationPushService.instance.resume(user!.id);
     if (!mounted || ref.read(authProvider).user?.isOnline != true) return;
     OfferListenerService.instance.start(user.id);
     await OfferListenerService.instance.ensureOfferVisible(user.id);
   }
 
   Future<void> _fetchServiceLabels() => Fmt.ensureLabelsLoaded();
+
+  Future<void> _handleRootBack() async {
+    // Ở tab phụ, Back đầu tiên đưa tài xế về Trang chủ thay vì hỏi thoát.
+    if (ref.read(homeTabProvider) != 0) {
+      ref.read(homeTabProvider.notifier).state = 0;
+      return;
+    }
+    if (_exitDialogOpen || !mounted) return;
+    _exitDialogOpen = true;
+    final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Thoát Flash Driver?'),
+            content: Text(
+              ref.read(authProvider).user?.isOnline == true
+                  ? 'Bạn đang Online. Thoát ứng dụng có thể làm gián đoạn vị trí và thông báo đơn trên một số điện thoại.'
+                  : 'Bạn có chắc chắn muốn thoát ứng dụng?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Ở lại'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Thoát ứng dụng'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    _exitDialogOpen = false;
+    if (shouldExit && mounted) {
+      await SystemNavigator.pop();
+    }
+  }
 
   @override
   void dispose() {
@@ -212,12 +257,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       const ProfileScreen(),
     ];
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: IndexedStack(index: tab, children: pages),
-      bottomNavigationBar: BottomNav(
-        currentIndex: tab,
-        onTap: (i) => ref.read(homeTabProvider.notifier).state = i,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _handleRootBack();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: IndexedStack(index: tab, children: pages),
+        bottomNavigationBar: BottomNav(
+          currentIndex: tab,
+          onTap: (i) => ref.read(homeTabProvider.notifier).state = i,
+        ),
       ),
     );
   }

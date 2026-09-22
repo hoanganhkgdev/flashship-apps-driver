@@ -63,6 +63,22 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
+        <package android:name="com.google.android.apps.maps"/>
+        <!-- Android 11+ ẩn ứng dụng xử lý intent nếu không khai báo ở đây.
+             url_launcher.canLaunchUrl() cần các query này cho gọi điện và
+             dẫn đường, nếu thiếu nút sẽ bấm nhưng không có phản hồi. -->
+        <intent>
+            <action android:name="android.intent.action.DIAL"/>
+            <data android:scheme="tel"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="geo"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https" android:host="www.google.com"/>
+        </intent>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

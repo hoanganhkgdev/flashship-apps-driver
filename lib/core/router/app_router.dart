@@ -138,8 +138,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/order/completed',
-        builder: (_, state) =>
-            CompletedOrderDetailScreen(order: state.extra as OrderModel),
+        // `extra` chỉ sống trong bộ nhớ. Nó có thể bị mất khi hot restart hoặc
+        // khi router refresh vì trạng thái đăng nhập thay đổi. Không ép kiểu
+        // trực tiếp để tránh crash `Null is not a subtype of OrderModel`.
+        redirect: (_, state) => state.extra is OrderModel ? null : '/home',
+        builder: (_, state) {
+          final order = state.extra;
+          return order is OrderModel
+              ? CompletedOrderDetailScreen(order: order)
+              : const HomeScreen();
+        },
       ),
       GoRoute(
         path: '/wallet',

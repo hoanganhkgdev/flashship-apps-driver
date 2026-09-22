@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
@@ -42,11 +41,7 @@ class ActiveOrderCard extends StatelessWidget {
     final lat = pickup ? order.pickupLat : order.deliveryLat;
     final lng = pickup ? order.pickupLng : order.deliveryLng;
     if (lat == null || lng == null) return;
-    final uri = Uri.parse(
-        'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+    await launchNavigation(lat: lat, lng: lng);
   }
 
   @override

@@ -1,12 +1,14 @@
 name: flashship_driver
 description: Flash Driver App - Nhận và hoàn thành đơn giao hàng
 publish_to: 'none'
-version: 10.0.14+115
+version: 10.0.15+116
 
 environment:
   sdk: ^3.6.0
 
 dependencies:
+  offer_overlay:
+    path: packages/offer_overlay
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8

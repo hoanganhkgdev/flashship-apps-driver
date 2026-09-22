@@ -24,16 +24,21 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>googlechromes</string>
+		<string>comgooglemaps</string>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-<key>NSCameraUsageDescription</key>
+	<key>NSCameraUsageDescription</key>
 	<string>FlashShip Driver cần camera để chụp ảnh đại diện</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>FlashShip Driver cần truy cập thư viện ảnh để cập nhật ảnh đại diện</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>FlashShip Driver liên tục cập nhật vị trí GPS của bạn ngay cả khi app chạy nền để chia sẻ tọa độ thực tế với khách hàng trong suốt hành trình giao hàng. Ví dụ: khi bạn đang trên đường giao đơn, khách hàng nhìn thấy vị trí tài xế di chuyển theo thời gian thực trên bản đồ.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>FlashShip Driver sử dụng vị trí GPS của bạn để hiển thị tài xế gần nhất cho khách hàng và điều hướng chặng đường giao hàng. Ví dụ: khi bạn nhận đơn, ứng dụng dùng vị trí hiện tại để tính lộ trình từ bạn đến địa điểm lấy hàng.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>FlashShip Driver cần truy cập thư viện ảnh để cập nhật ảnh đại diện</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -57,17 +62,6 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	<key>VietMapURL</key>
-	<string>https://maps.vietmap.vn/api/maps/light/styles.json?apikey=2ea865fba5984b6e2c2dcd4a7b8b3b6dfdd30424a4e7fa40</string>
-	<key>VietMapAPIBaseURL</key>
-	<string>https://maps.vietmap.vn/api/navigations/route/</string>
-	<key>VietMapAccessToken</key>
-	<string>a895f1003f28965f705e13b7b45e3cf35e23a71fe6098542</string>
-	<key>LSApplicationQueriesSchemes</key>
-	<array>
-		<string>googlechromes</string>
-		<string>comgooglemaps</string>
-	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
@@ -91,5 +85,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>VietMapAPIBaseURL</key>
+	<string>https://maps.vietmap.vn/api/navigations/route/</string>
+	<key>VietMapAccessToken</key>
+	<string>a895f1003f28965f705e13b7b45e3cf35e23a71fe6098542</string>
+	<key>VietMapURL</key>
+	<string>https://maps.vietmap.vn/api/maps/light/styles.json?apikey=2ea865fba5984b6e2c2dcd4a7b8b3b6dfdd30424a4e7fa40</string>
 </dict>
 </plist>

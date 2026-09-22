@@ -696,6 +696,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.17.6"
+  offer_overlay:
+    dependency: "direct main"
+    description:
+      path: "packages/offer_overlay"
+      relative: true
+    source: path
+    version: "0.0.1"
   package_config:
     dependency: transitive
     description:

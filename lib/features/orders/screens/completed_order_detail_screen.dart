@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
@@ -27,19 +26,7 @@ class CompletedOrderDetailScreen extends StatelessWidget {
   const CompletedOrderDetailScreen({super.key, required this.order});
 
   Future<void> _navigateTo({double? lat, double? lng, String? address}) async {
-    final String dest;
-    if (lat != null && lng != null) {
-      dest = '$lat,$lng';
-    } else if (address != null && address.isNotEmpty) {
-      dest = Uri.encodeComponent(address);
-    } else {
-      return;
-    }
-    final uri = Uri.parse(
-        'https://www.google.com/maps/dir/?api=1&destination=$dest&travelmode=driving');
-    if (await canLaunchUrl(uri)) {
-      launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+    await launchNavigation(lat: lat, lng: lng, address: address);
   }
 
   Future<void> _callPhone(String phone) => launchPhoneCall(phone);

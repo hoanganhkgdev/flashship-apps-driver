@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:offer_overlay/offer_overlay.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/widgets.dart';
 import '../router/app_router.dart';
@@ -23,6 +24,8 @@ class OfferListenerService {
   // tài xế vẫn đứng nhìn đơn A đã chết. So sánh theo orderId sửa đúng lỗi này.
   int? _visibleOrderId;
   String? _lastOrderCode;
+  final _deadlines = StreamController<(int, int)>.broadcast(sync: true);
+  Stream<(int, int)> get deadlines => _deadlines.stream;
 
   /// Callback được set bởi HomeScreen để reset tab khi offer bị dismiss
   VoidCallback? onOfferDismissed;
@@ -41,6 +44,7 @@ class OfferListenerService {
   }
 
   void stop() {
+    unawaited(OfferOverlay.hide());
     _sub?.cancel();
     _sub = null;
     _driverId = null;
@@ -108,6 +112,10 @@ class OfferListenerService {
       }
       return;
     }
+
+    // Cùng một đơn vẫn có thể được backend gia hạn sau thao tác bấm popup.
+    // Phải chuyển deadline mới tới màn hình đã dựng khi app còn ở nền.
+    _deadlines.add((orderId, expiresAt));
 
     if (_visibleOrderId != orderId) {
       _visibleOrderId = orderId;

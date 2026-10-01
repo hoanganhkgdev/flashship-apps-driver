@@ -523,6 +523,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                         .withValues(alpha: 0.8))),
                         onTap: () => context.push('/bank-account'),
                       ),
+                      const Divider(
+                          height: 1, indent: 56, color: Color(0xFFF5F5F5)),
+                      // Giới thiệu cửa hàng
+                      SettingsRow(
+                        icon: Icons.card_giftcard_rounded,
+                        iconBg: AppColors.success.withValues(alpha: 0.12),
+                        iconColor: AppColors.success,
+                        label: 'Giới thiệu cửa hàng',
+                        onTap: () => context.push('/referral'),
+                      ),
                     ],
                   ),
 

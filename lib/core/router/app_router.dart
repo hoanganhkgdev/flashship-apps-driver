@@ -16,6 +16,7 @@ import '../../features/orders/screens/completed_order_detail_screen.dart';
 import '../../features/wallet/screens/wallet_screen.dart';
 import '../../features/wallet/screens/bank_account_screen.dart';
 import '../../features/score/screens/score_screen.dart';
+import '../../features/referral/screens/referral_screen.dart';
 import '../../features/profile/screens/kyc_screen.dart';
 import '../../features/shifts/screens/shift_registration_screen.dart';
 import '../../features/version/providers/app_version_provider.dart';
@@ -160,6 +161,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/score',
         builder: (_, __) => const ScoreScreen(),
+      ),
+      GoRoute(
+        path: '/referral',
+        builder: (_, __) => const ReferralScreen(),
       ),
       GoRoute(
         path: '/kyc',

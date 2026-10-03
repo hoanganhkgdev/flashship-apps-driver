@@ -113,26 +113,28 @@ class _BalanceCard extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            AppColors.primaryGradientStart,
-            AppColors.primaryGradientMiddle,
-            AppColors.primaryGradientEnd,
-          ],
+          colors: [AppColors.primary, Color(0xFFFF8A3D)],
         ),
         borderRadius: BorderRadius.circular(AppRadius.xl),
-        boxShadow: AppShadows.raised,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.3),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
+              color: Colors.white.withValues(alpha: 0.22),
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: const Icon(Icons.account_balance_wallet_rounded,
-                color: Colors.white, size: 20),
+                color: Colors.white, size: 22),
           ),
           const SizedBox(width: AppSpacing.md),
           const Expanded(
@@ -159,7 +161,7 @@ class _BalanceCard extends StatelessWidget {
           Text(Fmt.currency(balance),
               style: const TextStyle(
                   color: Colors.white,
-                  fontSize: AppFontSize.xl5,
+                  fontSize: 42,
                   height: 1.05,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.8)),
@@ -173,15 +175,16 @@ class _BalanceCard extends StatelessWidget {
         const SizedBox(height: AppSpacing.xl),
         SizedBox(
           width: double.infinity,
-          height: AppSize.buttonHeight,
+          height: 52,
           child: FilledButton.icon(
             onPressed: onWithdraw,
-            icon: const Icon(Icons.arrow_upward_rounded, size: 18),
+            icon: const Icon(Icons.arrow_upward_rounded, size: 20),
             label: const Text('Rút tiền'),
             style: FilledButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: AppColors.primaryDark,
-              textStyle: AppTextStyles.bodyStrong,
+              elevation: 0,
+              textStyle: AppTextStyles.sectionTitle,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppRadius.md)),
             ),
@@ -234,15 +237,23 @@ class _DebtWarningBanner extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            const Icon(Icons.warning_amber_rounded,
-                color: Color(0xFF17110F), size: 18),
-            const SizedBox(width: 8),
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(AppRadius.sm + 2),
+              ),
+              child: const Icon(Icons.warning_amber_rounded,
+                  color: AppColors.danger, size: 19),
+            ),
+            const SizedBox(width: AppSpacing.sm),
             const Expanded(
               child: Text('Bạn đang có công nợ chưa thanh toán',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFFD52E36),
+                    color: AppColors.danger,
                   )),
             ),
           ]),
@@ -276,7 +287,7 @@ class _DebtWarningBanner extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                 decoration: BoxDecoration(
                   color: AppColors.danger,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(AppRadius.full),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   const Text('Xem công nợ',
@@ -339,6 +350,8 @@ class _TransactionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppSurfaceCard(
+      color: Colors.white,
+      showBorder: false,
       padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -358,7 +371,7 @@ class _TransactionCard extends StatelessWidget {
             ]),
           ),
 
-          const Divider(height: 1, color: AppColors.divider),
+          const Divider(height: 1, color: AppColors.surfaceAlt),
 
           if (loading)
             const Padding(
@@ -376,7 +389,7 @@ class _TransactionCard extends StatelessWidget {
                     width: 64,
                     height: 64,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF5F5F5),
+                      color: AppColors.surfaceAlt,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.receipt_long_outlined,
@@ -402,14 +415,17 @@ class _TransactionCard extends StatelessWidget {
               for (var i = 0; i < grouped.length; i++) {
                 final item = grouped[i];
                 if (item is String) {
-                  widgets.add(Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                  widgets.add(Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(top: 8),
+                    color: AppColors.surfaceAlt,
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                     child: Text(
                       item,
                       style: const TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textTertiary,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textSecondary,
                         letterSpacing: 0.2,
                       ),
                     ),
@@ -423,7 +439,7 @@ class _TransactionCard extends StatelessWidget {
                         height: 1,
                         indent: 76,
                         endIndent: 0,
-                        color: AppColors.divider));
+                        color: AppColors.surfaceAlt));
                   }
                 }
               }
@@ -443,7 +459,7 @@ class _TxItem extends StatelessWidget {
 
   Color get _color => tx.isCredit ? AppColors.success : AppColors.danger;
   Color get _bgColor =>
-      tx.isCredit ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2);
+      tx.isCredit ? AppColors.successSoft : AppColors.dangerSoft;
   IconData get _icon => tx.isCredit ? Icons.south_rounded : Icons.north_rounded;
 
   @override
@@ -458,11 +474,11 @@ class _TxItem extends StatelessWidget {
       child: Row(children: [
         // Circle avatar
         Container(
-          width: 46,
-          height: 46,
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
             color: _bgColor,
-            shape: BoxShape.circle,
+            borderRadius: BorderRadius.circular(AppRadius.sm + 2),
           ),
           child: Icon(_icon, color: _color, size: 20),
         ),
@@ -591,12 +607,8 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
     // Watch trực tiếp — số dư luôn tươi kể cả khi thay đổi trong lúc sheet mở.
     final balance = ref.watch(walletProvider).balance;
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFFFFFEFD),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: EdgeInsets.fromLTRB(20, 0, 20, bottom + 28),
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 0, 20, bottom + 24),
       child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -606,6 +618,7 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
               child: AppBottomSheetHeader(
                 title: 'Rút tiền',
                 subtitle: 'Số dư: ${Fmt.currency(balance)}',
+                icon: Icons.account_balance_wallet_outlined,
               ),
             ),
 
@@ -699,33 +712,10 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                     color: Color(0xFF1B1411)),
-                decoration: InputDecoration(
-                  hintText: '0',
-                  hintStyle:
-                      const TextStyle(fontSize: 18, color: Color(0xFFA99F9A)),
+                decoration: appSheetInputDecoration(
+                  hint: '0',
                   suffixText: 'VND',
-                  suffixStyle: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF6A605C),
-                      fontWeight: FontWeight.w500),
-                  filled: true,
-                  fillColor: const Color(0xFFFFF8F5),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: const BorderSide(color: Color(0xFFFF6035))),
-                  enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: const BorderSide(color: Color(0xFFFF6035))),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                    borderSide:
-                        const BorderSide(color: Color(0xFFFF6035), width: 1.5),
-                  ),
                   errorText: _error,
-                  errorStyle:
-                      const TextStyle(fontSize: 12, color: AppColors.danger),
                 ),
               ),
 
@@ -743,8 +733,9 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
                             decoration: BoxDecoration(
                               color: _parsedAmount == a
                                   ? const Color(0xFFFFEAE3)
-                                  : const Color(0xFFF3EEEB),
-                              borderRadius: BorderRadius.circular(20),
+                                  : AppColors.surfaceAlt,
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.full),
                             ),
                             child: Text(Fmt.currency(a).replaceAll(' đ', ''),
                                 style: TextStyle(
@@ -764,7 +755,7 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
                       color: _parsedAmount == balance
                           ? const Color(0xFFFFEAE3)
                           : const Color(0xFFFFF0EB),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(AppRadius.full),
                     ),
                     child: const Text('Tất cả',
                         style: TextStyle(
@@ -792,49 +783,19 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
               const SizedBox(height: 20),
 
               // Submit
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: FilledButton(
-                  onPressed: _loading ? null : _submit,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF6035),
-                    disabledBackgroundColor:
-                        const Color(0xFFFF6035).withValues(alpha: 0.5),
-                    shape: const StadiumBorder(),
-                  ),
-                  child: _loading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
-                      : const Text('Gửi yêu cầu rút tiền',
-                          style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white)),
-                ),
+              AppSheetButton(
+                label: 'Gửi yêu cầu rút tiền',
+                loading: _loading,
+                onPressed: _submit,
               ),
             ] else ...[
               const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: FilledButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    GoRouter.of(context).push('/bank-account');
-                  },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('Thêm tài khoản ngân hàng',
-                      style:
-                          TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-                ),
+              AppSheetButton(
+                label: 'Thêm tài khoản ngân hàng',
+                onPressed: () {
+                  Navigator.pop(context);
+                  GoRouter.of(context).push('/bank-account');
+                },
               ),
             ],
           ]),

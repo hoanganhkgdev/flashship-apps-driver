@@ -22,22 +22,22 @@ class ScoreHeader extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [AppColors.primaryDark, AppColors.primary],
+          colors: [AppColors.primaryDark, AppColors.primary, Color(0xFFFF8A3D)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(AppRadius.card),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: .22),
-            blurRadius: 18,
-            offset: const Offset(0, 7),
+            color: AppColors.primary.withValues(alpha: .3),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
       child: s == null
           ? const SizedBox(
-              height: 116,
+              height: 190,
               child: Center(
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
@@ -45,67 +45,37 @@ class ScoreHeader extends StatelessWidget {
                 ),
               ),
             )
-          : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'ĐIỂM HIỆN TẠI',
-                        style: AppTextStyles.caption.copyWith(
-                          color: Colors.white.withValues(alpha: .76),
-                          letterSpacing: .6,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            '${s.score}',
-                            style: AppTextStyles.metricLarge.copyWith(
-                              color: Colors.white,
-                              fontSize: AppFontSize.xl7,
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(
-                              left: AppSpacing.xs,
-                              bottom: AppSpacing.xs,
-                            ),
-                            child: Text(
-                              '/ ${s.maxScore}',
-                              style: AppTextStyles.label.copyWith(
-                                color: Colors.white.withValues(alpha: .72),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+          : Column(children: [
+              Text(
+                'ĐIỂM HIỆN TẠI',
+                style: AppTextStyles.caption.copyWith(
+                  color: Colors.white.withValues(alpha: .85),
+                  letterSpacing: .8,
+                  fontWeight: FontWeight.w800,
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: .16),
-                    borderRadius: BorderRadius.circular(AppRadius.full),
-                  ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.star_rounded,
-                        color: Colors.white, size: 16),
-                    const SizedBox(width: AppSpacing.xs),
-                    Text(
-                      s.label,
-                      style: AppTextStyles.label.copyWith(color: Colors.white),
-                    ),
-                  ]),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _ScoreGauge(score: s.score, maxScore: s.maxScore),
+              const SizedBox(height: AppSpacing.md),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
                 ),
-              ]),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .2),
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.star_rounded, color: Colors.white, size: 16),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    s.label,
+                    style: AppTextStyles.label.copyWith(
+                        color: Colors.white, fontWeight: FontWeight.w800),
+                  ),
+                ]),
+              ),
               if (s.week != null) ...[
                 const SizedBox(height: AppSpacing.lg),
                 ScoreHeaderProgressBar(
@@ -118,6 +88,73 @@ class ScoreHeader extends StatelessWidget {
             ]),
     );
   }
+}
+
+/// Đồng hồ cung tròn 270°: nền mờ + cung trắng tỉ lệ theo điểm/điểm tối đa,
+/// số điểm lớn ở giữa.
+class _ScoreGauge extends StatelessWidget {
+  final int score;
+  final int maxScore;
+  const _ScoreGauge({required this.score, required this.maxScore});
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = maxScore <= 0 ? 0.0 : (score / maxScore).clamp(0.0, 1.0);
+    return SizedBox(
+      width: 168,
+      height: 168,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: progress),
+        duration: const Duration(milliseconds: 900),
+        curve: Curves.easeOutCubic,
+        builder: (_, value, __) => CustomPaint(
+          painter: _GaugePainter(value),
+          child: Center(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text('$score',
+                  style: AppTextStyles.metricLarge
+                      .copyWith(color: Colors.white, fontSize: 52, height: 1)),
+              const SizedBox(height: 2),
+              Text('/ $maxScore',
+                  style: AppTextStyles.label
+                      .copyWith(color: Colors.white.withValues(alpha: .8))),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GaugePainter extends CustomPainter {
+  final double progress;
+  _GaugePainter(this.progress);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const stroke = 12.0;
+    const start = 0.75 * 3.141592653589793; // 135°
+    const sweep = 1.5 * 3.141592653589793; // 270°
+    final rect = Rect.fromLTWH(
+        stroke / 2, stroke / 2, size.width - stroke, size.height - stroke);
+    final track = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..color = Colors.white.withValues(alpha: .22);
+    final fill = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..color = Colors.white;
+    canvas.drawArc(rect, start, sweep, false, track);
+    if (progress > 0) {
+      canvas.drawArc(rect, start, sweep * progress, false, fill);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _GaugePainter old) => old.progress != progress;
 }
 
 class ScoreHeaderProgressBar extends StatelessWidget {

@@ -80,10 +80,10 @@ class RouteCard extends StatelessWidget {
 
         // ── Connector ──────────────────────────────────────────────
         Padding(
-          padding: const EdgeInsets.only(left: 13),
+          padding: const EdgeInsets.only(left: 29),
           child: Container(
             width: 2,
-            height: 32,
+            height: 10,
             decoration: BoxDecoration(
               color: isPickup
                   ? AppColors.divider
@@ -134,127 +134,132 @@ class RouteStop extends StatelessWidget {
     required this.onNav,
   });
 
-  // Điểm đang xử lý luôn tô cam (điểm nhấn thương hiệu cố định) — không còn
-  // đổi theo màu loại dịch vụ như trước, để đồng bộ với các màn đã redesign.
-  Color get _dotColor {
+  // Điểm đang xử lý tô cam (điểm nhấn thương hiệu), điểm đã xong xanh lá,
+  // điểm chưa tới xám.
+  Color get _color {
     if (isActive) return AppColors.primary;
     if (isDone) return AppColors.success;
-    return AppColors.divider;
+    return AppColors.textTertiary;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // Timeline dot
-      Container(
-        width: 28,
-        height: 28,
-        decoration: BoxDecoration(
-          color: _dotColor.withValues(alpha: isActive || isDone ? 1.0 : 0.12),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          isOrigin ? Icons.location_on_rounded : Icons.flag_rounded,
-          size: 14,
-          color: isActive || isDone ? Colors.white : _dotColor,
-        ),
-      ),
-
-      const SizedBox(width: AppSpacing.md),
-
-      Expanded(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Stop label + quick actions
-          Row(children: [
-            Text(
-              label,
-              style: AppTextStyles.label.copyWith(
-                color: isActive ? AppColors.primary : AppColors.textTertiary,
-              ),
-            ),
-            const Spacer(),
-            _RouteTextAction(
-              label: 'Dẫn đường',
-              color: AppColors.primary,
-              onTap: onNav,
-            ),
-            if (phone != null && phone!.isNotEmpty && onCall != null) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 5),
-                child: Text(
-                  '•',
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.textTertiary,
-                  ),
-                ),
-              ),
-              _RouteTextAction(
-                label: 'Gọi điện',
-                color: AppColors.success,
-                onTap: onCall!,
-              ),
-            ],
-          ]),
-
-          const SizedBox(height: 5),
-
-          // Place name
-          if (placeName != null && placeName!.isNotEmpty) ...[
-            Text(placeName!,
-                style: AppTextStyles.sectionTitle
-                    .copyWith(color: AppColors.textPrimary)),
-            const SizedBox(height: AppSpacing.xxs),
-          ],
-
-          Text(
-            address,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+    final hasPhone = phone != null && phone!.isNotEmpty && onCall != null;
+    return Container(
+      // Padding cố định để icon các điểm luôn thẳng hàng với đường nối.
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: isActive
+          ? BoxDecoration(
+              color: AppColors.primarySoft,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            )
+          : null,
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: isActive || isDone ? _color : _color.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(AppRadius.sm + 2),
           ),
-          if (phone != null && phone!.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.xxs),
-            Text(
-              phone!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.label.copyWith(color: AppColors.info),
-            ),
-          ],
-          const SizedBox(height: AppSpacing.xs),
-        ]),
-      ),
-    ]);
+          child: Icon(
+            isDone
+                ? Icons.check_rounded
+                : isOrigin
+                    ? Icons.storefront_rounded
+                    : Icons.flag_rounded,
+            size: 19,
+            color: isActive || isDone ? Colors.white : _color,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(label.toUpperCase(),
+                style: AppTextStyles.caption.copyWith(
+                    color: isActive ? AppColors.primaryDark : _color,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: .5)),
+            const SizedBox(height: 3),
+            if (placeName != null && placeName!.isNotEmpty)
+              Text(placeName!,
+                  style: AppTextStyles.sectionTitle
+                      .copyWith(color: AppColors.textPrimary)),
+            const SizedBox(height: 2),
+            Text(address,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.body
+                    .copyWith(color: AppColors.textSecondary)),
+            if (phone != null && phone!.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(phone!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.label.copyWith(color: AppColors.info)),
+            ],
+            const SizedBox(height: AppSpacing.sm),
+            Row(children: [
+              _StopAction(
+                  icon: Icons.navigation_rounded,
+                  label: 'Dẫn đường',
+                  color: AppColors.primary,
+                  strong: isActive,
+                  onTap: onNav),
+              if (hasPhone) ...[
+                const SizedBox(width: AppSpacing.sm),
+                _StopAction(
+                    icon: Icons.phone_rounded,
+                    label: 'Gọi điện',
+                    color: AppColors.success,
+                    strong: isActive,
+                    onTap: onCall!),
+              ],
+            ]),
+          ]),
+        ),
+      ]),
+    );
   }
 }
 
-class _RouteTextAction extends StatelessWidget {
+class _StopAction extends StatelessWidget {
+  final IconData icon;
   final String label;
   final Color color;
+  // Ở điểm đang xử lý: nút đặc màu (bấm nhiều nhất), điểm khác: pill nhạt.
+  final bool strong;
   final VoidCallback onTap;
 
-  const _RouteTextAction({
+  const _StopAction({
+    required this.icon,
     required this.label,
     required this.color,
+    required this.strong,
     required this.onTap,
   });
 
   @override
-  Widget build(BuildContext context) => Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5),
-            child: Text(
-              label,
-              style: AppTextStyles.caption.copyWith(
-                color: color,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
+  Widget build(BuildContext context) {
+    final fg = strong ? Colors.white : color;
+    return Material(
+      color: strong ? color : color.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(AppRadius.full),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(icon, size: 16, color: fg),
+            const SizedBox(width: 5),
+            Text(label,
+                style: AppTextStyles.label
+                    .copyWith(color: fg, fontWeight: FontWeight.w800)),
+          ]),
         ),
-      );
+      ),
+    );
+  }
 }

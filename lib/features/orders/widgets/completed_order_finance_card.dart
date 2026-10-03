@@ -12,25 +12,18 @@ class CompletedOrderFinanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AppSurfaceCard(
+        color: Colors.white,
+        showBorder: false,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const AppSectionHeader(
-            title: 'Thanh toán',
-            subtitle: 'Chi tiết tiền của đơn hàng',
+            title: 'Chi tiết thanh toán',
+            subtitle: 'Các khoản tiền của đơn hàng',
             icon: Icons.account_balance_wallet_rounded,
             color: AppColors.success,
             trailing: SizedBox.shrink(),
           ),
           const SizedBox(height: AppSpacing.lg),
-          Text('TÀI XẾ NHẬN',
-              style: AppTextStyles.caption
-                  .copyWith(color: AppColors.textTertiary, letterSpacing: .6)),
-          const SizedBox(height: AppSpacing.sm),
-          Text(Fmt.currency(order.driverEarning),
-              style:
-                  AppTextStyles.metricLarge.copyWith(color: AppColors.success)),
-          const SizedBox(height: AppSpacing.lg),
-          const Divider(height: 1),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.xs),
           _MoneyRow(
             label: 'Phí giao hàng',
             value: Fmt.currency(order.shippingFee + order.discountAmount),
@@ -62,6 +55,25 @@ class CompletedOrderFinanceCard extends StatelessWidget {
               color: AppColors.success,
             ),
           ],
+          const SizedBox(height: AppSpacing.md),
+          Container(
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md, vertical: AppSpacing.md),
+            decoration: BoxDecoration(
+              color: AppColors.successSoft,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Row(children: [
+              Expanded(
+                child: Text('Tài xế nhận',
+                    style: AppTextStyles.bodyStrong
+                        .copyWith(color: AppColors.success)),
+              ),
+              Text(Fmt.currency(order.driverEarning),
+                  style: AppTextStyles.sectionTitle
+                      .copyWith(color: AppColors.success)),
+            ]),
+          ),
           if (order.isCod) ...[
             const SizedBox(height: AppSpacing.md),
             const Divider(height: 1),

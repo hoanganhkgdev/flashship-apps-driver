@@ -130,13 +130,26 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
         body: Column(children: [
           AppRootHeader(
             title: 'Thu nhập',
-            trailing: TextButton.icon(
-              onPressed: () => context.push('/wallet'),
-              icon: const Icon(
-                Icons.account_balance_wallet_rounded,
-                size: 18,
+            trailing: Material(
+              color: AppColors.primarySoft,
+              borderRadius: BorderRadius.circular(AppRadius.full),
+              child: InkWell(
+                onTap: () => context.push('/wallet'),
+                borderRadius: BorderRadius.circular(AppRadius.full),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.account_balance_wallet_rounded,
+                        size: 17, color: AppColors.primary),
+                    const SizedBox(width: 6),
+                    Text('Xem ví',
+                        style: AppTextStyles.label.copyWith(
+                            color: AppColors.primaryDark,
+                            fontWeight: FontWeight.w800)),
+                  ]),
+                ),
               ),
-              label: const Text('Xem ví'),
             ),
           ),
           Expanded(
@@ -175,6 +188,11 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
                       child: _TotalEarningsCard(
                         summary: summary,
                         loading: wallet.loading,
+                        periodLabel: const [
+                          'hôm nay',
+                          'tuần này',
+                          'tháng này'
+                        ][_period],
                       ),
                     ),
                   ),
@@ -246,8 +264,9 @@ class _PeriodTabs extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.xs),
         decoration: BoxDecoration(
-          color: AppColors.surfaceAlt,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(AppRadius.full),
+          boxShadow: AppShadows.soft,
         ),
         child: Row(
           children: List.generate(_labels.length, (i) {
@@ -260,17 +279,15 @@ class _PeriodTabs extends StatelessWidget {
                   duration: AppDuration.normal,
                   padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                   decoration: BoxDecoration(
-                    color: active ? AppColors.surface : Colors.transparent,
+                    color: active ? AppColors.primary : Colors.transparent,
                     borderRadius: BorderRadius.circular(AppRadius.full),
-                    boxShadow: active ? AppShadows.soft : null,
                   ),
                   child: Text(
                     _labels[i],
                     textAlign: TextAlign.center,
                     style: AppTextStyles.label.copyWith(
-                      fontWeight: active ? FontWeight.w800 : FontWeight.w500,
-                      color:
-                          active ? AppColors.primary : AppColors.textSecondary,
+                      fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+                      color: active ? Colors.white : AppColors.textSecondary,
                     ),
                   ),
                 ),
@@ -304,7 +321,7 @@ class _UrgentDebtCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.dangerSoft,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: AppColors.danger.withValues(alpha: 0.25)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -391,14 +408,8 @@ class _WeeklyFeeRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          boxShadow: AppShadows.soft,
         ),
         child: Row(children: [
           const Icon(Icons.receipt_long_rounded,
@@ -432,7 +443,12 @@ class _WeeklyFeeRow extends StatelessWidget {
 class _TotalEarningsCard extends StatelessWidget {
   final EarningsSummary summary;
   final bool loading;
-  const _TotalEarningsCard({required this.summary, required this.loading});
+  final String periodLabel;
+  const _TotalEarningsCard({
+    required this.summary,
+    required this.loading,
+    required this.periodLabel,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -445,12 +461,12 @@ class _TotalEarningsCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(AppRadius.card),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
         boxShadow: [
           BoxShadow(
-            color: AppColors.success.withValues(alpha: .20),
-            blurRadius: 18,
-            offset: const Offset(0, 7),
+            color: AppColors.success.withValues(alpha: .28),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -478,7 +494,7 @@ class _TotalEarningsCard extends StatelessWidget {
               Row(children: [
                 Expanded(
                   child: Text(
-                    'Tổng thu nhập',
+                    'Tổng thu nhập $periodLabel',
                     style: AppTextStyles.bodyStrong.copyWith(
                       color: Colors.white.withValues(alpha: .88),
                     ),
@@ -502,7 +518,8 @@ class _TotalEarningsCard extends StatelessWidget {
               const SizedBox(height: AppSpacing.sm),
               Text(
                 Fmt.currency(summary.total),
-                style: AppTextStyles.metricLarge.copyWith(color: Colors.white),
+                style: AppTextStyles.metricLarge
+                    .copyWith(color: Colors.white, fontSize: 38),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -525,32 +542,33 @@ class _StatsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: AppSurfaceCard(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg,
-          vertical: AppSpacing.md,
-        ),
-        child: Row(children: [
-          Expanded(
+      child: Row(children: [
+        Expanded(
+          child: AppSurfaceCard(
+            color: Colors.white,
+            showBorder: false,
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: _StatCard(
               icon: Icons.trending_up_rounded,
               label: 'Trung bình mỗi đơn',
               value: Fmt.currency(_avgPerOrder),
             ),
           ),
-          const SizedBox(
-            height: 42,
-            child: VerticalDivider(width: 1, color: AppColors.divider),
-          ),
-          Expanded(
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: AppSurfaceCard(
+            color: Colors.white,
+            showBorder: false,
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: _StatCard(
               icon: Icons.account_balance_wallet_rounded,
               label: 'Số dư ví',
               value: Fmt.currency(balance),
             ),
           ),
-        ]),
-      ),
+        ),
+      ]),
     );
   }
 }
@@ -566,14 +584,14 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+        padding: EdgeInsets.zero,
         child: Row(children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: AppColors.primarySoft,
-              borderRadius: BorderRadius.circular(AppRadius.sm),
+              borderRadius: BorderRadius.circular(AppRadius.sm + 2),
             ),
             child: Icon(icon, color: AppColors.primary, size: 18),
           ),
@@ -636,9 +654,9 @@ class _EarningsChart extends StatelessWidget {
               width: monthly ? 12 : 18,
               decoration: BoxDecoration(
                 color: isToday
-                    ? AppColors.primaryDark
-                    : AppColors.primary.withValues(alpha: 0.32),
-                borderRadius: BorderRadius.circular(4),
+                    ? AppColors.primary
+                    : AppColors.primary.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(6),
               ),
             ),
           ),
@@ -664,7 +682,8 @@ class _EarningsChart extends StatelessWidget {
         height: 148,
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          boxShadow: AppShadows.soft,
         ),
         child: const Center(
             child: CircularProgressIndicator(
@@ -680,9 +699,9 @@ class _EarningsChart extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFEFD),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE5DDD9)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        boxShadow: AppShadows.soft,
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(
@@ -763,9 +782,9 @@ class _OrderEarningsSection extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFFFFFEFD),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFE5DDD9)),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          boxShadow: AppShadows.soft,
         ),
         child: Column(children: [
           // Tab underline — chọn nguồn dữ liệu hiện phía dưới
@@ -919,8 +938,8 @@ class _WalletTransactionItem extends StatelessWidget {
           width: 42,
           height: 42,
           decoration: BoxDecoration(
-            color: credit ? const Color(0xFFECFDF5) : AppColors.surfaceAlt,
-            shape: BoxShape.circle,
+            color: credit ? AppColors.successSoft : AppColors.surfaceAlt,
+            borderRadius: BorderRadius.circular(AppRadius.sm + 2),
           ),
           child: Icon(
             credit ? Icons.south_west_rounded : Icons.north_east_rounded,
@@ -989,12 +1008,12 @@ class _OrderEarningsItem extends StatelessWidget {
         Container(
           width: 42,
           height: 42,
-          decoration: const BoxDecoration(
-            color: Color(0xFFECFDF5),
-            shape: BoxShape.circle,
+          decoration: BoxDecoration(
+            color: Fmt.serviceColor(order.serviceType).withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(AppRadius.sm + 2),
           ),
-          child: const Icon(Icons.north_rounded,
-              color: AppColors.success, size: 18),
+          child: Icon(Fmt.serviceIcon(order.serviceType),
+              color: Fmt.serviceColor(order.serviceType), size: 20),
         ),
         const SizedBox(width: 14),
         Expanded(

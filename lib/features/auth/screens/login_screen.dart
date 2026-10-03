@@ -67,111 +67,133 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     const fieldBorder = BorderSide(color: AppColors.divider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       resizeToAvoidBottomInset: false,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.xl,
-              AppSpacing.lg, bottom + AppSpacing.xl2),
-          child: Form(
-            key: _formKey,
-            child: Column(children: [
-              const AuthBrandHeader(),
-              const SizedBox(height: AppSpacing.xl2),
-              AuthContentCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const AuthHeader(
-                      title: 'Đăng nhập',
-                      subtitle: 'Nhập thông tin tài khoản để bắt đầu nhận đơn',
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    const _FieldLabel('Số điện thoại'),
-                    const SizedBox(height: AppSpacing.sm),
-                    AuthField(
-                      controller: _phoneCtrl,
-                      hint: '0912 345 678',
-                      keyboardType: TextInputType.phone,
-                      textInputAction: TextInputAction.next,
-                      prefixIcon: const Icon(Icons.phone_outlined,
-                          size: 20, color: AppColors.textSecondary),
-                      fillColor: AppColors.surfaceAlt,
-                      borderSide: fieldBorder,
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return 'Vui lòng nhập số điện thoại';
-                        }
-                        if (v.trim().length < 9) {
-                          return 'Số điện thoại không hợp lệ';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    const _FieldLabel('Mật khẩu'),
-                    const SizedBox(height: AppSpacing.sm),
-                    AuthField(
-                      controller: _passwordCtrl,
-                      hint: '••••••••',
-                      obscureText: _obscure,
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _submit(),
-                      prefixIcon: const Icon(Icons.lock_outline_rounded,
-                          size: 20, color: AppColors.textSecondary),
-                      suffixIcon: IconButton(
-                        onPressed: () => setState(() => _obscure = !_obscure),
-                        icon: Icon(
-                          _obscure
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                          size: 20,
-                          color: AppColors.textSecondary,
+      body: AuthBackdrop(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg,
+                AppSpacing.lg, bottom + AppSpacing.xl2),
+            child: Form(
+              key: _formKey,
+              child: Column(children: [
+                Image.asset(
+                  'assets/images/logo-vertical.png',
+                  width: 190,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg, vertical: AppSpacing.xs + 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySoft,
+                    borderRadius: BorderRadius.circular(AppRadius.full),
+                  ),
+                  child: const Text('DÀNH CHO TÀI XẾ',
+                      style: TextStyle(
+                          color: AppColors.primaryDark,
+                          fontSize: AppFontSize.sm,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2)),
+                ),
+                const SizedBox(height: AppSpacing.xl2),
+                const AuthHeader(
+                  title: 'Chào mừng trở lại',
+                  subtitle: 'Đăng nhập để bắt đầu nhận đơn',
+                  centered: true,
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                AuthContentCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const _FieldLabel('Số điện thoại'),
+                      const SizedBox(height: AppSpacing.sm),
+                      AuthField(
+                        controller: _phoneCtrl,
+                        hint: '0912 345 678',
+                        keyboardType: TextInputType.phone,
+                        textInputAction: TextInputAction.next,
+                        prefixIcon: const Icon(Icons.phone_outlined,
+                            size: 20, color: AppColors.textSecondary),
+                        fillColor: AppColors.surfaceAlt,
+                        borderSide: fieldBorder,
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) {
+                            return 'Vui lòng nhập số điện thoại';
+                          }
+                          if (v.trim().length < 9) {
+                            return 'Số điện thoại không hợp lệ';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      const _FieldLabel('Mật khẩu'),
+                      const SizedBox(height: AppSpacing.sm),
+                      AuthField(
+                        controller: _passwordCtrl,
+                        hint: '••••••••',
+                        obscureText: _obscure,
+                        textInputAction: TextInputAction.done,
+                        onFieldSubmitted: (_) => _submit(),
+                        prefixIcon: const Icon(Icons.lock_outline_rounded,
+                            size: 20, color: AppColors.textSecondary),
+                        suffixIcon: IconButton(
+                          onPressed: () => setState(() => _obscure = !_obscure),
+                          icon: Icon(
+                            _obscure
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            size: 20,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        fillColor: AppColors.surfaceAlt,
+                        borderSide: fieldBorder,
+                        validator: (v) {
+                          if (v == null || v.isEmpty) {
+                            return 'Vui lòng nhập mật khẩu';
+                          }
+                          if (v.length < 6) {
+                            return 'Mật khẩu phải tối thiểu 6 ký tự';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () => context.push('/forgot-password'),
+                          child: const Text('Quên mật khẩu?'),
                         ),
                       ),
-                      fillColor: AppColors.surfaceAlt,
-                      borderSide: fieldBorder,
-                      validator: (v) {
-                        if (v == null || v.isEmpty) {
-                          return 'Vui lòng nhập mật khẩu';
-                        }
-                        if (v.length < 6) {
-                          return 'Mật khẩu phải tối thiểu 6 ký tự';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () => context.push('/forgot-password'),
-                        child: const Text('Quên mật khẩu?'),
+                      if (_error != null) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        AuthErrorBanner(message: _error!),
+                      ],
+                      const SizedBox(height: AppSpacing.lg),
+                      AuthPrimaryButton(
+                        label: 'Đăng nhập',
+                        loading: _loading,
+                        onPressed: _submit,
+                        height: 52,
+                        borderRadius: AppRadius.md,
+                        fontSize: AppFontSize.md,
                       ),
-                    ),
-                    if (_error != null) ...[
-                      const SizedBox(height: AppSpacing.sm),
-                      AuthErrorBanner(message: _error!),
                     ],
-                    const SizedBox(height: AppSpacing.lg),
-                    AuthPrimaryButton(
-                      label: 'Đăng nhập',
-                      loading: _loading,
-                      onPressed: _submit,
-                      height: 52,
-                      borderRadius: AppRadius.md,
-                      fontSize: AppFontSize.md,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              AuthFooterLink(
-                promptText: 'Chưa có tài khoản? ',
-                actionText: 'Đăng ký ngay',
-                onTap: () => context.go('/register'),
-              ),
-            ]),
+                const SizedBox(height: AppSpacing.xl),
+                AuthFooterLink(
+                  promptText: 'Chưa có tài khoản? ',
+                  actionText: 'Đăng ký ngay',
+                  onTap: () => context.go('/register'),
+                ),
+              ]),
+            ),
           ),
         ),
       ),

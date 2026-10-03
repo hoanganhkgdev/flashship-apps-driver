@@ -121,7 +121,8 @@ class _ShiftCardState extends State<ShiftCard> {
         .toList();
     final current = _currentShift(registered);
     return AppSurfaceCard(
-        color: const Color(0xFFF6FCFB),
+        color: Colors.white,
+        showBorder: false,
         onTap: widget.onTap,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const AppSectionHeader(
@@ -131,47 +132,51 @@ class _ShiftCardState extends State<ShiftCard> {
             color: AppColors.secondary,
           ),
           const SizedBox(height: AppSpacing.lg),
-          Text('CA HIỆN TẠI',
-              style: AppTextStyles.caption
-                  .copyWith(color: AppColors.textTertiary, letterSpacing: .6)),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-              registered.isEmpty
-                  ? 'Chưa đăng ký ca'
-                  : current == null
-                      ? 'Hiện không trong ca làm việc'
-                      : '${current.shift.name} ${current.shift.timeRange}',
-              style: AppTextStyles.bodyStrong
-                  .copyWith(color: AppColors.secondary)),
-          if (current != null) ...[
-            const SizedBox(height: AppSpacing.xs),
-            Text(_remainingLabel(current.end),
-                style: AppTextStyles.label
-                    .copyWith(color: AppColors.textSecondary)),
-          ],
-          if (current != null) ...[
-            const SizedBox(height: AppSpacing.md),
-            const Divider(height: 1),
-            const SizedBox(height: AppSpacing.md),
-            Row(children: [
-              const Icon(Icons.timer_outlined,
-                  size: AppSize.iconMd, color: AppColors.secondary),
-              const SizedBox(width: AppSpacing.sm),
-              Text('Đã Online trong ca',
-                  style: AppTextStyles.label
-                      .copyWith(color: AppColors.textSecondary)),
-              const Spacer(),
-              Text(_onlineDurationLabel(),
-                  style: AppTextStyles.bodyStrong
-                      .copyWith(color: AppColors.secondary)),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: current != null
+                  ? AppColors.secondarySoft
+                  : AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('CA HIỆN TẠI',
+                  style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textSecondary, letterSpacing: .6)),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                  registered.isEmpty
+                      ? 'Chưa đăng ký ca'
+                      : current == null
+                          ? 'Hiện không trong ca làm việc'
+                          : '${current.shift.name} ${current.shift.timeRange}',
+                  style: AppTextStyles.sectionTitle.copyWith(
+                      color: current != null
+                          ? AppColors.secondary
+                          : AppColors.textPrimary)),
+              if (current != null) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Text(_remainingLabel(current.end),
+                    style: AppTextStyles.label
+                        .copyWith(color: AppColors.textSecondary)),
+                const SizedBox(height: AppSpacing.md),
+                Row(children: [
+                  const Icon(Icons.timer_outlined,
+                      size: AppSize.iconMd, color: AppColors.secondary),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text('Đã Online trong ca',
+                      style: AppTextStyles.label
+                          .copyWith(color: AppColors.textSecondary)),
+                  const Spacer(),
+                  Text(_onlineDurationLabel(),
+                      style: AppTextStyles.bodyStrong
+                          .copyWith(color: AppColors.secondary)),
+                ]),
+              ],
             ]),
-          ],
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text('Xem lịch ›',
-                style: AppTextStyles.label.copyWith(
-                    fontWeight: FontWeight.w800, color: AppColors.primary)),
           ),
         ]));
   }

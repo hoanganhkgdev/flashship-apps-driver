@@ -74,41 +74,39 @@ class _KycScreenState extends ConsumerState<KycScreen> {
   }) {
     showAppBottomSheet(
       context: context,
-      builder: (ctx) => Material(
-        color: const Color(0xFFFFFEFD),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        clipBehavior: Clip.antiAlias,
-        child: SafeArea(
-          top: false,
+      builder: (ctx) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-              child: AppBottomSheetHeader(
-                title: title,
-                subtitle: 'Ảnh rõ nét, đủ ánh sáng, không bị mờ',
-              ),
+            AppBottomSheetHeader(
+              title: title,
+              subtitle: 'Ảnh rõ nét, đủ ánh sáng, không bị mờ',
+              icon: Icons.add_a_photo_outlined,
             ),
-            const Divider(height: 1, color: Color(0xFFE5DDD9)),
-            _UploadOption(
+            const SizedBox(height: AppSpacing.md),
+            AppSheetOption(
               icon: Icons.camera_alt_outlined,
-              iconBackground: const Color(0xFFFFEAE3),
               label: 'Chụp ảnh',
+              subtitle: 'Dùng máy ảnh ngay bây giờ',
+              showChevron: true,
               onTap: () {
                 Navigator.pop(ctx);
                 onCamera();
               },
             ),
-            const Divider(height: 1, indent: 56, color: Color(0xFFEDE6E2)),
-            _UploadOption(
-              icon: Icons.photo_outlined,
-              iconBackground: const Color(0xFFE4EEFD),
+            AppSheetOption(
+              icon: Icons.photo_library_outlined,
+              iconBackground: AppColors.infoSoft,
+              iconColor: AppColors.info,
               label: 'Chọn từ thư viện',
+              subtitle: 'Lấy ảnh có sẵn trong máy',
+              showChevron: true,
               onTap: () {
                 Navigator.pop(ctx);
                 onGallery();
               },
             ),
-            const SizedBox(height: 8),
           ]),
         ),
       ),
@@ -230,7 +228,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _sectionLabel('GIẤY TỜ TÙY THÂN'),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: AppSpacing.md),
                             _buildDocsCard(),
                           ]),
                     ),
@@ -247,7 +245,9 @@ class _KycScreenState extends ConsumerState<KycScreen> {
 
   Widget _buildHeader(int steps) {
     final isDone = steps == 2;
-    final color = isDone ? AppColors.success : AppColors.primary;
+    final colors = isDone
+        ? const [Color(0xFF1F8A4C), Color(0xFF34B368)]
+        : const [AppColors.primary, Color(0xFFFF8A3D)];
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,
@@ -255,68 +255,68 @@ class _KycScreenState extends ConsumerState<KycScreen> {
         AppSpacing.lg,
         0,
       ),
-      child: AppSurfaceCard(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: .10),
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: Icon(
-                isDone ? Icons.verified_user_rounded : Icons.shield_rounded,
-                color: color,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isDone ? 'Hồ sơ hoàn thiện' : 'Hoàn thiện hồ sơ',
-                      style: AppTextStyles.sectionTitle
-                          .copyWith(color: AppColors.textPrimary),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      isDone
-                          ? 'Bạn có thể nhận tất cả loại đơn hàng'
-                          : 'Điền đủ thông tin để nhận nhiều đơn hơn',
-                      style: AppTextStyles.label
-                          .copyWith(color: AppColors.textSecondary),
-                    ),
-                  ]),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: .10),
-                borderRadius: BorderRadius.circular(AppRadius.full),
-              ),
-              child: Text('$steps/2',
-                  style: AppTextStyles.bodyStrong.copyWith(color: color)),
-            ),
-          ]),
-          const SizedBox(height: 14),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: steps / 2,
-              minHeight: 6,
-              backgroundColor: AppColors.divider,
-              valueColor: AlwaysStoppedAnimation<Color>(color),
-            ),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: colors,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          const SizedBox(height: 10),
-          Row(children: [
-            _StepStatus(label: 'CCCD', done: _cccdStatus == 'approved'),
-            const SizedBox(width: 20),
-            _StepStatus(label: 'Bằng lái', done: _licenseStatus == 'approved'),
-          ]),
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+          boxShadow: [
+            BoxShadow(
+              color: colors.first.withValues(alpha: .28),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Row(children: [
+          // Vòng tiến độ x/2
+          SizedBox(
+            width: 76,
+            height: 76,
+            child: Stack(alignment: Alignment.center, children: [
+              SizedBox.expand(
+                child: CircularProgressIndicator(
+                  value: steps / 2,
+                  strokeWidth: 7,
+                  strokeCap: StrokeCap.round,
+                  color: Colors.white,
+                  backgroundColor: Colors.white.withValues(alpha: .25),
+                ),
+              ),
+              Text('$steps/2',
+                  style: AppTextStyles.metric
+                      .copyWith(color: Colors.white, fontSize: 22)),
+            ]),
+          ),
+          const SizedBox(width: AppSpacing.lg),
+          Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(
+                isDone ? 'Hồ sơ hoàn thiện' : 'Hoàn thiện hồ sơ',
+                style: AppTextStyles.sectionTitle
+                    .copyWith(color: Colors.white, fontSize: AppFontSize.lg),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                isDone
+                    ? 'Bạn có thể nhận tất cả loại đơn hàng'
+                    : 'Điền đủ thông tin để nhận nhiều đơn hơn',
+                style: AppTextStyles.label
+                    .copyWith(color: Colors.white.withValues(alpha: .9)),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Wrap(spacing: AppSpacing.sm, runSpacing: 6, children: [
+                _StepStatus(label: 'CCCD', done: _cccdStatus == 'approved'),
+                _StepStatus(
+                    label: 'Bằng lái', done: _licenseStatus == 'approved'),
+              ]),
+            ]),
+          ),
         ]),
       ),
     );
@@ -358,8 +358,10 @@ class _KycScreenState extends ConsumerState<KycScreen> {
 
   Widget _sectionLabel(String text) => Text(
         text,
-        style: AppTextStyles.label.copyWith(
-          color: AppColors.textSecondary,
+        style: AppTextStyles.caption.copyWith(
+          color: AppColors.textTertiary,
+          fontWeight: FontWeight.w800,
+          letterSpacing: .8,
         ),
       );
 }
@@ -372,20 +374,24 @@ class _StepStatus extends StatelessWidget {
   const _StepStatus({required this.label, required this.done});
 
   @override
-  Widget build(BuildContext context) {
-    final color = done ? AppColors.success : AppColors.textTertiary;
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(
-        done ? Icons.check_circle_rounded : Icons.circle_outlined,
-        size: 14,
-        color: color,
-      ),
-      const SizedBox(width: 5),
-      Text(label,
-          style: TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w600, color: color)),
-    ]);
-  }
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: done ? .28 : .16),
+          borderRadius: BorderRadius.circular(AppRadius.full),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(
+            done ? Icons.check_circle_rounded : Icons.circle_outlined,
+            size: 14,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 5),
+          Text(label,
+              style: AppTextStyles.caption
+                  .copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
+        ]),
+      );
 }
 
 // ── Doc card ──────────────────────────────────────────────────────────────────
@@ -424,105 +430,108 @@ class _DocCard extends StatelessWidget {
     // Chặn bấm lần nữa trong lúc đang upload — tránh gửi nhiều request cùng lúc.
     final bool canUpload = status != 'approved' && !isUploading;
 
-    return GestureDetector(
-      onTap: canUpload ? onTap : null,
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFFAF7),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.22)),
-          boxShadow: AppShadows.soft,
-        ),
+    return AppSurfaceCard(
+      color: Colors.white,
+      showBorder: false,
+      padding: EdgeInsets.zero,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.card),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Thumbnail / icon area
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            child: imageUrl != null
+          // Ảnh / khung icon, trạng thái nổi ở góc trên phải.
+          Stack(children: [
+            imageUrl != null
                 ? Image.network(imageUrl!,
-                    height: 90,
+                    height: 150,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => _iconArea(icon, color))
                 : _iconArea(icon, color),
-          ),
+            Positioned(
+              top: AppSpacing.md,
+              right: AppSpacing.md,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                  boxShadow: AppShadows.soft,
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(statusIcon, size: 14, color: color),
+                  const SizedBox(width: 5),
+                  Text(statusLabel,
+                      style: AppTextStyles.caption
+                          .copyWith(color: color, fontWeight: FontWeight.w800)),
+                ]),
+              ),
+            ),
+          ]),
           Padding(
-            padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(label,
-                  style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      height: 1.3)),
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(statusIcon, size: 10, color: color),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(statusLabel,
-                        style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: color)),
-                  ),
-                ]),
-              ),
+                  style: AppTextStyles.sectionTitle
+                      .copyWith(color: AppColors.textPrimary)),
               if (status == 'rejected' &&
                   (rejectionReason?.isNotEmpty ?? false)) ...[
-                const SizedBox(height: 6),
-                Text(
-                  rejectionReason!,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textSecondary,
-                    height: 1.35,
+                const SizedBox(height: AppSpacing.sm),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: AppColors.dangerSoft,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
+                  child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.error_outline_rounded,
+                            size: 16, color: AppColors.danger),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(rejectionReason!,
+                              style: AppTextStyles.label.copyWith(
+                                  color: AppColors.danger, height: 1.4)),
+                        ),
+                      ]),
                 ),
               ],
               if (status != 'approved') ...[
-                const SizedBox(height: 8),
-                Container(
+                const SizedBox(height: AppSpacing.md),
+                SizedBox(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 7),
-                  decoration: BoxDecoration(
-                    color: isUploading
-                        ? const Color(0xFFFF6035).withValues(alpha: 0.5)
-                        : const Color(0xFFFF6035),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (isUploading)
-                          const SizedBox(
-                            width: 12,
-                            height: 12,
+                  height: 48,
+                  child: FilledButton.icon(
+                    onPressed: canUpload ? onTap : null,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      disabledBackgroundColor:
+                          AppColors.primary.withValues(alpha: 0.5),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.md)),
+                    ),
+                    icon: isUploading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
                             child: CircularProgressIndicator(
-                                strokeWidth: 1.5, color: Colors.white),
+                                strokeWidth: 2, color: Colors.white),
                           )
-                        else
-                          const Icon(Icons.upload_rounded,
-                              size: 12, color: Colors.white),
-                        const SizedBox(width: 4),
-                        Text(
-                          isUploading
-                              ? 'Đang tải lên...'
-                              : (status == null ? 'Tải lên' : 'Cập nhật'),
-                          style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white),
-                        ),
-                      ]),
+                        : const Icon(Icons.upload_rounded,
+                            size: 18, color: Colors.white),
+                    label: Text(
+                      isUploading
+                          ? 'Đang tải lên...'
+                          : (status == null ? 'Tải lên' : 'Cập nhật'),
+                      style: const TextStyle(
+                          fontSize: AppFontSize.md,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white),
+                    ),
+                  ),
                 ),
               ],
             ]),
@@ -533,53 +542,10 @@ class _DocCard extends StatelessWidget {
   }
 
   Widget _iconArea(IconData icon, Color color) => Container(
-        height: 90,
+        height: 150,
         width: double.infinity,
         color: color.withValues(alpha: 0.08),
         child: Center(
-            child: Icon(icon, size: 36, color: color.withValues(alpha: 0.5))),
-      );
-}
-
-// ── Upload option ─────────────────────────────────────────────────────────────
-
-class _UploadOption extends StatelessWidget {
-  final IconData icon;
-  final Color iconBackground;
-  final String label;
-  final VoidCallback onTap;
-  const _UploadOption({
-    required this.icon,
-    required this.iconBackground,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) => Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            child: Row(children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: iconBackground,
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: Icon(icon, size: 19, color: const Color(0xFF1B1411)),
-              ),
-              const SizedBox(width: 14),
-              Text(label,
-                  style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1B1411))),
-            ]),
-          ),
-        ),
+            child: Icon(icon, size: 52, color: color.withValues(alpha: 0.5))),
       );
 }

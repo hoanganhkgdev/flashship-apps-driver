@@ -17,7 +17,9 @@ class OrderNoteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AppSurfaceCard(
-        color: const Color(0xFFFFFCF3),
+        color: AppColors.warningSoft,
+        showBorder: false,
+        showShadow: false,
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Icon(Icons.sticky_note_2_outlined,
               size: 18, color: AppColors.warning),

@@ -33,9 +33,8 @@ class ProfileScoreCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-            color: const Color(0xFFFFFEFD),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE5DDD9)),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(AppRadius.card),
             boxShadow: AppShadows.soft),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
@@ -80,9 +79,9 @@ class ProfileScoreCard extends StatelessWidget {
                   width: 30,
                   height: 30,
                   decoration: const BoxDecoration(
-                      color: Color(0xFFFFEAE3), shape: BoxShape.circle),
+                      color: AppColors.primarySoft, shape: BoxShape.circle),
                   child: const Icon(Icons.emoji_events_outlined,
-                      size: 15, color: Color(0xFF17110F))),
+                      size: 15, color: AppColors.primary)),
               const SizedBox(width: 10),
               Text('Chuỗi $streak tuần liên tiếp đạt thưởng',
                   style: const TextStyle(

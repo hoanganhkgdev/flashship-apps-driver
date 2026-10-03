@@ -36,22 +36,24 @@ class RouteBlock extends StatelessWidget {
           Column(children: [
             const SizedBox(height: AppSpacing.xs),
             Container(
-                width: 10,
-                height: 10,
-                decoration: const BoxDecoration(
-                    color: AppColors.primary, shape: BoxShape.circle)),
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.primary, width: 3.5))),
             Expanded(
                 child: Container(
-              width: 1.5,
+              width: 2,
               margin: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
               color: AppColors.divider,
             )),
             Container(
-                width: 10,
-                height: 10,
+                width: 14,
+                height: 14,
                 decoration: BoxDecoration(
                     color: AppColors.success,
-                    borderRadius: BorderRadius.circular(3))),
+                    borderRadius: BorderRadius.circular(4))),
           ]),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -59,11 +61,12 @@ class RouteBlock extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                 // Pickup
-                Text(pickupLabel,
+                Text(pickupLabel.toUpperCase(),
                     style: const TextStyle(
                         fontSize: AppFontSize.xs,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w600)),
+                        color: AppColors.primary,
+                        letterSpacing: .5,
+                        fontWeight: FontWeight.w800)),
                 const SizedBox(height: AppSpacing.xxs),
                 if (pickupPlaceName != null && pickupPlaceName!.isNotEmpty)
                   Text(pickupPlaceName!,
@@ -101,14 +104,15 @@ class RouteBlock extends StatelessWidget {
                             fontStyle: FontStyle.italic)),
                   ),
 
-                const SizedBox(height: 14),
+                const SizedBox(height: 18),
 
                 // Delivery
-                Text(deliveryLabel,
+                Text(deliveryLabel.toUpperCase(),
                     style: const TextStyle(
                         fontSize: AppFontSize.xs,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w600)),
+                        color: AppColors.success,
+                        letterSpacing: .5,
+                        fontWeight: FontWeight.w800)),
                 const SizedBox(height: AppSpacing.xxs),
                 if (deliveryPlaceName != null && deliveryPlaceName!.isNotEmpty)
                   Text(deliveryPlaceName!,

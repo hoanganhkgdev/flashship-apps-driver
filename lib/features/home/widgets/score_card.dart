@@ -16,7 +16,8 @@ class DashboardScoreCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppSurfaceCard(
       onTap: onTap,
-      color: const Color(0xFFFFFAF8),
+      color: Colors.white,
+      showBorder: false,
       // Chỉ hiện spinner lần đầu (chưa có điểm). Khi đã có điểm thì giữ hiển
       // thị trong lúc refresh (RTDB ping / resume) để tránh nháy sang spinner.
       child: score == null
@@ -90,8 +91,16 @@ class DashboardScoreCard extends StatelessWidget {
         const Spacer(),
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-          child: Text(scoreLabel,
-              style: AppTextStyles.label.copyWith(color: scoreColor)),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: scoreColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppRadius.full),
+            ),
+            child: Text(scoreLabel,
+                style: AppTextStyles.label
+                    .copyWith(color: scoreColor, fontWeight: FontWeight.w800)),
+          ),
         ),
       ]),
       const SizedBox(height: AppSpacing.md),

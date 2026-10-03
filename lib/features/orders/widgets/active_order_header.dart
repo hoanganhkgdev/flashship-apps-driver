@@ -8,9 +8,8 @@ import '../models/order_model.dart';
 class ActiveOrderHeader extends StatelessWidget {
   final OrderModel order;
   final Color color;
-  // Đơn đã hoàn thành (xem lại từ lịch sử) → hiện badge "Hoàn thành" xanh
-  // thay vì "Bước X/Y" cam, và back quay lại đúng màn trước đó (pop) thay vì
-  // luôn về thẳng /home như luồng đơn đang active.
+  // Đơn đã hoàn thành → hiện badge "Hoàn thành" xanh thay cho tiến trình
+  // 2 bước, và back quay lại đúng màn trước đó thay vì luôn về /home.
   final bool completed;
   final VoidCallback? onBack;
 
@@ -25,90 +24,139 @@ class ActiveOrderHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final top = MediaQuery.of(context).padding.top;
-    final stepLabel = order.status == 'assigned' ? 'Bước 1/2' : 'Bước 2/2';
-
-    final completedDate = order.completedAt?.toLocal();
-    final detail = completed
-        ? '${order.displayTitle} · ${order.code.startsWith('#') ? order.code : '#${order.code}'}'
-        : order.code.startsWith('#')
-            ? order.code
-            : '#${order.code}';
-    final date = completedDate == null
-        ? ''
-        : '${completedDate.day.toString().padLeft(2, '0')}/${completedDate.month.toString().padLeft(2, '0')}/${completedDate.year}';
+    final code = order.code.startsWith('#') ? order.code : '#${order.code}';
+    final inPickup = order.status == 'assigned';
 
     return Container(
       decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(bottom: BorderSide(color: AppColors.divider)),
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
+        boxShadow: [
+          BoxShadow(
+              color: Color(0x181B1411), blurRadius: 24, offset: Offset(0, 8)),
+        ],
       ),
       padding: EdgeInsets.fromLTRB(
-          AppSpacing.lg, top + AppSpacing.lg, AppSpacing.lg, AppSpacing.lg),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Back button
-        AppBackButton(onTap: onBack ?? () => context.go('/home')),
-
-        const SizedBox(width: AppSpacing.md),
-
-        // Service name + code
-        Expanded(
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Flexible(
-                child: Text(
-                  completed ? 'Chi tiết đơn' : order.displayTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.screenTitle
-                      .copyWith(color: AppColors.textPrimary),
-                ),
-              ),
-              if (order.isShopOrder) ...[
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 6, vertical: AppSpacing.xxs),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(5),
-                  ),
+          AppSpacing.lg, top + AppSpacing.md, AppSpacing.lg, AppSpacing.lg),
+      child: Column(children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          AppBackButton(onTap: onBack ?? () => context.go('/home')),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Flexible(
                   child: Text(
-                    order.isBatch ? 'SHOP•${order.stopsCount} điểm' : 'SHOP',
-                    style: AppTextStyles.caption.copyWith(
-                        fontWeight: FontWeight.w800, color: Colors.white),
+                    completed ? 'Chi tiết đơn' : order.displayTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.screenTitle.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w800),
                   ),
                 ),
-              ],
+                if (order.isShopOrder) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 7, vertical: AppSpacing.xxs),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      order.isBatch
+                          ? 'SHOP • ${order.stopsCount} điểm'
+                          : 'SHOP',
+                      style: AppTextStyles.caption.copyWith(
+                          fontWeight: FontWeight.w800, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ]),
+              const SizedBox(height: 2),
+              Text(code,
+                  style: AppTextStyles.label
+                      .copyWith(color: AppColors.textTertiary)),
             ]),
-            const SizedBox(height: 3),
-            Text(
-              '$detail${date.isEmpty ? '' : ' · $date'}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style:
-                  AppTextStyles.label.copyWith(color: AppColors.textTertiary),
+          ),
+          if (completed)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: AppColors.successSoft,
+                borderRadius: BorderRadius.circular(AppRadius.full),
+              ),
+              child: Text('Hoàn thành',
+                  style: AppTextStyles.label.copyWith(
+                      fontWeight: FontWeight.w800, color: AppColors.success)),
+            ),
+        ]),
+        if (!completed) ...[
+          const SizedBox(height: AppSpacing.lg),
+          Row(children: [
+            Expanded(
+              child: _StepBar(
+                label: 'Lấy hàng',
+                state: inPickup ? _StepState.active : _StepState.done,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: _StepBar(
+                label: 'Giao hàng',
+                state: inPickup ? _StepState.todo : _StepState.active,
+              ),
             ),
           ]),
-        ),
-
-        const SizedBox(width: AppSpacing.sm),
-
-        // Step badge / trạng thái hoàn thành
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          decoration: BoxDecoration(
-            color: completed ? AppColors.successSoft : AppColors.primarySoft,
-            borderRadius: BorderRadius.circular(22),
-          ),
-          child: Text(
-            completed ? 'Hoàn thành' : stepLabel,
-            style: AppTextStyles.label.copyWith(
-                fontWeight: FontWeight.w800,
-                color: completed ? AppColors.success : AppColors.primary),
-          ),
-        ),
+        ],
       ]),
     );
+  }
+}
+
+enum _StepState { done, active, todo }
+
+class _StepBar extends StatelessWidget {
+  final String label;
+  final _StepState state;
+  const _StepBar({required this.label, required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (state) {
+      _StepState.done => AppColors.success,
+      _StepState.active => AppColors.primary,
+      _StepState.todo => AppColors.divider,
+    };
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Container(
+        height: 6,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(AppRadius.full),
+        ),
+      ),
+      const SizedBox(height: 6),
+      Row(children: [
+        if (state == _StepState.done)
+          const Padding(
+            padding: EdgeInsets.only(right: 4),
+            child: Icon(Icons.check_circle_rounded,
+                size: 14, color: AppColors.success),
+          ),
+        Text(label,
+            style: AppTextStyles.label.copyWith(
+                fontWeight: state == _StepState.active
+                    ? FontWeight.w800
+                    : FontWeight.w600,
+                color: state == _StepState.todo
+                    ? AppColors.textTertiary
+                    : color == AppColors.primary
+                        ? AppColors.primaryDark
+                        : AppColors.success)),
+      ]),
+    ]);
   }
 }

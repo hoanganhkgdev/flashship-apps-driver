@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/offer_listener_service.dart';
@@ -347,46 +348,57 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
     final bottom = MediaQuery.of(context).padding.bottom;
     final top = MediaQuery.of(context).padding.top;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Column(children: [
-        // ── Gradient header ───────────────────────────────────────────
-        OfferHeader(
-          order: _order,
-          remaining: _remaining,
-          progress: progress,
-          isUrgent: isUrgent,
-          pulse: _pulseCtrl,
-          topInset: top,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          // Header nền cam/đỏ → icon status bar trắng.
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
         ),
-
-        // ── Scrollable body ───────────────────────────────────────────
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              AppSpacing.lg,
-              AppSpacing.lg,
-              AppSpacing.xl,
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          body: Column(children: [
+            // ── Gradient header ───────────────────────────────────────────
+            OfferHeader(
+              order: _order,
+              remaining: _remaining,
+              progress: progress,
+              isUrgent: isUrgent,
+              pulse: _pulseCtrl,
+              topInset: top,
             ),
-            child: Column(children: [
-              _OfferStats(order: _order),
-              const SizedBox(height: AppSpacing.md),
-              AppSurfaceCard(child: ServiceContent(order: _order)),
-            ]),
-          ),
-        ),
 
-        // ── Actions ───────────────────────────────────────────────────
-        OfferActions(
-          accepting: _accepting,
-          declining: _declining,
-          bottomInset: bottom,
-          onAccept: _accept,
-          onDecline: _decline,
-        ),
-      ]),
-    );
+            // ── Scrollable body ───────────────────────────────────────────
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  AppSpacing.xl,
+                ),
+                child: Column(children: [
+                  _OfferStats(order: _order),
+                  const SizedBox(height: AppSpacing.md),
+                  AppSurfaceCard(
+                    color: Colors.white,
+                    showBorder: false,
+                    child: ServiceContent(order: _order),
+                  ),
+                ]),
+              ),
+            ),
+
+            // ── Actions ───────────────────────────────────────────────────
+            OfferActions(
+              accepting: _accepting,
+              declining: _declining,
+              bottomInset: bottom,
+              onAccept: _accept,
+              onDecline: _decline,
+            ),
+          ]),
+        ));
   }
 }
 
@@ -398,72 +410,75 @@ class _OfferStats extends StatelessWidget {
   Widget build(BuildContext context) {
     final distance = Fmt.distanceKm(
         order.pickupLat, order.pickupLng, order.deliveryLat, order.deliveryLng);
-    return AppSurfaceCard(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.md,
+    return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Expanded(
+        child: _Stat(
+          icon: Icons.account_balance_wallet_rounded,
+          color: order.isCod ? AppColors.primary : AppColors.success,
+          value: order.isCod
+              ? Fmt.currency(order.customerCollectionAmount)
+              : 'Trả trước',
+          label: order.isCod ? 'Tổng cần thu' : 'Đã thanh toán',
+        ),
       ),
-      child: Row(children: [
-        _Stat(
-            icon: Icons.payments_outlined,
-            value: Fmt.currency(order.driverEarning),
-            label: 'Phí giao',
-            green: true),
-        const SizedBox(
-          height: 42,
-          child: VerticalDivider(width: 1, color: AppColors.divider),
+      const SizedBox(width: AppSpacing.md),
+      Expanded(
+        child: _Stat(
+          icon: Icons.route_rounded,
+          color: AppColors.secondary,
+          value: distance ?? '—',
+          label: 'Khoảng cách',
         ),
-        _Stat(
-            icon: Icons.account_balance_wallet_outlined,
-            value: order.isCod
-                ? Fmt.currency(order.customerCollectionAmount)
-                : 'Trả trước',
-            label: order.isCod ? 'Tổng cần thu' : 'Đã thanh toán'),
-        const SizedBox(
-          height: 42,
-          child: VerticalDivider(width: 1, color: AppColors.divider),
-        ),
-        _Stat(
-            icon: Icons.route_outlined,
-            value: distance ?? '—',
-            label: 'Khoảng cách'),
-      ]),
-    );
+      ),
+    ]);
   }
 }
 
 class _Stat extends StatelessWidget {
   final IconData icon;
+  final Color color;
   final String value, label;
-  final bool green;
-  const _Stat(
-      {required this.icon,
-      required this.value,
-      required this.label,
-      this.green = false});
+  const _Stat({
+    required this.icon,
+    required this.color,
+    required this.value,
+    required this.label,
+  });
+
   @override
-  Widget build(BuildContext context) => Expanded(
-          child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-        child: Column(children: [
-          Icon(
-            icon,
-            size: 18,
-            color: green ? AppColors.success : AppColors.textSecondary,
+  Widget build(BuildContext context) => AppSurfaceCard(
+        color: Colors.white,
+        showBorder: false,
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppRadius.sm + 2),
+            ),
+            child: Icon(icon, size: 21, color: color),
           ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.bodyStrong.copyWith(
-                  color: green ? AppColors.success : AppColors.textPrimary)),
-          const SizedBox(height: AppSpacing.xxs),
-          Text(label,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.caption
-                  .copyWith(color: AppColors.textTertiary)),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(value,
+                    style: AppTextStyles.sectionTitle
+                        .copyWith(color: AppColors.textPrimary)),
+              ),
+              const SizedBox(height: 2),
+              Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption
+                      .copyWith(color: AppColors.textSecondary)),
+            ]),
+          ),
         ]),
-      ));
+      );
 }

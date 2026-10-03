@@ -10,17 +10,23 @@ class RejectedBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFE7E4),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFF3A3A0)),
-        boxShadow: AppShadows.soft,
+        color: AppColors.dangerSoft,
+        borderRadius: BorderRadius.circular(AppRadius.card),
       ),
       child: Row(children: [
-        const Icon(Icons.cancel_outlined,
-            color: AppColors.textPrimary, size: 20),
-        const SizedBox(width: 10),
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(AppRadius.sm + 2),
+          ),
+          child: const Icon(Icons.cancel_outlined,
+              color: AppColors.danger, size: 20),
+        ),
+        const SizedBox(width: AppSpacing.md),
         Expanded(
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

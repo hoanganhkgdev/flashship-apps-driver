@@ -144,7 +144,13 @@ class _Header extends StatelessWidget {
           colors: [Color(0xFFC92A32), Color(0xFFE5483F), Color(0xFFF06A45)],
         ),
         borderRadius: BorderRadius.circular(AppRadius.xl),
-        boxShadow: AppShadows.raised,
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFC92A32).withValues(alpha: 0.28),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: loading
           ? Container(
@@ -160,10 +166,10 @@ class _Header extends StatelessWidget {
               children: [
                 Row(children: [
                   Container(
-                    width: 38,
-                    height: 38,
+                    width: 42,
+                    height: 42,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
+                      color: Colors.white.withValues(alpha: 0.22),
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                     child: const Icon(
@@ -186,7 +192,7 @@ class _Header extends StatelessWidget {
                 Text(
                   Fmt.currency(total),
                   style: const TextStyle(
-                    fontSize: AppFontSize.xl5,
+                    fontSize: 42,
                     height: 1.05,
                     fontWeight: FontWeight.w900,
                     color: Colors.white,
@@ -233,23 +239,19 @@ class _HeroChip extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: emphasized
-              ? const Color(0xFFFFFEFD)
-              : Colors.white.withValues(alpha: 0.24),
-          borderRadius: BorderRadius.circular(20),
+          color:
+              emphasized ? Colors.white : Colors.white.withValues(alpha: 0.24),
+          borderRadius: BorderRadius.circular(AppRadius.full),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon,
-              size: 13,
-              color: emphasized
-                  ? const Color(0xFFD52E36)
-                  : const Color(0xFF1B1411)),
+              size: 14, color: emphasized ? AppColors.danger : Colors.white),
           const SizedBox(width: 6),
           Text(label,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
-                color: emphasized ? const Color(0xFFD52E36) : Colors.white,
+                color: emphasized ? AppColors.danger : Colors.white,
               )),
         ]),
       );
@@ -289,43 +291,43 @@ class _DebtCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isPenalty = debt.isScorePenalty;
     final isOverdue = debt.isOverdue;
-    final statusColor = isOverdue ? const Color(0xFFD52E36) : AppColors.warning;
+    final statusColor = isOverdue ? AppColors.danger : AppColors.warning;
+
+    final tint = isPenalty
+        ? AppColors.dangerSoft
+        : (isOverdue ? AppColors.dangerSoft : AppColors.warningSoft);
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFEFD),
-        borderRadius: BorderRadius.circular(16),
-        // Nợ phạt điểm luôn cần xử lý gấp hơn — border đỏ đậm bất kể đã quá
-        // hạn hay chưa, để nổi bật hơn hẳn card phí tuần thường.
-        border: isPenalty
-            ? Border.all(color: AppColors.danger, width: 2)
-            : (isOverdue
-                ? Border.all(
-                    color: AppColors.danger.withValues(alpha: 0.25), width: 1.5)
-                : null),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.card),
         boxShadow: AppShadows.soft,
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(children: [
-        // Card header
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 15, 16, 0),
+        // Dải đầu thẻ tô màu theo mức khẩn: nợ phạt điểm / quá hạn → đỏ nhạt,
+        // phí tuần thường → vàng nhạt.
+        Container(
+          width: double.infinity,
+          color: tint,
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(
               child: Wrap(spacing: 6, runSpacing: 6, children: [
                 // Type tag
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: isPenalty ? AppColors.danger : AppColors.primarySoft,
-                    borderRadius: BorderRadius.circular(20),
+                    color: isPenalty ? AppColors.danger : Colors.white,
+                    borderRadius: BorderRadius.circular(AppRadius.full),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Icon(
                       isPenalty
                           ? Icons.bolt_rounded
                           : Icons.receipt_long_rounded,
-                      size: 11,
+                      size: 13,
                       color: isPenalty ? Colors.white : AppColors.primary,
                     ),
                     const SizedBox(width: 5),
@@ -333,7 +335,7 @@ class _DebtCard extends StatelessWidget {
                       isPenalty ? 'Phạt điểm tuần' : 'Phí tuần',
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                         color: isPenalty ? Colors.white : AppColors.primary,
                       ),
                     ),
@@ -344,12 +346,12 @@ class _DebtCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
-                    borderRadius: BorderRadius.circular(20),
+                    color: Colors.white.withValues(alpha: 0.8),
+                    borderRadius: BorderRadius.circular(AppRadius.full),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     const Icon(Icons.calendar_today_rounded,
-                        size: 11, color: AppColors.textSecondary),
+                        size: 12, color: AppColors.textSecondary),
                     const SizedBox(width: 5),
                     Text(_periodLabel,
                         style: const TextStyle(
@@ -366,13 +368,13 @@ class _DebtCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(AppRadius.full),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(
                   isOverdue ? Icons.error_rounded : Icons.schedule_rounded,
-                  size: 11,
+                  size: 13,
                   color: statusColor,
                 ),
                 const SizedBox(width: 5),
@@ -380,7 +382,7 @@ class _DebtCard extends StatelessWidget {
                   _statusLabel(isPenalty, isOverdue),
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                     color: statusColor,
                   ),
                 ),
@@ -397,26 +399,26 @@ class _DebtCard extends StatelessWidget {
                 style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF6A605C),
+                    color: AppColors.textSecondary,
                     height: 1.4)),
           ),
 
         const SizedBox(height: 16),
-        const Divider(height: 1, color: Color(0xFFF5F5F5)),
 
         // 3-col amounts
+        const Divider(height: 1, color: AppColors.surfaceAlt),
         IntrinsicHeight(
           child: Row(children: [
             _AmountCol(
                 label: 'Tổng phí',
                 value: Fmt.currency(debt.amount),
                 color: AppColors.textPrimary),
-            Container(width: 1, color: const Color(0xFFF5F5F5)),
+            Container(width: 1, color: AppColors.surfaceAlt),
             _AmountCol(
                 label: 'Đã thanh toán',
                 value: Fmt.currency(debt.paidAmount),
                 color: AppColors.success),
-            Container(width: 1, color: const Color(0xFFF5F5F5)),
+            Container(width: 1, color: AppColors.surfaceAlt),
             _AmountCol(
                 label: 'Còn lại',
                 value: Fmt.currency(debt.remaining),
@@ -424,7 +426,7 @@ class _DebtCard extends StatelessWidget {
           ]),
         ),
 
-        const Divider(height: 1, color: Color(0xFFF5F5F5)),
+        const Divider(height: 1, color: AppColors.surfaceAlt),
 
         // Progress bar
         Padding(
@@ -449,7 +451,7 @@ class _DebtCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: _progress,
                 minHeight: 7,
-                backgroundColor: const Color(0xFFEEEEEE),
+                backgroundColor: AppColors.surfaceAlt,
                 valueColor: AlwaysStoppedAnimation<Color>(AppColors.success),
               ),
             ),
@@ -478,7 +480,7 @@ class _DebtCard extends StatelessWidget {
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF00B956),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(AppRadius.md)),
               ),
             ),
           ),
@@ -503,7 +505,7 @@ class _AmountCol extends StatelessWidget {
             Text(label,
                 style: const TextStyle(
                   fontSize: 12,
-                  color: Color(0xFF6A605C),
+                  color: AppColors.textSecondary,
                 )),
             const SizedBox(height: 5),
             Text(value,

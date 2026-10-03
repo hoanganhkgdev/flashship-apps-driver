@@ -23,66 +23,83 @@ class ShiftCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(AppRadius.card),
-      child: InkWell(
+    return AnimatedContainer(
+      duration: AppDuration.normal,
+      decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.card),
-        onTap: enabled ? onTap : null,
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(
-              color: selected ? AppColors.primary : AppColors.divider,
-              width: selected ? 2 : 1,
+        border: Border.all(
+          color: selected ? AppColors.primary : Colors.transparent,
+          width: 2,
+        ),
+        color: selected ? AppColors.primarySoft : Colors.white,
+        boxShadow: selected ? null : AppShadows.soft,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          onTap: enabled ? onTap : null,
+          child: Opacity(
+            opacity: enabled ? 1 : 0.6,
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Row(children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                  child: Icon(icon, color: color, size: 26),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(shift.name, style: AppTextStyles.sectionTitle),
+                        const SizedBox(height: AppSpacing.xs),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color:
+                                selected ? Colors.white : AppColors.surfaceAlt,
+                            borderRadius: BorderRadius.circular(AppRadius.full),
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.schedule_rounded,
+                                size: 14, color: AppColors.textSecondary),
+                            const SizedBox(width: 5),
+                            Text(shift.timeRange,
+                                style: AppTextStyles.label.copyWith(
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w700)),
+                          ]),
+                        ),
+                      ]),
+                ),
+                AnimatedContainer(
+                  duration: AppDuration.fast,
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: selected ? AppColors.primary : Colors.transparent,
+                    border: Border.all(
+                        color: selected ? AppColors.primary : AppColors.divider,
+                        width: 1.5),
+                  ),
+                  child: selected
+                      ? const Icon(Icons.check_rounded,
+                          size: 18, color: Colors.white)
+                      : null,
+                ),
+              ]),
             ),
-            color: selected ? AppColors.primarySoft : AppColors.surface,
-            boxShadow: AppShadows.soft,
           ),
-          child: Row(children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 21),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(shift.name, style: AppTextStyles.sectionTitle),
-                    const SizedBox(height: AppSpacing.xs),
-                    Row(children: [
-                      const Icon(Icons.schedule_rounded,
-                          size: 14, color: AppColors.textSecondary),
-                      const SizedBox(width: AppSpacing.xs),
-                      Text(shift.timeRange,
-                          style: AppTextStyles.label
-                              .copyWith(color: AppColors.textSecondary)),
-                    ]),
-                  ]),
-            ),
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: selected ? AppColors.primary : Colors.transparent,
-                border: Border.all(
-                    color: selected ? AppColors.primary : AppColors.divider,
-                    width: 1.5),
-              ),
-              child: selected
-                  ? const Icon(Icons.check_rounded,
-                      size: 16, color: Colors.white)
-                  : null,
-            ),
-          ]),
         ),
       ),
     );

@@ -30,7 +30,7 @@ class _RulesCardState extends ConsumerState<RulesCard> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: const Color(0xFFF5F5F5),
+                color: AppColors.surfaceAlt,
                 borderRadius: BorderRadius.circular(6),
               ),
               child: const Text('+10 điểm/ngày tối đa',
@@ -84,7 +84,7 @@ class _RulesCardState extends ConsumerState<RulesCard> {
           ]),
         ),
 
-        const Divider(height: 1, color: Color(0xFFF5F5F5)),
+        const Divider(height: 1, color: AppColors.surfaceAlt),
 
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 200),
@@ -147,11 +147,11 @@ class TabChip extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: AppDuration.normal,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           decoration: BoxDecoration(
             color: active
                 ? activeColor.withValues(alpha: 0.1)
-                : const Color(0xFFF5F5F5),
+                : AppColors.surfaceAlt,
             borderRadius: BorderRadius.circular(AppRadius.full),
             border: Border.all(
               color: active
@@ -187,11 +187,11 @@ class RulesList extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: Row(children: [
               Container(
-                width: 42,
-                height: 30,
+                width: 44,
+                height: 32,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(7),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
                 alignment: Alignment.center,
                 child: Text(badge,
@@ -209,7 +209,7 @@ class RulesList extends StatelessWidget {
             ]),
           ),
           if (i < items.length - 1)
-            const Divider(height: 1, color: Color(0xFFF5F5F5), indent: 70),
+            const Divider(height: 1, color: AppColors.surfaceAlt, indent: 70),
         ]);
       }),
     );

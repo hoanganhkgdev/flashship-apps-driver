@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/app_root_header_title.dart';
 import '../models/order_model.dart';
@@ -71,7 +72,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     }
     final items = <Object>[];
     for (final key in keys) {
-      items.add(key);
+      final total = groups[key]!.fold<int>(0, (s, o) => s + o.driverEarning);
+      items.add((key, '${groups[key]!.length} đơn · ${Fmt.currency(total)}'));
       items.addAll(groups[key]!);
     }
     return items;
@@ -165,11 +167,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                           (_, i) {
                             if (i < items.length) {
                               final item = items[i];
-                              if (item is String) {
-                                return HistoryDateLabel(label: item);
+                              if (item is (String, String)) {
+                                return HistoryDateLabel(
+                                    label: item.$1, summary: item.$2);
                               }
                               return Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.only(bottom: 12),
                                 child: HistoryCompletedCard(
                                     order: item as OrderModel),
                               );

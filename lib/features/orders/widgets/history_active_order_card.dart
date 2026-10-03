@@ -53,8 +53,9 @@ class ActiveOrderCard extends StatelessWidget {
         : (order.customerPhone ?? order.deliveryPhone);
     return AppSurfaceCard(
       onTap: () => _openOrder(context),
-      color: const Color(0xFFFFFBF8),
-      showShadow: isPriority,
+      color: Colors.white,
+      showBorder: false,
+      showShadow: true,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           AppIconBadge(
@@ -94,22 +95,29 @@ class ActiveOrderCard extends StatelessWidget {
                 label: '${order.stopsCount} điểm', color: AppColors.secondary),
         ]),
         const SizedBox(height: AppSpacing.lg),
-        _RouteStep(
-            label: 'LẤY HÀNG',
-            title: _pickupName,
-            address: order.pickupAddress,
-            color: AppColors.primary,
-            active: assigned),
-        const _RouteConnector(),
-        _RouteStep(
-            label: 'GIAO HÀNG',
-            title: _deliveryName,
-            address: order.deliveryAddress,
-            color: AppColors.secondary,
-            active: !assigned),
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceAlt,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          child: Column(children: [
+            _RouteStep(
+                label: 'LẤY HÀNG',
+                title: _pickupName,
+                address: order.pickupAddress,
+                color: AppColors.primary,
+                active: assigned),
+            const _RouteConnector(),
+            _RouteStep(
+                label: 'GIAO HÀNG',
+                title: _deliveryName,
+                address: order.deliveryAddress,
+                color: AppColors.secondary,
+                active: !assigned),
+          ]),
+        ),
         const SizedBox(height: AppSpacing.lg),
-        const Divider(),
-        const SizedBox(height: AppSpacing.md),
         Row(children: [
           Expanded(
               child: Column(

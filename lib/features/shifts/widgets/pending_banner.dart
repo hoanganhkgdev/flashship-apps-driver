@@ -19,17 +19,23 @@ class PendingBanner extends StatelessWidget {
 
     final names = request.shiftIds.map(nameFor).whereType<String>().join(', ');
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: AppColors.warningSoft,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
-        boxShadow: AppShadows.soft,
+        borderRadius: BorderRadius.circular(AppRadius.card),
       ),
       child: Row(children: [
-        const Icon(Icons.hourglass_top_rounded,
-            color: AppColors.warning, size: 20),
-        const SizedBox(width: 10),
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(AppRadius.sm + 2),
+          ),
+          child: const Icon(Icons.hourglass_top_rounded,
+              color: AppColors.warning, size: 20),
+        ),
+        const SizedBox(width: AppSpacing.md),
         Expanded(
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

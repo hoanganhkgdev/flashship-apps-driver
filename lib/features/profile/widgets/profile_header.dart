@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/app_surface_card.dart';
-import 'avatar_widgets.dart';
 
 class ProfileHeader extends StatelessWidget {
   final dynamic user;
@@ -40,162 +38,171 @@ class ProfileHeader extends StatelessWidget {
           AppSpacing.lg,
           0,
         ),
-        child: AppSurfaceCard(
-          showShadow: true,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+            boxShadow: AppShadows.soft,
+          ),
           child: Column(children: [
-            Row(children: [
-              GestureDetector(
-                onTap: onAvatarTap,
-                child: Stack(clipBehavior: Clip.none, children: [
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
+            GestureDetector(
+              onTap: onAvatarTap,
+              child: Stack(clipBehavior: Clip.none, children: [
+                Container(
+                  width: 92,
+                  height: 92,
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.primary, width: 2.5),
+                  ),
+                  child: ClipOval(
+                    child: ColoredBox(
                       color: AppColors.primarySoft,
+                      child: uploadingAvatar
+                          ? const Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.primary,
+                              ),
+                            )
+                          : photoUrl != null
+                              ? Image.network(
+                                  photoUrl!,
+                                  width: 86,
+                                  height: 86,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) =>
+                                      _Initials(user: user),
+                                )
+                              : _Initials(user: user),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppColors.primary.withValues(alpha: .18),
-                        width: 2,
-                      ),
+                      border: Border.all(color: Colors.white, width: 3),
                     ),
-                    clipBehavior: Clip.antiAlias,
-                    child: uploadingAvatar
-                        ? const Center(
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppColors.primary,
-                            ),
-                          )
-                        : photoUrl != null
-                            ? Image.network(
-                                photoUrl!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) =>
-                                    AvatarInitials(user: user),
-                              )
-                            : AvatarInitials(user: user),
+                    child: const Icon(Icons.camera_alt_rounded,
+                        size: 14, color: Colors.white),
                   ),
-                  Positioned(
-                    right: -2,
-                    bottom: -2,
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.surface, width: 2),
-                      ),
-                      child: const Icon(
-                        Icons.camera_alt_rounded,
-                        size: 12,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ]),
+                ),
+              ]),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Flexible(
+                child: Text(
+                  user?.name ?? 'Tài xế',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.sectionTitle
+                      .copyWith(fontSize: AppFontSize.xl),
+                ),
               ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
-                      Flexible(
-                        child: Text(
-                          user?.name ?? 'Tài xế',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.sectionTitle,
-                        ),
-                      ),
-                      if (!nameLocked) ...[
-                        const SizedBox(width: AppSpacing.xs),
-                        InkWell(
-                          onTap: () => onEditName(user?.name ?? ''),
-                          borderRadius: BorderRadius.circular(AppRadius.full),
-                          child: const Padding(
-                            padding: EdgeInsets.all(AppSpacing.xs),
-                            child: Icon(
-                              Icons.edit_rounded,
-                              size: 16,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ]),
-                    const SizedBox(height: AppSpacing.xs),
-                    Row(children: [
-                      const Icon(
-                        Icons.location_on_outlined,
-                        size: 15,
-                        color: AppColors.textSecondary,
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                      Expanded(
-                        child: Text(
-                          cityName ?? 'TP. Hồ Chí Minh',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.label.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ]),
-                    const SizedBox(height: AppSpacing.sm),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.sm,
-                        vertical: AppSpacing.xs,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.successSoft,
-                        borderRadius: BorderRadius.circular(AppRadius.full),
-                      ),
-                      child: Text(
-                        'Tài khoản tài xế',
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.success,
-                        ),
-                      ),
-                    ),
-                  ],
+              if (!nameLocked) ...[
+                const SizedBox(width: AppSpacing.xs),
+                InkWell(
+                  onTap: () => onEditName(user?.name ?? ''),
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                  child: const Padding(
+                    padding: EdgeInsets.all(AppSpacing.xs),
+                    child: Icon(Icons.edit_rounded,
+                        size: 17, color: AppColors.primary),
+                  ),
+                ),
+              ],
+            ]),
+            const SizedBox(height: AppSpacing.xs),
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              const Icon(Icons.location_on_outlined,
+                  size: 15, color: AppColors.textSecondary),
+              const SizedBox(width: AppSpacing.xs),
+              Flexible(
+                child: Text(
+                  cityName ?? 'TP. Hồ Chí Minh',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.label
+                      .copyWith(color: AppColors.textSecondary),
                 ),
               ),
             ]),
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+              decoration: BoxDecoration(
+                color: AppColors.successSoft,
+                borderRadius: BorderRadius.circular(AppRadius.full),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.verified_rounded,
+                    size: 14, color: AppColors.success),
+                const SizedBox(width: 4),
+                Text('Tài khoản tài xế',
+                    style: AppTextStyles.caption.copyWith(
+                        color: AppColors.success, fontWeight: FontWeight.w800)),
+              ]),
+            ),
             if (hasStats) ...[
               const SizedBox(height: AppSpacing.lg),
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceAlt,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: Row(children: [
-                  _Stat(
+              Row(children: [
+                Expanded(
+                  child: _Stat(
                     value: acceptanceRate == null ? '—' : '$acceptanceRate%',
                     label: 'Tỷ lệ nhận',
+                    icon: Icons.touch_app_rounded,
                     color: AppColors.success,
                   ),
-                  const _Divider(),
-                  _Stat(
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: _Stat(
                     value: completionRate == null ? '—' : '$completionRate%',
                     label: 'Hoàn thành',
-                    color: AppColors.success,
+                    icon: Icons.task_alt_rounded,
+                    color: AppColors.secondary,
                   ),
-                  const _Divider(),
-                  _Stat(
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: _Stat(
                     value: rating?.toStringAsFixed(1) ?? '—',
                     label: 'Đánh giá',
-                    color: AppColors.warning,
                     icon: Icons.star_rounded,
+                    color: AppColors.warning,
                   ),
-                ]),
-              ),
+                ),
+              ]),
             ],
           ]),
+        ),
+      );
+}
+
+class _Initials extends StatelessWidget {
+  final dynamic user;
+  const _Initials({required this.user});
+
+  @override
+  Widget build(BuildContext context) => Center(
+        child: Text(
+          user?.initials ?? 'D',
+          style: const TextStyle(
+            color: AppColors.primary,
+            fontSize: AppFontSize.xl3,
+            fontWeight: FontWeight.w800,
+          ),
         ),
       );
 }
@@ -203,44 +210,34 @@ class ProfileHeader extends StatelessWidget {
 class _Stat extends StatelessWidget {
   final String value;
   final String label;
+  final IconData icon;
   final Color color;
-  final IconData? icon;
 
   const _Stat({
     required this.value,
     required this.label,
+    required this.icon,
     required this.color,
-    this.icon,
   });
 
   @override
-  Widget build(BuildContext context) => Expanded(
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(
+            vertical: AppSpacing.md, horizontal: AppSpacing.sm),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
         child: Column(children: [
-          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            if (icon != null) ...[
-              Icon(icon, size: 14, color: color),
-              const SizedBox(width: AppSpacing.xxs),
-            ],
-            Text(
-              value,
-              style: AppTextStyles.bodyStrong.copyWith(color: color),
-            ),
-          ]),
-          const SizedBox(height: AppSpacing.xxs),
-          Text(
-            label,
-            style: AppTextStyles.caption.copyWith(
-              color: AppColors.textTertiary,
-            ),
-          ),
+          Icon(icon, size: 20, color: color),
+          const SizedBox(height: 6),
+          Text(value, style: AppTextStyles.sectionTitle.copyWith(color: color)),
+          const SizedBox(height: 2),
+          Text(label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textSecondary)),
         ]),
       );
-}
-
-class _Divider extends StatelessWidget {
-  const _Divider();
-
-  @override
-  Widget build(BuildContext context) =>
-      Container(width: 1, height: 30, color: AppColors.divider);
 }

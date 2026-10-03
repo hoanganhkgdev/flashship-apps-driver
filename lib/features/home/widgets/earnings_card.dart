@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/widgets/app_surface_card.dart';
-import '../../../core/widgets/app_section_header.dart';
-import '../../../core/widgets/app_metric_tile.dart';
 
+/// Thẻ nổi bật nhất trang chủ: thu nhập hôm nay trên nền gradient cam.
 class EarningsCard extends StatelessWidget {
   final int todayEarnings;
   final int yesterdayEarnings;
@@ -31,70 +29,152 @@ class EarningsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppSurfaceCard(
-      onTap: onTap,
-      color: const Color(0xFFFFFBF8),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const AppSectionHeader(
-          title: 'Hoạt động hôm nay',
-          subtitle: 'Thu nhập và hiệu suất làm việc',
-          icon: Icons.insights_rounded,
-          color: AppColors.primary,
+    final diff = todayEarnings - yesterdayEarnings;
+    final showDiff = yesterdayEarnings > 0;
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.primary, Color(0xFFFF8A3D)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        const SizedBox(height: AppSpacing.lg),
-        Text('THU NHẬP HÔM NAY',
-            style: AppTextStyles.caption
-                .copyWith(color: AppColors.textTertiary, letterSpacing: .6)),
-        const SizedBox(height: AppSpacing.sm),
-        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Expanded(
-            child: Text(Fmt.currency(todayEarnings),
-                style: AppTextStyles.metricLarge
-                    .copyWith(color: AppColors.success)),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.28),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
           ),
-          if (yesterdayEarnings > 0)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-              child: Text('Hôm qua ${Fmt.currency(yesterdayEarnings)}',
-                  style: AppTextStyles.label
-                      .copyWith(color: AppColors.textTertiary)),
-            ),
-        ]),
-        const SizedBox(height: AppSpacing.md),
-        Row(children: [
-          Expanded(
-            child: AppMetricTile(
-              label: 'Đơn hoàn thành',
-              value: '$todayOrders',
-              icon: Icons.inventory_2_rounded,
-              color: AppColors.secondary,
-            ),
-          ),
-          const SizedBox(
-            height: 40,
-            child: VerticalDivider(
-              width: AppSpacing.xl2,
-              color: AppColors.divider,
-            ),
-          ),
-          Expanded(
-            child: AppMetricTile(
-              label: ratingCount > 0 ? '$ratingCount đánh giá' : 'Đánh giá',
-              value: rating > 0 ? rating.toStringAsFixed(1) : '—',
-              icon: Icons.star_rounded,
-              color: AppColors.warning,
-            ),
-          ),
-        ]),
-        if (last7Days.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.lg),
-          const Divider(height: 1),
-          const SizedBox(height: AppSpacing.md),
-          _WeeklyEarningsChart(values: last7Days),
         ],
-      ]),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Icon(Icons.insights_rounded,
+                    size: 18, color: Colors.white),
+                const SizedBox(width: 6),
+                Text('THU NHẬP HÔM NAY',
+                    style: AppTextStyles.caption.copyWith(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        letterSpacing: .8,
+                        fontWeight: FontWeight.w800)),
+                const Spacer(),
+                Text('Xem chi tiết',
+                    style: AppTextStyles.label.copyWith(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontWeight: FontWeight.w700)),
+                Icon(Icons.chevron_right_rounded,
+                    size: 18, color: Colors.white.withValues(alpha: 0.9)),
+              ]),
+              const SizedBox(height: AppSpacing.md),
+              Text(Fmt.currency(todayEarnings),
+                  style: AppTextStyles.metricLarge
+                      .copyWith(color: Colors.white, fontSize: 36)),
+              if (showDiff) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(AppRadius.full),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(
+                        diff >= 0
+                            ? Icons.trending_up_rounded
+                            : Icons.trending_down_rounded,
+                        size: 15,
+                        color: Colors.white),
+                    const SizedBox(width: 4),
+                    Text(
+                        diff == 0
+                            ? 'Bằng hôm qua'
+                            : '${diff > 0 ? '+' : '-'}${Fmt.currency(diff.abs())} so với hôm qua',
+                        style: AppTextStyles.label.copyWith(
+                            color: Colors.white, fontWeight: FontWeight.w700)),
+                  ]),
+                ),
+              ],
+              const SizedBox(height: AppSpacing.lg),
+              Row(children: [
+                Expanded(
+                  child: _HeroStat(
+                    icon: Icons.inventory_2_rounded,
+                    value: '$todayOrders',
+                    label: 'Đơn hoàn thành',
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: _HeroStat(
+                    icon: Icons.star_rounded,
+                    value: rating > 0 ? rating.toStringAsFixed(1) : '—',
+                    label:
+                        ratingCount > 0 ? '$ratingCount đánh giá' : 'Đánh giá',
+                  ),
+                ),
+              ]),
+              if (last7Days.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.lg),
+                Divider(height: 1, color: Colors.white.withValues(alpha: 0.25)),
+                const SizedBox(height: AppSpacing.md),
+                _WeeklyEarningsChart(values: last7Days),
+              ],
+            ]),
+          ),
+        ),
+      ),
     );
   }
+}
+
+class _HeroStat extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+  const _HeroStat(
+      {required this.icon, required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md, vertical: AppSpacing.md),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+        child: Row(children: [
+          Icon(icon, size: 22, color: Colors.white),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.sectionTitle
+                        .copyWith(color: Colors.white)),
+                Text(label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.caption
+                        .copyWith(color: Colors.white.withValues(alpha: 0.85))),
+              ],
+            ),
+          ),
+        ]),
+      );
 }
 
 const _weekdayShort = ['', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
@@ -142,12 +222,12 @@ class _WeeklyEarningsChartState extends State<_WeeklyEarningsChart> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: AppColors.textTertiary,
+              color: Color(0xCCFFFFFF),
             )),
         const Spacer(),
         Text(
           isSelectedToday ? 'Hôm nay' : _weekdayFull[dates[_selected].weekday],
-          style: const TextStyle(fontSize: 12, color: AppColors.textTertiary),
+          style: const TextStyle(fontSize: 12, color: Color(0xCCFFFFFF)),
         ),
         const SizedBox(width: 6),
         Text(
@@ -155,7 +235,7 @@ class _WeeklyEarningsChartState extends State<_WeeklyEarningsChart> {
           style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w800,
-            color: AppColors.primary,
+            color: Colors.white,
           ),
         ),
       ]),
@@ -184,17 +264,17 @@ class _WeeklyEarningsChartState extends State<_WeeklyEarningsChart> {
                     height: h,
                     decoration: isFuture
                         ? BoxDecoration(
-                            border:
-                                Border.all(color: AppColors.divider, width: 1),
+                            border: Border.all(
+                                color: const Color(0x4DFFFFFF), width: 1),
                             borderRadius: const BorderRadius.vertical(
                                 top: Radius.circular(4)),
                           )
                         : BoxDecoration(
                             color: isSelected
-                                ? AppColors.primary
+                                ? Colors.white
                                 : (isToday
-                                    ? AppColors.primary.withValues(alpha: 0.35)
-                                    : AppColors.divider),
+                                    ? const Color(0x99FFFFFF)
+                                    : const Color(0x47FFFFFF)),
                             borderRadius: const BorderRadius.vertical(
                                 top: Radius.circular(4)),
                           ),
@@ -207,10 +287,10 @@ class _WeeklyEarningsChartState extends State<_WeeklyEarningsChart> {
                       fontWeight:
                           isSelected ? FontWeight.w800 : FontWeight.w500,
                       color: isFuture
-                          ? AppColors.textTertiary.withValues(alpha: 0.5)
+                          ? const Color(0x59FFFFFF)
                           : (isSelected
-                              ? AppColors.primary
-                              : AppColors.textTertiary),
+                              ? Colors.white
+                              : const Color(0xB3FFFFFF)),
                     ),
                   ),
                 ]),

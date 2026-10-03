@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
 
@@ -27,50 +28,98 @@ class BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      elevation: 16,
-      shadowColor: const Color(0x291B1411),
-      borderRadius: const BorderRadius.vertical(
-        top: Radius.circular(AppRadius.xl),
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFF0EBE8))),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x141B1411),
+            blurRadius: 20,
+            offset: Offset(0, -6),
+          ),
+        ],
       ),
-      clipBehavior: Clip.antiAlias,
-      child: NavigationBarTheme(
-        data: NavigationBarThemeData(
-          height: 68,
-          elevation: 0,
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.transparent,
-          indicatorColor: AppColors.primary,
-          indicatorShape: const StadiumBorder(),
-          iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
-                size: AppSize.iconLg,
-                color: states.contains(WidgetState.selected)
-                    ? Colors.white
-                    : AppColors.textSecondary,
-              )),
-          labelTextStyle: WidgetStateProperty.resolveWith(
-              (states) => AppTextStyles.label.copyWith(
-                    color: states.contains(WidgetState.selected)
-                        ? AppColors.primary
-                        : AppColors.textSecondary,
-                    fontWeight: states.contains(WidgetState.selected)
-                        ? FontWeight.w800
-                        : FontWeight.w600,
-                  )),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 66,
+          child: Row(children: [
+            for (var i = 0; i < _tabs.length; i++)
+              Expanded(
+                child: _NavButton(
+                  item: _tabs[i],
+                  selected: i == currentIndex,
+                  onTap: () {
+                    if (i != currentIndex) HapticFeedback.selectionClick();
+                    onTap(i);
+                  },
+                ),
+              ),
+          ]),
         ),
-        child: NavigationBar(
-          selectedIndex: currentIndex,
-          onDestinationSelected: onTap,
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          destinations: _tabs
-              .map((tab) => NavigationDestination(
-                    icon: Icon(tab.off),
-                    selectedIcon: Icon(tab.on),
-                    label: tab.label,
-                    tooltip: tab.label,
-                  ))
-              .toList(),
+      ),
+    );
+  }
+}
+
+class _NavButton extends StatelessWidget {
+  final NavItem item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _NavButton({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? AppColors.primary : AppColors.textSecondary;
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: item.label,
+      child: InkResponse(
+        onTap: onTap,
+        radius: 40,
+        highlightShape: BoxShape.rectangle,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Viên thuốc cam nhạt giãn ra phía sau icon của tab đang chọn.
+            AnimatedContainer(
+              duration: AppDuration.normal,
+              curve: Curves.easeOutCubic,
+              width: selected ? 58 : 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: selected ? AppColors.primarySoft : Colors.transparent,
+                borderRadius: BorderRadius.circular(AppRadius.full),
+              ),
+              child: AnimatedSwitcher(
+                duration: AppDuration.fast,
+                child: Icon(
+                  selected ? item.on : item.off,
+                  key: ValueKey(selected),
+                  size: AppSize.iconLg,
+                  color: color,
+                ),
+              ),
+            ),
+            const SizedBox(height: 3),
+            AnimatedDefaultTextStyle(
+              duration: AppDuration.normal,
+              style: AppTextStyles.label.copyWith(
+                color: color,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+              ),
+              child: Text(item.label,
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
+          ],
         ),
       ),
     );

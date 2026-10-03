@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/router/app_router.dart';
@@ -83,132 +84,104 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-        systemNavigationBarColor: AppColors.primaryGradientEnd,
-        systemNavigationBarIconBrightness: Brightness.light,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
       ),
       child: Scaffold(
+        backgroundColor: Colors.white,
         body: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                AppColors.primaryGradientStart,
-                AppColors.primaryGradientMiddle,
-                AppColors.primaryGradientEnd,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+              colors: [Colors.white, Color(0xFFFFF3EA)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
             ),
           ),
-          child: LayoutBuilder(
-            builder: (context, constraints) => Stack(
-              fit: StackFit.expand,
-              children: [
-                Positioned(
-                  top: -70,
-                  right: -82,
-                  child: _SplashCircle(size: 220),
-                ),
-                Positioned(
-                  bottom: -112,
-                  left: -108,
-                  child: _SplashCircle(size: 300),
-                ),
-                Positioned.fill(
-                  child: CustomPaint(painter: _RoutePainter()),
-                ),
-                Center(
-                  child: FadeTransition(
-                    opacity: _fade,
-                    child: ScaleTransition(
-                      scale: _scale,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 104,
-                            height: 104,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(30),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.16),
-                                  blurRadius: 30,
-                                  offset: const Offset(0, 12),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              const Positioned(
+                top: -120,
+                right: -110,
+                child: _SplashGlow(size: 340, color: Color(0xFFFFB347)),
+              ),
+              const Positioned(
+                bottom: -150,
+                left: -130,
+                child: _SplashGlow(size: 380, color: Color(0xFF3FAE5A)),
+              ),
+              SafeArea(
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: Center(
+                        child: FadeTransition(
+                          opacity: _fade,
+                          child: ScaleTransition(
+                            scale: _scale,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Image.asset(
+                                  'assets/images/logo-vertical.png',
+                                  width: 280,
+                                  fit: BoxFit.contain,
+                                ),
+                                const SizedBox(height: AppSpacing.sm),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: AppSpacing.lg,
+                                      vertical: AppSpacing.xs + 2),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primarySoft,
+                                    borderRadius:
+                                        BorderRadius.circular(AppRadius.full),
+                                  ),
+                                  child: const Text(
+                                    'DÀNH CHO TÀI XẾ',
+                                    style: TextStyle(
+                                      color: AppColors.primaryDark,
+                                      fontSize: AppFontSize.sm,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
-                            child: const Icon(
-                              Icons.local_shipping_rounded,
-                              size: 48,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.xl2),
-                          const Text(
-                            'FlashShip',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: AppFontSize.xl4,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.8,
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.md,
-                                vertical: AppSpacing.xs),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.18),
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.full),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.24),
-                              ),
-                            ),
-                            child: const Text(
-                              'DÀNH CHO TÀI XẾ',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: AppFontSize.sm,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: 42,
-                  left: 0,
-                  right: 0,
-                  child: FadeTransition(
-                    opacity: _fade,
-                    child: const Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Đang khởi động ứng dụng',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: AppFontSize.sm,
-                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        SizedBox(height: AppSpacing.md),
-                        _LoadingDots(),
-                      ],
+                      ),
                     ),
-                  ),
+                    FadeTransition(
+                      opacity: _fade,
+                      child: const Padding(
+                        padding: EdgeInsets.only(bottom: AppSpacing.xl3),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _LoadingBar(),
+                            SizedBox(height: AppSpacing.md),
+                            Text(
+                              'Đang khởi động ứng dụng',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: AppFontSize.sm,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(height: AppSpacing.xs),
+                            _VersionLabel(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -312,10 +285,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 }
 
-class _SplashCircle extends StatelessWidget {
+class _SplashGlow extends StatelessWidget {
   final double size;
+  final Color color;
 
-  const _SplashCircle({required this.size});
+  const _SplashGlow({required this.size, required this.color});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -323,82 +297,39 @@ class _SplashCircle extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: 0.07),
+          gradient: RadialGradient(
+            colors: [color.withValues(alpha: 0.28), color.withValues(alpha: 0)],
+          ),
         ),
       );
 }
 
-class _RoutePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.2)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.4
-      ..strokeCap = StrokeCap.round;
-
-    final upper = Path()
-      ..moveTo(size.width * 0.15, size.height * 0.22)
-      ..cubicTo(
-        size.width * 0.38,
-        size.height * 0.17,
-        size.width * 0.61,
-        size.height * 0.38,
-        size.width * 0.88,
-        size.height * 0.31,
-      );
-    final lower = Path()
-      ..moveTo(size.width * 0.09, size.height * 0.70)
-      ..cubicTo(
-        size.width * 0.33,
-        size.height * 0.78,
-        size.width * 0.62,
-        size.height * 0.63,
-        size.width * 0.91,
-        size.height * 0.72,
-      );
-
-    _drawDottedPath(canvas, upper, paint);
-    _drawDottedPath(canvas, lower, paint);
-    _drawStops(canvas, upper, paint);
-    _drawStops(canvas, lower, paint);
-  }
-
-  void _drawDottedPath(Canvas canvas, Path path, Paint paint) {
-    for (final metric in path.computeMetrics()) {
-      for (double distance = 0; distance < metric.length; distance += 14) {
-        final tangent = metric.getTangentForOffset(distance);
-        if (tangent != null) canvas.drawCircle(tangent.position, 1.8, paint);
-      }
-    }
-  }
-
-  void _drawStops(Canvas canvas, Path path, Paint paint) {
-    final metric = path.computeMetrics().first;
-    for (final fraction in <double>[0, 0.58, 1]) {
-      final tangent = metric.getTangentForOffset(metric.length * fraction);
-      if (tangent == null) continue;
-      final fill = Paint()..color = Colors.white.withValues(alpha: 0.55);
-      canvas.drawCircle(tangent.position, fraction == 0.58 ? 7 : 5, fill);
-      if (fraction == 0) {
-        canvas.drawCircle(tangent.position, 7, paint..strokeWidth = 2);
-      }
-    }
-  }
+class _VersionLabel extends StatelessWidget {
+  const _VersionLabel();
 
   @override
-  bool shouldRepaint(covariant _RoutePainter oldDelegate) => false;
+  Widget build(BuildContext context) => FutureBuilder<PackageInfo>(
+        future: PackageInfo.fromPlatform(),
+        builder: (_, snap) => Text(
+          snap.hasData ? 'Phiên bản ${snap.data!.version}' : '',
+          style: const TextStyle(
+              color: AppColors.textTertiary, fontSize: AppFontSize.xs),
+        ),
+      );
 }
 
-class _LoadingDots extends StatefulWidget {
-  const _LoadingDots();
+/// Thanh tải vô hạn: đoạn gradient cam chạy qua lại trên nền cam nhạt.
+class _LoadingBar extends StatefulWidget {
+  const _LoadingBar();
 
   @override
-  State<_LoadingDots> createState() => _LoadingDotsState();
+  State<_LoadingBar> createState() => _LoadingBarState();
 }
 
-class _LoadingDotsState extends State<_LoadingDots>
+class _LoadingBarState extends State<_LoadingBar>
     with SingleTickerProviderStateMixin {
+  static const _width = 140.0;
+  static const _segment = 52.0;
   late final AnimationController _ctrl;
 
   @override
@@ -406,8 +337,8 @@ class _LoadingDotsState extends State<_LoadingDots>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat();
+      duration: const Duration(milliseconds: 1100),
+    )..repeat(reverse: true);
   }
 
   @override
@@ -417,29 +348,37 @@ class _LoadingDotsState extends State<_LoadingDots>
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(3, (i) {
-        final anim = Tween<double>(begin: 0.3, end: 1.0).animate(
-          CurvedAnimation(
-            parent: _ctrl,
-            curve: Interval(i * 0.2, 0.6 + i * 0.2, curve: Curves.easeInOut),
-          ),
-        );
-        return AnimatedBuilder(
-          animation: anim,
-          builder: (_, __) => Container(
-            width: 8,
-            height: 8,
-            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: anim.value),
-            ),
-          ),
-        );
-      }),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+        width: _width,
+        height: 5,
+        decoration: BoxDecoration(
+          color: AppColors.primarySoft,
+          borderRadius: BorderRadius.circular(AppRadius.full),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: AnimatedBuilder(
+          animation: CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+          builder: (_, __) {
+            final t = Curves.easeInOut.transform(_ctrl.value);
+            return Stack(children: [
+              Positioned(
+                left: (_width - _segment) * t,
+                width: _segment,
+                top: 0,
+                bottom: 0,
+                child: const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: [
+                      AppColors.primaryGradientEnd,
+                      AppColors.primary,
+                    ]),
+                    borderRadius:
+                        BorderRadius.all(Radius.circular(AppRadius.full)),
+                  ),
+                ),
+              ),
+            ]);
+          },
+        ),
+      );
 }

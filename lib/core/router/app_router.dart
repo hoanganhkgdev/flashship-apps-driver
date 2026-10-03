@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/providers/auth_provider.dart';
@@ -25,6 +25,10 @@ import '../../features/version/screens/splash_screen.dart';
 // Global router instance — dùng để navigate từ bên ngoài widget tree (polling service).
 GoRouter? appRouter;
 
+/// Dùng khi thiết kế UI: `flutter run --dart-define=HOLD_SPLASH=true` giữ app
+/// đứng ở màn splash. Bị vô hiệu ở bản release.
+const _holdSplash = bool.fromEnvironment('HOLD_SPLASH');
+
 class _RouterListenable extends ChangeNotifier {
   _RouterListenable(Ref ref) {
     ref.listen<AuthState>(authProvider, (_, __) => notifyListeners());
@@ -46,6 +50,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       final auth = ref.read(authProvider);
       final orderState = ref.read(activeOrderProvider);
       final location = state.matchedLocation;
+
+      if (kDebugMode && _holdSplash) {
+        return location == '/splash' ? null : '/splash';
+      }
 
       final version = ref.read(appVersionProvider);
 

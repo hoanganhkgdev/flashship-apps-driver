@@ -667,6 +667,19 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
 
                           const SizedBox(height: AppSpacing.lg),
 
+                          // Finance
+                          FinanceCard(
+                            balance: wallet.balance,
+                            debtPending: debtPending,
+                            debtCount: debtCount,
+                            onWalletTap: () => context.push('/wallet'),
+                            onDebtTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                    builder: (_) => const DebtScreen())),
+                          ),
+
+                          const SizedBox(height: AppSpacing.lg),
+
                           // Shift
                           ShiftCard(
                             shifts: shiftState.shifts,
@@ -688,19 +701,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                           DashboardScoreCard(
                             score: scoreState.score,
                             onTap: () => context.push('/score'),
-                          ),
-
-                          const SizedBox(height: AppSpacing.lg),
-
-                          // Finance
-                          FinanceCard(
-                            balance: wallet.balance,
-                            debtPending: debtPending,
-                            debtCount: debtCount,
-                            onWalletTap: () => context.push('/wallet'),
-                            onDebtTap: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                    builder: (_) => const DebtScreen())),
                           ),
                         ],
                       ),

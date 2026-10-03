@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_screen_header.dart';
-import '../../../core/widgets/app_surface_card.dart';
 import '../providers/shift_provider.dart';
 import '../widgets/pending_banner.dart';
 import '../widgets/rejected_banner.dart';
@@ -130,7 +129,7 @@ class _ShiftRegistrationScreenState
                 color: AppColors.primary,
                 onRefresh: () => ref.read(shiftProvider.notifier).fetch(),
                 child: ListView(
-                  padding: const EdgeInsets.only(bottom: 100),
+                  padding: const EdgeInsets.only(bottom: AppSpacing.xl3),
                   physics: const AlwaysScrollableScrollPhysics(),
                   children: [
                     const SizedBox(height: AppSpacing.lg),
@@ -142,21 +141,41 @@ class _ShiftRegistrationScreenState
                         children: [
                           if (isRegistered &&
                               state.currentShiftIds.isNotEmpty) ...[
-                            AppSurfaceCard(
-                              color: AppColors.successSoft,
-                              showBorder: false,
+                            Container(
+                              padding: const EdgeInsets.all(AppSpacing.lg),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFF1F8A4C),
+                                    Color(0xFF34B368)
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.xl),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.success
+                                        .withValues(alpha: .28),
+                                    blurRadius: 24,
+                                    offset: const Offset(0, 10),
+                                  ),
+                                ],
+                              ),
                               child: Row(children: [
                                 Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: .22),
+                                    borderRadius:
+                                        BorderRadius.circular(AppRadius.md),
                                   ),
                                   child: const Icon(
-                                    Icons.check_rounded,
-                                    color: AppColors.success,
-                                    size: 20,
+                                    Icons.event_available_rounded,
+                                    color: Colors.white,
+                                    size: 26,
                                   ),
                                 ),
                                 const SizedBox(width: AppSpacing.md),
@@ -165,13 +184,22 @@ class _ShiftRegistrationScreenState
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Text('Ca đang áp dụng',
-                                            style: AppTextStyles.label.copyWith(
-                                                color: AppColors.success)),
-                                        const SizedBox(height: AppSpacing.xxs),
+                                        Text('CA ĐANG ÁP DỤNG',
+                                            style: AppTextStyles.caption
+                                                .copyWith(
+                                                    color:
+                                                        Colors.white.withValues(
+                                                            alpha: .85),
+                                                    letterSpacing: .8,
+                                                    fontWeight:
+                                                        FontWeight.w800)),
+                                        const SizedBox(height: 2),
                                         Text(
                                           currentNames,
-                                          style: AppTextStyles.bodyStrong,
+                                          style: AppTextStyles.sectionTitle
+                                              .copyWith(
+                                                  color: Colors.white,
+                                                  fontSize: AppFontSize.lg),
                                         ),
                                       ]),
                                 ),
@@ -240,7 +268,7 @@ class _ShiftRegistrationScreenState
                             )
                           else
                             ...state.shifts.map((s) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 10),
+                                  padding: const EdgeInsets.only(bottom: 12),
                                   child: ShiftCard(
                                     shift: s,
                                     selected: _selectedIds.contains(s.id),
@@ -258,23 +286,40 @@ class _ShiftRegistrationScreenState
               ),
         bottomNavigationBar: state.shifts.isEmpty
             ? null
-            : SafeArea(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: AppColors.surface,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0x141B1411),
-                        blurRadius: 16,
-                        offset: Offset(0, -5),
-                      ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.fromLTRB(AppSpacing.lg,
-                      AppSpacing.md, AppSpacing.lg, AppSpacing.lg),
-                  child: SizedBox(
+            : Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x1F1B1411),
+                      blurRadius: 24,
+                      offset: Offset(0, -8),
+                    ),
+                  ],
+                ),
+                padding: EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    AppSpacing.lg,
+                    AppSpacing.lg,
+                    MediaQuery.paddingOf(context).bottom + AppSpacing.md),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Row(children: [
+                    const Icon(Icons.checklist_rounded,
+                        size: 18, color: AppColors.textSecondary),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(
+                      _selectedIds.isEmpty
+                          ? 'Chưa chọn ca nào'
+                          : 'Đã chọn ${_selectedIds.length} ca',
+                      style: AppTextStyles.bodyStrong
+                          .copyWith(color: AppColors.textSecondary),
+                    ),
+                  ]),
+                  const SizedBox(height: AppSpacing.md),
+                  SizedBox(
                     width: double.infinity,
-                    height: AppSize.buttonHeight,
+                    height: 52,
                     child: FilledButton(
                       onPressed: (canSubmit && !state.submitting)
                           ? () => _submit(isRegistered)
@@ -283,7 +328,9 @@ class _ShiftRegistrationScreenState
                         backgroundColor: AppColors.primary,
                         disabledBackgroundColor:
                             AppColors.primary.withValues(alpha: 0.35),
-                        shape: const StadiumBorder(),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md)),
                       ),
                       child: state.submitting
                           ? const SizedBox(
@@ -302,7 +349,7 @@ class _ShiftRegistrationScreenState
                             ),
                     ),
                   ),
-                ),
+                ]),
               ),
       ),
     );

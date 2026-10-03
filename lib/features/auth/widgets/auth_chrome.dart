@@ -44,6 +44,58 @@ class AuthBrandHeader extends StatelessWidget {
       ]);
 }
 
+/// Nền sáng của màn đăng nhập: trắng → kem, hai vầng sáng cam/xanh ở góc
+/// (cùng ngôn ngữ với splash).
+class AuthBackdrop extends StatelessWidget {
+  final Widget child;
+
+  const AuthBackdrop({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.white, Color(0xFFFFF3EA)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: Stack(fit: StackFit.expand, children: [
+          const Positioned(
+              top: -120,
+              right: -110,
+              child: _Glow(size: 340, color: Color(0xFFFFB347))),
+          const Positioned(
+              bottom: -150,
+              left: -130,
+              child: _Glow(size: 380, color: Color(0xFF3FAE5A))),
+          child,
+        ]),
+      );
+}
+
+class _Glow extends StatelessWidget {
+  final double size;
+  final Color color;
+
+  const _Glow({required this.size, required this.color});
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(colors: [
+              color.withValues(alpha: 0.28),
+              color.withValues(alpha: 0),
+            ]),
+          ),
+        ),
+      );
+}
+
 /// Card trắng chuẩn chứa form của toàn bộ luồng xác thực.
 class AuthContentCard extends StatelessWidget {
   final Widget child;

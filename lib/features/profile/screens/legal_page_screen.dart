@@ -64,7 +64,7 @@ class _LegalPageScreenState extends ConsumerState<LegalPageScreen> {
             child: _loading
                 ? const Center(
                     child: CircularProgressIndicator(
-                      color: Color(0xFFFF6035),
+                      color: AppColors.primary,
                       strokeWidth: 2,
                     ),
                   )
@@ -73,14 +73,24 @@ class _LegalPageScreenState extends ConsumerState<LegalPageScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.error_outline_rounded,
-                                size: 40, color: AppColors.textSecondary),
-                            const SizedBox(height: 12),
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceAlt,
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.lg),
+                              ),
+                              child: const Icon(Icons.cloud_off_rounded,
+                                  size: 30, color: AppColors.textTertiary),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
                             const Text('Không thể tải nội dung',
-                                style:
-                                    TextStyle(color: AppColors.textSecondary)),
-                            const SizedBox(height: 16),
-                            TextButton(
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textSecondary)),
+                            const SizedBox(height: AppSpacing.sm),
+                            TextButton.icon(
                               onPressed: () {
                                 setState(() {
                                   _loading = true;
@@ -88,7 +98,8 @@ class _LegalPageScreenState extends ConsumerState<LegalPageScreen> {
                                 });
                                 _load();
                               },
-                              child: const Text('Thử lại'),
+                              icon: const Icon(Icons.refresh_rounded),
+                              label: const Text('Thử lại'),
                             ),
                           ],
                         ),
@@ -100,10 +111,12 @@ class _LegalPageScreenState extends ConsumerState<LegalPageScreen> {
                           _LegalIntro(
                             isPrivacy: widget.slug == 'privacy-policy',
                           ),
-                          const SizedBox(height: AppSpacing.md),
+                          const SizedBox(height: AppSpacing.lg),
                           AppSurfaceCard(
-                            padding: const EdgeInsets.fromLTRB(AppSpacing.md,
-                                AppSpacing.sm, AppSpacing.md, AppSpacing.lg),
+                            color: Colors.white,
+                            showBorder: false,
+                            padding: const EdgeInsets.fromLTRB(AppSpacing.lg,
+                                AppSpacing.md, AppSpacing.lg, AppSpacing.xl),
                             child: Html(
                               data: _content ?? '',
                               style: {
@@ -128,7 +141,12 @@ class _LegalPageScreenState extends ConsumerState<LegalPageScreen> {
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.textPrimary,
                                   lineHeight: LineHeight(1.3),
-                                  margin: Margins.only(top: 18, bottom: 7),
+                                  margin: Margins.only(top: 20, bottom: 8),
+                                  padding: HtmlPaddings.only(left: 10),
+                                  border: const Border(
+                                    left: BorderSide(
+                                        color: AppColors.primary, width: 3),
+                                  ),
                                 ),
                                 'h3': Style(
                                   fontSize: FontSize(AppFontSize.md),
@@ -144,6 +162,15 @@ class _LegalPageScreenState extends ConsumerState<LegalPageScreen> {
                                   margin: Margins.only(bottom: 7),
                                 ),
                                 'strong': Style(fontWeight: FontWeight.w800),
+                                'a': Style(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                'blockquote': Style(
+                                  backgroundColor: AppColors.primarySoft,
+                                  padding: HtmlPaddings.all(12),
+                                  margin: Margins.only(top: 8, bottom: 12),
+                                ),
                               },
                             ),
                           ),
@@ -163,45 +190,41 @@ class _LegalIntro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppSurfaceCard(
-      color: isPrivacy ? AppColors.infoSoft : AppColors.primarySoft,
-      showBorder: false,
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.72),
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          child: Icon(
-            isPrivacy ? Icons.privacy_tip_outlined : Icons.gavel_rounded,
-            color: isPrivacy ? AppColors.info : AppColors.primary,
-            size: 21,
-          ),
+    final color = isPrivacy ? AppColors.info : AppColors.primary;
+    return Column(children: [
+      Container(
+        width: 64,
+        height: 64,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(AppRadius.xl),
         ),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(
-              isPrivacy ? 'Bảo vệ thông tin của bạn' : 'Quy định sử dụng',
-              style: AppTextStyles.bodyStrong,
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              isPrivacy
-                  ? 'Thông tin về cách FlashShip thu thập, sử dụng và bảo vệ dữ liệu tài xế.'
-                  : 'Các quyền và trách nhiệm khi tài xế sử dụng dịch vụ FlashShip.',
-              style: const TextStyle(
-                fontSize: AppFontSize.sm,
-                height: 1.45,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ]),
+        child: Icon(
+          isPrivacy ? Icons.privacy_tip_rounded : Icons.gavel_rounded,
+          color: color,
+          size: 32,
         ),
-      ]),
-    );
+      ),
+      const SizedBox(height: AppSpacing.md),
+      Text(
+        isPrivacy ? 'Bảo vệ thông tin của bạn' : 'Quy định sử dụng',
+        textAlign: TextAlign.center,
+        style: AppTextStyles.screenTitle.copyWith(
+            fontSize: AppFontSize.xl2,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary),
+      ),
+      const SizedBox(height: 4),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+        child: Text(
+          isPrivacy
+              ? 'Thông tin về cách FlashShip thu thập, sử dụng và bảo vệ dữ liệu tài xế.'
+              : 'Các quyền và trách nhiệm khi tài xế sử dụng dịch vụ FlashShip.',
+          textAlign: TextAlign.center,
+          style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+        ),
+      ),
+    ]);
   }
 }

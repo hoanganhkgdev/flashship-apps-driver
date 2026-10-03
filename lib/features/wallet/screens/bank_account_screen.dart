@@ -128,9 +128,20 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
               AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xl3),
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            _BankStatusCard(hasBank: hasBank),
-            const SizedBox(height: AppSpacing.md),
+            ListenableBuilder(
+              listenable:
+                  Listenable.merge([_accountNumberCtrl, _accountNameCtrl]),
+              builder: (_, __) => _BankPreviewCard(
+                hasBank: hasBank,
+                bank: _selectedBank,
+                accountNumber: _accountNumberCtrl.text,
+                holder: _accountNameCtrl.text,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
             AppSurfaceCard(
+              color: Colors.white,
+              showBorder: false,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -156,15 +167,19 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
                       decoration: BoxDecoration(
                         color: AppColors.surfaceAlt,
                         borderRadius: BorderRadius.circular(AppRadius.md),
-                        border: Border.all(color: AppColors.divider),
+                        border: Border.all(
+                          color: _selectedBank != null
+                              ? AppColors.primary.withValues(alpha: 0.5)
+                              : AppColors.divider,
+                        ),
                       ),
                       child: Row(children: [
                         Container(
                           width: 34,
                           height: 34,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFE9E2),
-                            borderRadius: BorderRadius.circular(9),
+                            color: AppColors.primarySoft,
+                            borderRadius: BorderRadius.circular(10),
                           ),
                           alignment: Alignment.center,
                           child: _selectedBank?.logoUrl != null
@@ -193,13 +208,13 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
                                   ? FontWeight.w700
                                   : FontWeight.w500,
                               color: _selectedBank != null
-                                  ? const Color(0xFF1B1411)
-                                  : const Color(0xFFA99F9A),
+                                  ? AppColors.textPrimary
+                                  : AppColors.textTertiary,
                             ),
                           ),
                         ),
                         const Icon(Icons.keyboard_arrow_down_rounded,
-                            color: Color(0xFF1B1411)),
+                            color: AppColors.textSecondary),
                       ]),
                     ),
                   ),
@@ -213,7 +228,7 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
                     style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF1B1411)),
+                        color: AppColors.textPrimary),
                     decoration:
                         _inputDeco('Nhập số tài khoản', Icons.tag_rounded),
                   ),
@@ -228,7 +243,7 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
                     style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF1B1411)),
+                        color: AppColors.textPrimary),
                     decoration: _inputDeco(
                         'VD: NGUYEN VAN A', Icons.person_outline_rounded),
                   ),
@@ -258,13 +273,14 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
                   const SizedBox(height: AppSpacing.xl2),
                   SizedBox(
                     width: double.infinity,
-                    height: AppSize.buttonHeight,
+                    height: 52,
                     child: FilledButton(
                       onPressed: _saving ? null : _save,
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF6035),
+                        backgroundColor: AppColors.primary,
                         disabledBackgroundColor:
-                            const Color(0xFFFF6035).withValues(alpha: 0.5),
+                            AppColors.primary.withValues(alpha: 0.5),
+                        elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(AppRadius.md),
                         ),
@@ -291,23 +307,10 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
     );
   }
 
-  InputDecoration _inputDeco(String hint, IconData icon) => InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: Color(0xFFA99F9A), fontSize: 16),
-        prefixIcon: Icon(icon, size: 20, color: const Color(0xFF1B1411)),
-        filled: true,
-        fillColor: AppColors.surfaceAlt,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-        border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            borderSide: const BorderSide(color: AppColors.divider)),
-        enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            borderSide: const BorderSide(color: AppColors.divider)),
-        focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
+  InputDecoration _inputDeco(String hint, IconData icon) =>
+      appSheetInputDecoration(
+        hint: hint,
+        prefixIcon: Icon(icon, size: 20, color: AppColors.textSecondary),
       );
 
   void _hydrateBankForm(WalletState wallet, {bool notify = true}) {
@@ -332,57 +335,134 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
   }
 }
 
-class _BankStatusCard extends StatelessWidget {
+/// Thẻ ngân hàng xem trước: cập nhật trực tiếp khi tài xế chọn ngân hàng và
+/// nhập số tài khoản / tên chủ tài khoản.
+class _BankPreviewCard extends StatelessWidget {
   final bool hasBank;
+  final BankListItem? bank;
+  final String accountNumber;
+  final String holder;
 
-  const _BankStatusCard({required this.hasBank});
+  const _BankPreviewCard({
+    required this.hasBank,
+    required this.bank,
+    required this.accountNumber,
+    required this.holder,
+  });
+
+  String get _numberLabel {
+    final digits = accountNumber.replaceAll(RegExp(r'\s'), '');
+    if (digits.isEmpty) return '••••  ••••  ••••';
+    final buf = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && i % 4 == 0) buf.write('  ');
+      buf.write(digits[i]);
+    }
+    return buf.toString();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final color = hasBank ? AppColors.success : AppColors.warning;
-    final softColor = hasBank ? AppColors.successSoft : AppColors.warningSoft;
-
-    return AppSurfaceCard(
-      color: softColor,
-      showBorder: false,
-      child: Row(children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          child: Icon(
-            hasBank ? Icons.verified_rounded : Icons.account_balance_rounded,
-            color: color,
-            size: 22,
-          ),
+    final holderLabel = holder.trim().isEmpty
+        ? 'TÊN CHỦ TÀI KHOẢN'
+        : holder.trim().toUpperCase();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF2B2320), Color(0xFF4A3A33)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(
-              hasBank ? 'Đã liên kết ngân hàng' : 'Chưa liên kết ngân hàng',
-              style: const TextStyle(
-                fontSize: AppFontSize.base,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
-              ),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1B1411).withValues(alpha: 0.28),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(AppRadius.sm + 2),
             ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              hasBank
-                  ? 'Tài khoản này được dùng để nhận tiền rút từ ví.'
-                  : 'Thêm tài khoản để có thể rút số dư trong ví.',
-              style: const TextStyle(
-                fontSize: AppFontSize.sm,
-                height: 1.4,
-                color: AppColors.textSecondary,
-              ),
+            alignment: Alignment.center,
+            child: bank?.logoUrl != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: Image.network(bank!.logoUrl!,
+                        width: 28,
+                        height: 28,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const Icon(
+                            Icons.account_balance_rounded,
+                            size: 20,
+                            color: Colors.white)),
+                  )
+                : const Icon(Icons.account_balance_rounded,
+                    size: 20, color: Colors.white),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(bank?.name ?? 'Chưa chọn ngân hàng',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.bodyStrong.copyWith(color: Colors.white)),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: (hasBank ? AppColors.success : AppColors.warning)
+                  .withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(AppRadius.full),
             ),
-          ]),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(
+                  hasBank
+                      ? Icons.check_circle_rounded
+                      : Icons.info_outline_rounded,
+                  size: 13,
+                  color: Colors.white),
+              const SizedBox(width: 4),
+              Text(hasBank ? 'Đã liên kết' : 'Chưa liên kết',
+                  style: AppTextStyles.caption.copyWith(
+                      color: Colors.white, fontWeight: FontWeight.w800)),
+            ]),
+          ),
+        ]),
+        const SizedBox(height: AppSpacing.xl2),
+        Text(_numberLabel,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.metricLarge.copyWith(
+                color: Colors.white, fontSize: 24, letterSpacing: 1.5)),
+        const SizedBox(height: AppSpacing.lg),
+        Text('CHỦ TÀI KHOẢN',
+            style: AppTextStyles.caption.copyWith(
+                color: Colors.white.withValues(alpha: 0.6), letterSpacing: .8)),
+        const SizedBox(height: 2),
+        Text(holderLabel,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.bodyStrong.copyWith(
+                color: holder.trim().isEmpty
+                    ? Colors.white.withValues(alpha: 0.4)
+                    : Colors.white,
+                letterSpacing: 0.6)),
+        const SizedBox(height: AppSpacing.md),
+        Text(
+          hasBank
+              ? 'Tài khoản này được dùng để nhận tiền rút từ ví.'
+              : 'Thêm tài khoản để có thể rút số dư trong ví.',
+          style: AppTextStyles.label
+              .copyWith(color: Colors.white.withValues(alpha: 0.7)),
         ),
       ]),
     );
@@ -433,71 +513,48 @@ class _BankPickerSheetState extends State<_BankPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.67,
-      padding: const EdgeInsets.fromLTRB(0, 12, 0, 0),
+    final bottom = MediaQuery.of(context).padding.bottom;
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.7,
       child: Column(children: [
         const Padding(
-          padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          child: AppBottomSheetHeader(title: 'Chọn ngân hàng'),
+          padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+          child: AppBottomSheetHeader(
+            title: 'Chọn ngân hàng',
+            subtitle: 'Ngân hàng nhận tiền rút',
+            icon: Icons.account_balance_rounded,
+          ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpacing.lg),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: TextField(
-            controller: _searchCtrl,
-            onChanged: _filter,
-            style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1B1411)),
-            decoration: InputDecoration(
-              hintText: 'Tìm ngân hàng...',
-              hintStyle:
-                  const TextStyle(color: Color(0xFFA99F9A), fontSize: 16),
-              prefixIcon: const Icon(Icons.search_rounded,
-                  color: Color(0xFF1B1411), size: 21),
-              filled: true,
-              fillColor: const Color(0xFFFFF8F5),
-              contentPadding: const EdgeInsets.symmetric(vertical: 13),
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none),
-              enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none),
-              focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide:
-                      const BorderSide(color: Color(0xFFFF6035), width: 1.5)),
-            ),
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: AppSheetSearchField(
+              controller: _searchCtrl,
+              hint: 'Tìm ngân hàng...',
+              onChanged: _filter),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
         Expanded(
-          child: ListView.builder(
-            itemCount: _filtered.length,
-            itemBuilder: (_, i) {
-              final bank = _filtered[i];
-              final isSelected = widget.selected?.code == bank.code;
-              return ListTile(
-                minTileHeight: 58,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-                leading: _BankMark(bank: bank),
-                title: Text(bank.name,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF1B1411),
-                    )),
-                trailing: isSelected
-                    ? const Icon(Icons.check_circle_outline_rounded,
-                        color: Color(0xFF1B1411), size: 20)
-                    : null,
-                onTap: () => widget.onSelect(bank),
-              );
-            },
-          ),
+          child: _filtered.isEmpty
+              ? const Center(
+                  child: Text('Không tìm thấy ngân hàng',
+                      style: TextStyle(
+                          fontSize: AppFontSize.base,
+                          color: AppColors.textSecondary)),
+                )
+              : ListView.builder(
+                  padding: EdgeInsets.fromLTRB(12, 4, 12, bottom + 16),
+                  itemCount: _filtered.length,
+                  itemBuilder: (_, i) {
+                    final bank = _filtered[i];
+                    return AppSheetOption(
+                      leading: _BankMark(bank: bank),
+                      label: bank.name,
+                      selected: widget.selected?.code == bank.code,
+                      onTap: () => widget.onSelect(bank),
+                    );
+                  },
+                ),
         ),
       ]),
     );
@@ -523,12 +580,12 @@ class _BankMark extends StatelessWidget {
     final mark = code.length > 4 ? code.substring(0, 4) : code;
 
     return Container(
-      width: 36,
-      height: 36,
+      width: 40,
+      height: 40,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: palette.$1,
-        borderRadius: BorderRadius.circular(9),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         mark,

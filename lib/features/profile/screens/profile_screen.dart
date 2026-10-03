@@ -211,21 +211,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeOut,
             padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
-            child: Container(
+            child: ConstrainedBox(
               constraints: BoxConstraints(maxHeight: maxHeight),
-              decoration: const BoxDecoration(
-                color: Color(0xFFFFFEFD),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
               child: SingleChildScrollView(
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 padding:
                     EdgeInsets.fromLTRB(20, 12, 20, media.padding.bottom + 20),
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  const AppBottomSheetHeader(title: 'Thông tin phương tiện'),
-                  const SizedBox(height: 18),
+                  const AppBottomSheetHeader(
+                    title: 'Thông tin phương tiện',
+                    subtitle: 'Loại xe và biển số bạn đang chạy',
+                    icon: Icons.two_wheeler_rounded,
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
                   SegmentedButton<String>(
+                    showSelectedIcon: false,
+                    style: SegmentedButton.styleFrom(
+                      selectedBackgroundColor: AppColors.primary,
+                      selectedForegroundColor: Colors.white,
+                      side: const BorderSide(color: AppColors.divider),
+                    ),
                     segments: const [
                       ButtonSegment(
                           value: 'motorbike',
@@ -242,86 +248,76 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         : (value) =>
                             setSheetState(() => selectedType = value.first),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('Biển số xe',
+                        style: AppTextStyles.bodyStrong
+                            .copyWith(color: AppColors.textSecondary)),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
                   TextFormField(
                     initialValue: plateInput,
                     onChanged: (value) => plateInput = value,
                     enabled: !saving,
                     textCapitalization: TextCapitalization.characters,
                     maxLength: 20,
-                    decoration: InputDecoration(
-                      labelText: 'Biển số xe',
-                      hintText: 'Ví dụ: 68B1-123.45',
-                      counterText: '',
-                      prefixIcon: const Icon(Icons.pin_rounded),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14)),
-                    ),
+                    style: const TextStyle(
+                        fontSize: AppFontSize.md,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary),
+                    decoration: appSheetInputDecoration(
+                      hint: 'Ví dụ: 68B1-123.45',
+                      prefixIcon: const Icon(Icons.pin_rounded,
+                          size: 20, color: AppColors.textSecondary),
+                    ).copyWith(counterText: ''),
                   ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: FilledButton(
-                      onPressed: saving
-                          ? null
-                          : () async {
-                              final plate = plateInput.trim().toUpperCase();
-                              if (plate.isEmpty) {
-                                _toast(
-                                    sheetContext, 'Vui lòng nhập biển số xe');
-                                return;
-                              }
-                              setSheetState(() => saving = true);
-                              try {
-                                await ref.read(apiClientProvider).post(
-                                  '/driver/profile/update',
-                                  data: {
-                                    'vehicle_type': selectedType,
-                                    'license_plate': plate,
-                                  },
-                                );
-                                if (!mounted) return;
-                                setState(() {
-                                  _vehicleType = selectedType;
-                                  _licensePlate = plate;
-                                });
-                                await ref
-                                    .read(authProvider.notifier)
-                                    .refreshUser();
-                                if (!sheetContext.mounted) return;
-                                Navigator.pop(sheetContext);
-                                _toast(
-                                    context, 'Cập nhật phương tiện thành công',
-                                    success: true);
-                              } on DioException catch (e) {
-                                final data = e.response?.data;
-                                final message = data is Map
-                                    ? data['message'] as String?
-                                    : null;
-                                if (sheetContext.mounted) {
-                                  _toast(
-                                      sheetContext,
-                                      message ??
-                                          'Không thể cập nhật phương tiện');
-                                  setSheetState(() => saving = false);
-                                }
-                              } catch (_) {
-                                if (sheetContext.mounted) {
-                                  _toast(sheetContext,
-                                      'Không thể cập nhật phương tiện');
-                                  setSheetState(() => saving = false);
-                                }
-                              }
-                            },
-                      child: saving
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
-                          : const Text('Lưu thông tin'),
-                    ),
+                  const SizedBox(height: AppSpacing.xl),
+                  AppSheetButton(
+                    label: 'Lưu thông tin',
+                    loading: saving,
+                    onPressed: () async {
+                      final plate = plateInput.trim().toUpperCase();
+                      if (plate.isEmpty) {
+                        _toast(sheetContext, 'Vui lòng nhập biển số xe');
+                        return;
+                      }
+                      setSheetState(() => saving = true);
+                      try {
+                        await ref.read(apiClientProvider).post(
+                          '/driver/profile/update',
+                          data: {
+                            'vehicle_type': selectedType,
+                            'license_plate': plate,
+                          },
+                        );
+                        if (!mounted) return;
+                        setState(() {
+                          _vehicleType = selectedType;
+                          _licensePlate = plate;
+                        });
+                        await ref.read(authProvider.notifier).refreshUser();
+                        if (!sheetContext.mounted) return;
+                        Navigator.pop(sheetContext);
+                        _toast(context, 'Cập nhật phương tiện thành công',
+                            success: true);
+                      } on DioException catch (e) {
+                        final data = e.response?.data;
+                        final message =
+                            data is Map ? data['message'] as String? : null;
+                        if (sheetContext.mounted) {
+                          _toast(sheetContext,
+                              message ?? 'Không thể cập nhật phương tiện');
+                          setSheetState(() => saving = false);
+                        }
+                      } catch (_) {
+                        if (sheetContext.mounted) {
+                          _toast(
+                              sheetContext, 'Không thể cập nhật phương tiện');
+                          setSheetState(() => saving = false);
+                        }
+                      }
+                    },
                   ),
                 ]),
               ),
@@ -429,7 +425,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         onTap: _showVehicleEditor,
                       ),
                       const Divider(
-                          height: 1, indent: 56, color: Color(0xFFF5F5F5)),
+                          height: 1, indent: 64, color: AppColors.surfaceAlt),
                       SettingsRow(
                         icon: Icons.pin_rounded,
                         iconBg: AppColors.primary.withValues(alpha: 0.12),
@@ -477,7 +473,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         onTap: () => context.push('/wallet'),
                       ),
                       const Divider(
-                          height: 1, indent: 56, color: Color(0xFFF5F5F5)),
+                          height: 1, indent: 64, color: AppColors.surfaceAlt),
                       // Công nợ
                       SettingsRow(
                         icon: Icons.warning_amber_rounded,
@@ -490,7 +486,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 builder: (_) => const DebtScreen())),
                       ),
                       const Divider(
-                          height: 1, indent: 56, color: Color(0xFFF5F5F5)),
+                          height: 1, indent: 64, color: AppColors.surfaceAlt),
                       // Ngân hàng liên kết
                       SettingsRow(
                         icon: Icons.account_balance_rounded,
@@ -524,7 +520,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         onTap: () => context.push('/bank-account'),
                       ),
                       const Divider(
-                          height: 1, indent: 56, color: Color(0xFFF5F5F5)),
+                          height: 1, indent: 64, color: AppColors.surfaceAlt),
                       // Giới thiệu cửa hàng
                       SettingsRow(
                         icon: Icons.card_giftcard_rounded,
@@ -569,7 +565,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             context, 'privacy-policy', 'Chính sách bảo mật'),
                       ),
                       const Divider(
-                          height: 1, indent: 56, color: Color(0xFFF5F5F5)),
+                          height: 1, indent: 64, color: AppColors.surfaceAlt),
                       SettingsRow(
                         icon: Icons.description_outlined,
                         iconBg: AppColors.primary.withValues(alpha: 0.12),
@@ -579,7 +575,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             context, 'terms-of-service', 'Điều khoản sử dụng'),
                       ),
                       const Divider(
-                          height: 1, indent: 56, color: Color(0xFFF5F5F5)),
+                          height: 1, indent: 64, color: AppColors.surfaceAlt),
                       SettingsRow(
                         icon: Icons.info_outline_rounded,
                         iconBg: AppColors.primary.withValues(alpha: 0.12),
@@ -610,7 +606,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         onTap: () => _confirmLogout(context),
                       ),
                       const Divider(
-                          height: 1, indent: 56, color: Color(0xFFF5F5F5)),
+                          height: 1, indent: 64, color: AppColors.surfaceAlt),
                       SettingsRow(
                         icon: _deleteRequested
                             ? Icons.restore_rounded

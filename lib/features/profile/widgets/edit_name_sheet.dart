@@ -74,13 +74,23 @@ class _EditNameSheetState extends State<EditNameSheet> {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.fromLTRB(
-          24, 12, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+          20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 24),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         const AppBottomSheetHeader(
           title: 'Chỉnh sửa tên',
           subtitle: 'Tên chỉ được thay đổi một lần.',
+          icon: Icons.badge_outlined,
         ),
         const SizedBox(height: AppSpacing.xl),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: const Text('Họ và tên',
+              style: TextStyle(
+                  fontSize: AppFontSize.base,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary)),
+        ),
+        const SizedBox(height: AppSpacing.sm),
         TextField(
           controller: _ctrl,
           textCapitalization: TextCapitalization.words,
@@ -88,50 +98,14 @@ class _EditNameSheetState extends State<EditNameSheet> {
               fontSize: AppFontSize.md,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            hintText: 'Họ và tên',
-            hintStyle: const TextStyle(color: AppColors.textTertiary),
-            filled: true,
-            fillColor: AppColors.background,
-            contentPadding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg, vertical: AppSpacing.lg),
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15),
-                borderSide: const BorderSide(color: AppColors.divider)),
-            enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15),
-                borderSide: const BorderSide(color: AppColors.divider)),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(15),
-              borderSide:
-                  const BorderSide(color: AppColors.primary, width: 1.5),
-            ),
+          decoration: appSheetInputDecoration(
+            hint: 'Nguyễn Văn An',
+            prefixIcon: const Icon(Icons.person_outline_rounded,
+                size: 20, color: AppColors.textSecondary),
           ),
         ),
-        const SizedBox(height: AppSpacing.lg),
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: FilledButton(
-            onPressed: _saving ? null : _submit,
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5),
-              shape: const StadiumBorder(),
-            ),
-            child: _saving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
-                : const Text('Lưu',
-                    style: TextStyle(
-                        fontSize: AppFontSize.md,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white)),
-          ),
-        ),
+        const SizedBox(height: AppSpacing.xl),
+        AppSheetButton(label: 'Lưu', loading: _saving, onPressed: _submit),
       ]),
     );
   }

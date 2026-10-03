@@ -29,16 +29,15 @@ class KycSummaryCard extends StatelessWidget {
 
     return Material(
       color: Colors.transparent,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppRadius.card),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFFEFD),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE5DDD9)),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(AppRadius.card),
             boxShadow: AppShadows.soft,
           ),
           child:
@@ -98,7 +97,7 @@ class KycSummaryCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: steps / 2,
                 minHeight: 5,
-                backgroundColor: const Color(0xFFF0F0F0),
+                backgroundColor: AppColors.surfaceAlt,
                 valueColor: AlwaysStoppedAnimation<Color>(color),
               ),
             ),

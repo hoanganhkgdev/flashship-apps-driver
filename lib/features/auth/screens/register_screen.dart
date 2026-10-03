@@ -128,232 +128,225 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     const fieldFill = AppColors.surfaceAlt;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       resizeToAvoidBottomInset: false,
-      body: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(AppSpacing.xl2, safeT + AppSpacing.lg,
-            AppSpacing.xl2, bottom + safeB + AppSpacing.xl3),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            AuthBackButton(onTap: () => context.go('/login')),
-            const Center(child: AuthBrandHeader(compact: true)),
-            const SizedBox(height: AppSpacing.xl),
-            const _RegistrationProgress(),
-            const SizedBox(height: AppSpacing.xl),
-            const Text(
-              'Đăng ký tài xế',
-              style: TextStyle(
-                fontSize: AppFontSize.xl2,
-                height: 1.25,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.7,
-                color: AppColors.textPrimary,
+      body: AuthBackdrop(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(AppSpacing.xl2, safeT + AppSpacing.lg,
+              AppSpacing.xl2, bottom + safeB + AppSpacing.xl3),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AuthBackButton(onTap: () => context.go('/login')),
+              const SizedBox(height: AppSpacing.md),
+              Center(
+                child: Image.asset('assets/images/logo-vertical.png',
+                    width: 120, fit: BoxFit.contain),
               ),
-            ),
-            const SizedBox(height: 3),
-            const Text(
-              'Tham gia đội ngũ tài xế FlashShip',
-              style: TextStyle(
-                fontSize: AppFontSize.base,
-                height: 1.5,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textSecondary,
+              const SizedBox(height: AppSpacing.lg),
+              const _RegistrationProgress(),
+              const SizedBox(height: AppSpacing.xl),
+              const Center(
+                child: AuthHeader(
+                  title: 'Đăng ký tài xế',
+                  subtitle: 'Tham gia đội ngũ tài xế FlashShip',
+                  centered: true,
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _RegisterSection(
-                    title: 'THÔNG TIN CÁ NHÂN',
-                    children: [
-                      const _FieldLabel('Họ và tên'),
-                      const SizedBox(height: 6),
-                      AuthField(
-                        controller: _nameCtrl,
-                        hint: 'Nguyễn Văn An',
-                        prefixIcon: const Icon(Icons.person_outline_rounded,
-                            size: 21, color: AppColors.textPrimary),
-                        textCapitalization: TextCapitalization.words,
-                        textInputAction: TextInputAction.next,
-                        fillColor: fieldFill,
-                        borderSide: fieldBorder,
-                        borderRadius: 16,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 13),
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'Vui lòng nhập họ và tên'
-                            : null,
-                      ),
-                      const SizedBox(height: 14),
-                      const _FieldLabel('Số điện thoại'),
-                      const SizedBox(height: 6),
-                      AuthField(
-                        controller: _phoneCtrl,
-                        hint: '0912 345 678',
-                        prefixIcon: const Icon(Icons.phone_outlined,
-                            size: 21, color: AppColors.textPrimary),
-                        keyboardType: TextInputType.phone,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly
-                        ],
-                        textInputAction: TextInputAction.next,
-                        fillColor: fieldFill,
-                        borderSide: fieldBorder,
-                        borderRadius: 16,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 13),
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) {
-                            return 'Vui lòng nhập số điện thoại';
-                          }
-                          if (v.trim().length < 9) {
-                            return 'Số điện thoại không hợp lệ';
-                          }
-                          return null;
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  _RegisterSection(
-                    title: 'KHU VỰC HOẠT ĐỘNG',
-                    children: [
-                      const _FieldLabel('Thành phố'),
-                      const SizedBox(height: 6),
-                      CityPickerField(
-                        selected: _selectedCity,
-                        loading: _loadingCities,
-                        loadFailed: _citiesLoadFailed,
-                        hasError: _cityError,
-                        onTap: _openCitySheet,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  _RegisterSection(
-                    title: 'BẢO MẬT',
-                    children: [
-                      const _FieldLabel('Mật khẩu'),
-                      const SizedBox(height: 6),
-                      AuthField(
-                        controller: _passwordCtrl,
-                        hint: '••••••••',
-                        prefixIcon: const Icon(Icons.lock_outline_rounded,
-                            size: 20, color: AppColors.textPrimary),
-                        obscureText: _obscure,
-                        textInputAction: TextInputAction.next,
-                        suffixIcon: GestureDetector(
-                          onTap: () => setState(() => _obscure = !_obscure),
-                          child: Icon(
-                            _obscure
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                            size: 20,
-                            color: AppColors.textPrimary,
-                          ),
+              const SizedBox(height: AppSpacing.xl),
+              Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _RegisterSection(
+                      title: 'THÔNG TIN CÁ NHÂN',
+                      children: [
+                        const _FieldLabel('Họ và tên'),
+                        const SizedBox(height: 6),
+                        AuthField(
+                          controller: _nameCtrl,
+                          hint: 'Nguyễn Văn An',
+                          prefixIcon: const Icon(Icons.person_outline_rounded,
+                              size: 21, color: AppColors.textPrimary),
+                          textCapitalization: TextCapitalization.words,
+                          textInputAction: TextInputAction.next,
+                          fillColor: fieldFill,
+                          borderSide: fieldBorder,
+                          borderRadius: 16,
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 13),
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? 'Vui lòng nhập họ và tên'
+                              : null,
                         ),
-                        fillColor: fieldFill,
-                        borderSide: fieldBorder,
-                        borderRadius: 16,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 13),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) {
-                            return 'Vui lòng nhập mật khẩu';
-                          }
-                          if (v.length < 6) {
-                            return 'Mật khẩu phải tối thiểu 6 ký tự';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 14),
-                      const _FieldLabel('Xác nhận mật khẩu'),
-                      const SizedBox(height: 6),
-                      AuthField(
-                        controller: _confirmCtrl,
-                        hint: '••••••••',
-                        prefixIcon: const Icon(Icons.lock_outline_rounded,
-                            size: 20, color: AppColors.textPrimary),
-                        obscureText: _obscureConfirm,
-                        textInputAction: TextInputAction.done,
-                        onFieldSubmitted: (_) => _submit(),
-                        suffixIcon: GestureDetector(
-                          onTap: () => setState(
-                              () => _obscureConfirm = !_obscureConfirm),
-                          child: Icon(
-                            _obscureConfirm
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                            size: 20,
-                            color: AppColors.textPrimary,
-                          ),
+                        const SizedBox(height: 14),
+                        const _FieldLabel('Số điện thoại'),
+                        const SizedBox(height: 6),
+                        AuthField(
+                          controller: _phoneCtrl,
+                          hint: '0912 345 678',
+                          prefixIcon: const Icon(Icons.phone_outlined,
+                              size: 21, color: AppColors.textPrimary),
+                          keyboardType: TextInputType.phone,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
+                          textInputAction: TextInputAction.next,
+                          fillColor: fieldFill,
+                          borderSide: fieldBorder,
+                          borderRadius: 16,
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 13),
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) {
+                              return 'Vui lòng nhập số điện thoại';
+                            }
+                            if (v.trim().length < 9) {
+                              return 'Số điện thoại không hợp lệ';
+                            }
+                            return null;
+                          },
                         ),
-                        fillColor: fieldFill,
-                        borderSide: fieldBorder,
-                        borderRadius: 16,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 13),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) {
-                            return 'Vui lòng xác nhận mật khẩu';
-                          }
-                          if (v != _passwordCtrl.text) {
-                            return 'Mật khẩu không khớp';
-                          }
-                          return null;
-                        },
-                      ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    _RegisterSection(
+                      title: 'KHU VỰC HOẠT ĐỘNG',
+                      children: [
+                        const _FieldLabel('Thành phố'),
+                        const SizedBox(height: 6),
+                        CityPickerField(
+                          selected: _selectedCity,
+                          loading: _loadingCities,
+                          loadFailed: _citiesLoadFailed,
+                          hasError: _cityError,
+                          onTap: _openCitySheet,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    _RegisterSection(
+                      title: 'BẢO MẬT',
+                      children: [
+                        const _FieldLabel('Mật khẩu'),
+                        const SizedBox(height: 6),
+                        AuthField(
+                          controller: _passwordCtrl,
+                          hint: '••••••••',
+                          prefixIcon: const Icon(Icons.lock_outline_rounded,
+                              size: 20, color: AppColors.textPrimary),
+                          obscureText: _obscure,
+                          textInputAction: TextInputAction.next,
+                          suffixIcon: GestureDetector(
+                            onTap: () => setState(() => _obscure = !_obscure),
+                            child: Icon(
+                              _obscure
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              size: 20,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          fillColor: fieldFill,
+                          borderSide: fieldBorder,
+                          borderRadius: 16,
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 13),
+                          validator: (v) {
+                            if (v == null || v.isEmpty) {
+                              return 'Vui lòng nhập mật khẩu';
+                            }
+                            if (v.length < 6) {
+                              return 'Mật khẩu phải tối thiểu 6 ký tự';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        const _FieldLabel('Xác nhận mật khẩu'),
+                        const SizedBox(height: 6),
+                        AuthField(
+                          controller: _confirmCtrl,
+                          hint: '••••••••',
+                          prefixIcon: const Icon(Icons.lock_outline_rounded,
+                              size: 20, color: AppColors.textPrimary),
+                          obscureText: _obscureConfirm,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _submit(),
+                          suffixIcon: GestureDetector(
+                            onTap: () => setState(
+                                () => _obscureConfirm = !_obscureConfirm),
+                            child: Icon(
+                              _obscureConfirm
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              size: 20,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          fillColor: fieldFill,
+                          borderSide: fieldBorder,
+                          borderRadius: 16,
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 13),
+                          validator: (v) {
+                            if (v == null || v.isEmpty) {
+                              return 'Vui lòng xác nhận mật khẩu';
+                            }
+                            if (v != _passwordCtrl.text) {
+                              return 'Mật khẩu không khớp';
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+                    ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 14),
+                      AuthErrorBanner(message: _error!),
                     ],
-                  ),
-                  if (_error != null) ...[
-                    const SizedBox(height: 14),
-                    AuthErrorBanner(message: _error!),
                   ],
-                ],
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.xl2),
-            AuthPrimaryButton(
-              label: 'Gửi mã xác nhận',
-              loading: _submitting,
-              onPressed: _submit,
-              height: 52,
-              borderRadius: AppRadius.md,
-              color: AppColors.primary,
-              fontSize: 16,
-            ),
-            const SizedBox(height: 22),
-            Align(
-              alignment: Alignment.center,
-              child: GestureDetector(
-                onTap: () => context.go('/login'),
-                child: const Text.rich(
-                  TextSpan(
-                    text: 'Đã có tài khoản? ',
-                    children: [
-                      TextSpan(
-                        text: 'Đăng nhập',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w700,
+              const SizedBox(height: AppSpacing.xl2),
+              AuthPrimaryButton(
+                label: 'Gửi mã xác nhận',
+                loading: _submitting,
+                onPressed: _submit,
+                height: 52,
+                borderRadius: AppRadius.md,
+                color: AppColors.primary,
+                fontSize: 16,
+              ),
+              const SizedBox(height: 22),
+              Align(
+                alignment: Alignment.center,
+                child: GestureDetector(
+                  onTap: () => context.go('/login'),
+                  child: const Text.rich(
+                    TextSpan(
+                      text: 'Đã có tài khoản? ',
+                      children: [
+                        TextSpan(
+                          text: 'Đăng nhập',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  style: TextStyle(
-                    fontSize: AppFontSize.base,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w500,
+                      ],
+                    ),
+                    style: TextStyle(
+                      fontSize: AppFontSize.base,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -364,20 +357,39 @@ class _RegistrationProgress extends StatelessWidget {
   const _RegistrationProgress();
 
   @override
-  Widget build(BuildContext context) => Row(
-        children: [
-          Expanded(child: _bar(AppColors.primary)),
-          const SizedBox(width: 6),
-          Expanded(child: _bar(const Color(0xFFE2DDD9))),
-        ],
-      );
+  Widget build(BuildContext context) => const Column(children: [
+        Row(children: [
+          Expanded(child: _Step(label: 'Thông tin', active: true)),
+          SizedBox(width: 6),
+          Expanded(child: _Step(label: 'Xác thực OTP', active: false)),
+        ]),
+      ]);
+}
 
-  Widget _bar(Color color) => Container(
-        height: 5,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(3),
-        ),
+class _Step extends StatelessWidget {
+  final String label;
+  final bool active;
+  const _Step({required this.label, required this.active});
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 5,
+            decoration: BoxDecoration(
+              color: active ? AppColors.primary : AppColors.primarySoft,
+              borderRadius: BorderRadius.circular(AppRadius.full),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(label,
+              style: TextStyle(
+                fontSize: AppFontSize.sm,
+                fontWeight: FontWeight.w700,
+                color: active ? AppColors.primaryDark : AppColors.textTertiary,
+              )),
+        ],
       );
 }
 

@@ -16,14 +16,14 @@ class StreakCard extends StatelessWidget {
         : 'Đã đạt mốc thưởng cao nhất — cố lên nhé!';
 
     return ScoreSectionCard(
-      border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+      color: AppColors.primarySoft,
       child: Row(children: [
         Container(
           width: 46,
           height: 46,
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(13),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(AppRadius.md),
           ),
           child: const Icon(Icons.local_fire_department_rounded,
               color: AppColors.primary, size: 23),
@@ -100,14 +100,14 @@ class WeekCard extends StatelessWidget {
     }
 
     return ScoreSectionCard(
-      border: Border.all(color: color.withValues(alpha: 0.2)),
+      color: color.withValues(alpha: 0.1),
       child: Row(children: [
         Container(
           width: 46,
           height: 46,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(13),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(AppRadius.md),
           ),
           child: Icon(icon, color: color, size: 23),
         ),
@@ -129,20 +129,23 @@ class WeekCard extends StatelessWidget {
 
 class ScoreSectionCard extends StatelessWidget {
   final Widget child;
-  final Border? border;
+  final Color color;
   final EdgeInsetsGeometry? padding;
   const ScoreSectionCard(
-      {super.key, required this.child, this.border, this.padding});
+      {super.key,
+      required this.child,
+      this.color = Colors.white,
+      this.padding});
 
   @override
   Widget build(BuildContext context) => Container(
         width: double.infinity,
         padding: padding ?? const EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: color,
           borderRadius: BorderRadius.circular(AppRadius.card),
-          border: border ?? Border.all(color: AppColors.divider),
-          boxShadow: AppShadows.soft,
+          // Thẻ tô màu (thưởng/phạt/chuỗi) không cần bóng; thẻ trắng có bóng mềm.
+          boxShadow: color == Colors.white ? AppShadows.soft : null,
         ),
         child: child,
       );

@@ -29,7 +29,7 @@ class HistoryCard extends StatelessWidget {
           padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
           child: Text('Lịch sử điểm', style: AppTextStyles.sectionTitle),
         ),
-        const Divider(height: 1, color: Color(0xFFF5F5F5)),
+        const Divider(height: 1, color: AppColors.surfaceAlt),
         if (loading)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 32),
@@ -46,7 +46,7 @@ class HistoryCard extends StatelessWidget {
                   width: 54,
                   height: 54,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
+                    color: AppColors.surfaceAlt,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Icon(Icons.history_rounded,
@@ -62,7 +62,7 @@ class HistoryCard extends StatelessWidget {
         else ...[
           ..._buildGrouped(),
           if (hasMore || loadingMore) ...[
-            const Divider(height: 1, color: Color(0xFFF5F5F5)),
+            const Divider(height: 1, color: AppColors.surfaceAlt),
             loadingMore
                 ? const Padding(
                     padding: EdgeInsets.symmetric(vertical: 14),
@@ -127,8 +127,8 @@ class HistoryCard extends StatelessWidget {
                 ? 'Hôm qua'
                 : '${nextD.day}/${nextD.month}/${nextD.year}';
         if (nextGroup == group) {
-          widgets.add(
-              const Divider(height: 1, color: Color(0xFFF5F5F5), indent: 70));
+          widgets.add(const Divider(
+              height: 1, color: AppColors.surfaceAlt, indent: 70));
         }
       }
     }
@@ -142,12 +142,12 @@ class DateHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        color: const Color(0xFFFCF8F6),
+        color: AppColors.surfaceAlt,
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
         child: Text(label,
             style: const TextStyle(
                 fontSize: 12,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w800,
                 color: AppColors.textSecondary)),
       );
 }
@@ -176,7 +176,7 @@ class HistoryItem extends StatelessWidget {
           height: 40,
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(11),
+            borderRadius: BorderRadius.circular(AppRadius.sm + 2),
           ),
           child: Icon(
             isPos ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
@@ -213,7 +213,7 @@ class HistoryItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppRadius.full),
           ),
           child: Text('$sign${entry.delta}',
               style: TextStyle(

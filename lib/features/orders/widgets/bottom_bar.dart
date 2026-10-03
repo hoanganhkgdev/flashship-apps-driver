@@ -23,17 +23,18 @@ class BottomBar extends StatelessWidget {
     return Container(
       padding: EdgeInsets.fromLTRB(
         AppSpacing.lg,
-        AppSpacing.sm,
+        AppSpacing.lg,
         AppSpacing.lg,
         bottom + AppSpacing.md,
       ),
       decoration: const BoxDecoration(
-        color: AppColors.surface,
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         boxShadow: [
           BoxShadow(
-            color: Color(0x0F1B1411),
-            blurRadius: 14,
-            offset: Offset(0, -4),
+            color: Color(0x1F1B1411),
+            blurRadius: 24,
+            offset: Offset(0, -8),
           ),
         ],
       ),

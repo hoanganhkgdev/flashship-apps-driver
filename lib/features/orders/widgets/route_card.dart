@@ -188,7 +188,7 @@ class RouteStop extends StatelessWidget {
                       .copyWith(color: AppColors.textPrimary)),
             const SizedBox(height: 2),
             Text(address,
-                maxLines: 2,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.body
                     .copyWith(color: AppColors.textSecondary)),

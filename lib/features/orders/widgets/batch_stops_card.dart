@@ -158,7 +158,7 @@ class _BatchStopsCardState extends ConsumerState<BatchStopsCard> {
                               ? AppColors.textSecondary
                               : AppColors.textPrimary,
                         ),
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis),
                     if (phone.isNotEmpty)
                       GestureDetector(

@@ -122,6 +122,8 @@ class TopupCard extends StatelessWidget {
                     style: AppTextStyles.label.copyWith(color: color)),
                 const SizedBox(height: 3),
                 Text(order.pickupAddress,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.bodyStrong
                         .copyWith(color: AppColors.textPrimary)),
               ])),

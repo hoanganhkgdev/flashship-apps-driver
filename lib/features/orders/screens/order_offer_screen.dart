@@ -410,27 +410,32 @@ class _OfferStats extends StatelessWidget {
   Widget build(BuildContext context) {
     final distance = Fmt.distanceKm(
         order.pickupLat, order.pickupLng, order.deliveryLat, order.deliveryLng);
-    return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Expanded(
-        child: _Stat(
-          icon: Icons.account_balance_wallet_rounded,
-          color: order.isCod ? AppColors.primary : AppColors.success,
-          value: order.isCod
-              ? Fmt.currency(order.customerCollectionAmount)
-              : 'Trả trước',
-          label: order.isCod ? 'Tổng cần thu' : 'Đã thanh toán',
+    // Nằm trong SingleChildScrollView nên chiều cao không giới hạn — cần
+    // IntrinsicHeight để `stretch` có chiều cao cụ thể, nếu không layout lỗi
+    // và cả màn offer vỡ (nút hành động bị vẽ lên đầu, thân màn trống).
+    return IntrinsicHeight(
+      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Expanded(
+          child: _Stat(
+            icon: Icons.account_balance_wallet_rounded,
+            color: order.isCod ? AppColors.primary : AppColors.success,
+            value: order.isCod
+                ? Fmt.currency(order.customerCollectionAmount)
+                : 'Trả trước',
+            label: order.isCod ? 'Tổng cần thu' : 'Đã thanh toán',
+          ),
         ),
-      ),
-      const SizedBox(width: AppSpacing.md),
-      Expanded(
-        child: _Stat(
-          icon: Icons.route_rounded,
-          color: AppColors.secondary,
-          value: distance ?? '—',
-          label: 'Khoảng cách',
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: _Stat(
+            icon: Icons.route_rounded,
+            color: AppColors.secondary,
+            value: distance ?? '—',
+            label: 'Khoảng cách',
+          ),
         ),
-      ),
-    ]);
+      ]),
+    );
   }
 }
 

@@ -216,7 +216,7 @@ class _RouteStep extends StatelessWidget {
               if (address.isNotEmpty && address != title) ...[
                 const SizedBox(height: AppSpacing.xxs),
                 Text(address,
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.label
                         .copyWith(color: AppColors.textSecondary)),

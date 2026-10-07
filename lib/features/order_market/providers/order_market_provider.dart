@@ -56,24 +56,44 @@ class OrderMarketState {
 class OrderMarketNotifier extends StateNotifier<OrderMarketState> {
   final Ref _ref;
   StreamSubscription<DatabaseEvent>? _subscription;
+  Timer? _fallbackTimer;
+  int? _subscribedCityId;
   int _requestId = 0;
+  int _fallbackTicks = 0;
+  bool _fetching = false;
 
   OrderMarketNotifier(this._ref) : super(const OrderMarketState()) {
     final cityId = _ref.read(authProvider).user?.cityId;
-    if (cityId != null) {
-      _subscription = FirebaseDatabase.instance
-          .ref('order_market/city_$cityId')
-          .onValue
-          .listen((_) => fetch(silent: true), onError: (_) {});
-    }
+    if (cityId != null) _ensureRealtime(cityId);
+    // Firebase là luồng chính. Poll nhẹ là lưới an toàn khi máy vừa
+    // mất/kết nối lại hoặc Rules chưa kịp refresh token; không để
+    // tài xế phải vuốt tay mới thấy đơn.
+    _fallbackTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _fallbackTicks++;
+      if (state.enabled || _fallbackTicks % 3 == 0) fetch(silent: true);
+    });
     Future.microtask(fetch);
   }
 
+  void _ensureRealtime(int cityId) {
+    if (_subscribedCityId == cityId && _subscription != null) return;
+    _subscription?.cancel();
+    _subscribedCityId = cityId;
+    _subscription = FirebaseDatabase.instance
+        .ref('order_market/city_$cityId')
+        .onValue
+        .listen((_) => fetch(silent: true), onError: (_) {});
+  }
+
   Future<void> fetch({bool silent = false}) async {
+    if (_fetching) return;
+    _fetching = true;
     final requestId = ++_requestId;
     if (!silent) state = state.copyWith(loading: true, error: null);
     try {
       final response = await _ref.read(apiClientProvider).get('/orders/market');
+      final cityId = (response.data['city_id'] as num?)?.toInt();
+      if (cityId != null) _ensureRealtime(cityId);
       final raw = response.data['data'];
       final enabled = response.data['market_enabled'] == true ||
           response.data['market_enabled'] == 1;
@@ -99,6 +119,8 @@ class OrderMarketNotifier extends StateNotifier<OrderMarketState> {
       if (requestId == _requestId && !silent) {
         state = state.copyWith(loading: false, error: 'Không thể tải Chợ đơn');
       }
+    } finally {
+      _fetching = false;
     }
   }
 
@@ -125,6 +147,7 @@ class OrderMarketNotifier extends StateNotifier<OrderMarketState> {
 
   @override
   void dispose() {
+    _fallbackTimer?.cancel();
     _subscription?.cancel();
     super.dispose();
   }

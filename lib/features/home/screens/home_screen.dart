@@ -20,6 +20,7 @@ import '../../wallet/providers/wallet_provider.dart';
 import '../../orders/screens/history_screen.dart';
 import '../../wallet/screens/earnings_screen.dart';
 import '../../profile/screens/profile_screen.dart';
+import '../../order_market/screens/order_market_screen.dart';
 import 'dashboard_page.dart';
 
 Future<String?> _checkLocationIssue() async {
@@ -251,7 +252,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final tab = ref.watch(homeTabProvider);
     final pages = <Widget>[
       DashboardPage(
-          onGoToWallet: () => ref.read(homeTabProvider.notifier).state = 2),
+          onGoToWallet: () => ref.read(homeTabProvider.notifier).state = 3),
+      const OrderMarketScreen(),
       const HistoryScreen(),
       const EarningsScreen(),
       const ProfileScreen(),

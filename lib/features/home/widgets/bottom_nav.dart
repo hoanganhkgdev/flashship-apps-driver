@@ -21,6 +21,7 @@ class BottomNav extends StatelessWidget {
 
   static const _tabs = [
     NavItem(Icons.home_rounded, Icons.home_outlined, 'Trang chủ'),
+    NavItem(Icons.storefront_rounded, Icons.storefront_outlined, 'Chợ đơn'),
     NavItem(Icons.history_rounded, Icons.history_outlined, 'Lịch sử'),
     NavItem(Icons.payments_rounded, Icons.payments_outlined, 'Thu nhập'),
     NavItem(Icons.person_rounded, Icons.person_outline_rounded, 'Tài khoản'),

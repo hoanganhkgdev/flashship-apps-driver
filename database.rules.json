@@ -4,6 +4,12 @@
       "$driverKey": {
         ".write": "auth != null && auth.uid == ($driverKey + '_' + root.child('dispatch/' + $driverKey + '/session_device').val())"
       }
+    },
+    "order_market": {
+      "$cityKey": {
+        ".read": "auth != null && auth.uid.beginsWith('driver_')",
+        ".write": false
+      }
     }
   }
 }

@@ -3,6 +3,7 @@ class DriverModel {
   final String name;
   final String phone;
   final String? email;
+  final int? cityId;
   final bool isOnline;
   final DateTime? onlineSince;
   final double? latitude;
@@ -22,6 +23,7 @@ class DriverModel {
     required this.name,
     required this.phone,
     this.email,
+    this.cityId,
     required this.isOnline,
     this.onlineSince,
     this.latitude,
@@ -41,6 +43,7 @@ class DriverModel {
         name: j['name'] as String? ?? '',
         phone: j['phone'] as String? ?? '',
         email: j['email'] as String?,
+        cityId: (j['city_id'] as num?)?.toInt(),
         isOnline: j['is_online'] == true || j['is_online'] == 1,
         onlineSince: j['online_since'] != null
             ? DateTime.tryParse(j['online_since'] as String)
@@ -89,6 +92,7 @@ class DriverModel {
         name: name,
         phone: phone,
         email: email,
+        cityId: cityId,
         isOnline: isOnline ?? this.isOnline,
         onlineSince:
             clearOnlineSince ? null : (onlineSince ?? this.onlineSince),

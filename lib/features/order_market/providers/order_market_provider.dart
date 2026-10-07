@@ -12,6 +12,9 @@ import '../models/market_order.dart';
 class OrderMarketState {
   final List<MarketOrder> orders;
   final bool enabled;
+  final int? mainOrderId;
+  final int extrasRemaining;
+  final DateTime? sessionExpiresAt;
   final bool loading;
   final int? claimingId;
   final String? error;
@@ -19,6 +22,9 @@ class OrderMarketState {
   const OrderMarketState({
     this.orders = const [],
     this.enabled = false,
+    this.mainOrderId,
+    this.extrasRemaining = 0,
+    this.sessionExpiresAt,
     this.loading = false,
     this.claimingId,
     this.error,
@@ -27,6 +33,9 @@ class OrderMarketState {
   OrderMarketState copyWith({
     List<MarketOrder>? orders,
     bool? enabled,
+    int? mainOrderId,
+    int? extrasRemaining,
+    DateTime? sessionExpiresAt,
     bool? loading,
     int? claimingId,
     bool clearClaiming = false,
@@ -35,6 +44,9 @@ class OrderMarketState {
       OrderMarketState(
         orders: orders ?? this.orders,
         enabled: enabled ?? this.enabled,
+        mainOrderId: mainOrderId ?? this.mainOrderId,
+        extrasRemaining: extrasRemaining ?? this.extrasRemaining,
+        sessionExpiresAt: sessionExpiresAt ?? this.sessionExpiresAt,
         loading: loading ?? this.loading,
         claimingId: clearClaiming ? null : (claimingId ?? this.claimingId),
         error: error,
@@ -65,6 +77,7 @@ class OrderMarketNotifier extends StateNotifier<OrderMarketState> {
       final raw = response.data['data'];
       final enabled = response.data['market_enabled'] == true ||
           response.data['market_enabled'] == 1;
+      final session = response.data['bundle_session'] as Map?;
       final orders = raw is List
           ? raw
               .map((e) =>
@@ -72,7 +85,15 @@ class OrderMarketNotifier extends StateNotifier<OrderMarketState> {
               .toList()
           : <MarketOrder>[];
       if (requestId == _requestId) {
-        state = OrderMarketState(orders: orders, enabled: enabled);
+        state = OrderMarketState(
+          orders: orders,
+          enabled: enabled,
+          mainOrderId: (session?['main_order_id'] as num?)?.toInt(),
+          extrasRemaining: (session?['extras_remaining'] as num?)?.toInt() ?? 0,
+          sessionExpiresAt: session?['expires_at'] == null
+              ? null
+              : DateTime.tryParse(session!['expires_at'].toString()),
+        );
       }
     } catch (e) {
       if (requestId == _requestId && !silent) {

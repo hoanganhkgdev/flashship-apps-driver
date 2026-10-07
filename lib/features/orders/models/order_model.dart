@@ -5,6 +5,9 @@ class OrderModel {
   final String code;
   final String serviceType;
   final String status;
+  final String? driverOrderRole;
+  final int? mainOrderId;
+  final DateTime? bundleWindowExpiresAt;
   final String? pickupName;
   final String? pickupPlaceName;
   final String pickupAddress;
@@ -51,6 +54,9 @@ class OrderModel {
     required this.code,
     required this.serviceType,
     required this.status,
+    this.driverOrderRole,
+    this.mainOrderId,
+    this.bundleWindowExpiresAt,
     this.pickupName,
     this.pickupPlaceName,
     required this.pickupAddress,
@@ -94,6 +100,11 @@ class OrderModel {
         code: j['code'] as String? ?? j['order_code'] as String? ?? '',
         serviceType: j['service_type'] as String? ?? 'delivery',
         status: j['status'] as String? ?? 'pending',
+        driverOrderRole: j['driver_order_role'] as String?,
+        mainOrderId: (j['main_order_id'] as num?)?.toInt(),
+        bundleWindowExpiresAt: j['bundle_window_expires_at'] != null
+            ? DateTime.tryParse(j['bundle_window_expires_at'].toString())
+            : null,
         pickupName: (j['pickup_name'] as String?)?.isNotEmpty == true
             ? j['pickup_name'] as String
             : (j['sender_name'] as String?)?.isNotEmpty == true

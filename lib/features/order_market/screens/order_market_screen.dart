@@ -33,6 +33,27 @@ class OrderMarketScreen extends ConsumerWidget {
                         color: AppColors.textSecondary,
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    if (state.mainOrderId != null)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.primarySoft,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          'Phiên gom chuyến #${state.mainOrderId}: còn ${state.extrasRemaining} lượt nhận đơn phụ${state.sessionExpiresAt == null ? '' : ' · hết lúc ${TimeOfDay.fromDateTime(state.sessionExpiresAt!.toLocal()).format(context)}'}',
+                          style: AppTextStyles.bodyStrong
+                              .copyWith(color: AppColors.primaryDark),
+                        ),
+                      )
+                    else
+                      Text(
+                        'Nhận một offer chính để mở phiên gom chuyến.',
+                        style: AppTextStyles.label
+                            .copyWith(color: AppColors.textSecondary),
+                      ),
                   ],
                 ),
               ),

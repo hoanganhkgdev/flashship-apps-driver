@@ -79,9 +79,19 @@ class ActiveOrderCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.sectionTitle,
                 )),
-                if (isPriority && totalCount > 1) ...[
+                if (order.driverOrderRole != null) ...[
                   const SizedBox(width: AppSpacing.sm),
-                  const _StatusPill(label: 'Ưu tiên', color: AppColors.primary),
+                  _StatusPill(
+                    label: switch (order.driverOrderRole) {
+                      'main' => 'Đơn chính',
+                      'extra' => 'Đơn phụ',
+                      'manual' => 'Tổng đài gán',
+                      _ => 'Đơn',
+                    },
+                    color: order.driverOrderRole == 'main'
+                        ? AppColors.primary
+                        : AppColors.secondary,
+                  ),
                 ],
               ]),
               const SizedBox(height: AppSpacing.xxs),

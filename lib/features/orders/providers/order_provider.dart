@@ -8,7 +8,7 @@ import '../../../features/auth/providers/auth_provider.dart';
 import '../models/order_model.dart';
 
 class ActiveOrderState {
-  final List<OrderModel> orders; // tất cả đơn active (tối đa 2)
+  final List<OrderModel> orders; // tất cả đơn active (tối đa 3)
   final bool loading;
   final String? error;
   final bool isRestored;
@@ -152,7 +152,7 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
       final active = list
           .map((e) => OrderModel.fromJson(e as Map<String, dynamic>))
           .where((o) => o.isActive)
-          .take(2) // tối đa 2 đơn
+          .take(3) // tối đa 3 đơn
           .toList();
 
       if (requestId != _fetchRequestId || revisionAtStart != _stateRevision) {

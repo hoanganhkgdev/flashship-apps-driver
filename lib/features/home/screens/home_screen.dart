@@ -21,6 +21,7 @@ import '../../orders/screens/history_screen.dart';
 import '../../wallet/screens/earnings_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 import '../../order_market/screens/order_market_screen.dart';
+import '../../order_market/providers/order_market_provider.dart';
 import 'dashboard_page.dart';
 
 Future<String?> _checkLocationIssue() async {
@@ -250,14 +251,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final tab = ref.watch(homeTabProvider);
+    final marketEnabled =
+        ref.watch(orderMarketProvider.select((s) => s.enabled));
+    ref.listen<bool>(orderMarketProvider.select((s) => s.enabled),
+        (previous, next) {
+      if (previous != null && previous != next) {
+        ref.read(homeTabProvider.notifier).state = 0;
+      }
+    });
     final pages = <Widget>[
       DashboardPage(
-          onGoToWallet: () => ref.read(homeTabProvider.notifier).state = 3),
-      const OrderMarketScreen(),
+          onGoToWallet: () =>
+              ref.read(homeTabProvider.notifier).state = marketEnabled ? 3 : 2),
+      if (marketEnabled) const OrderMarketScreen(),
       const HistoryScreen(),
       const EarningsScreen(),
       const ProfileScreen(),
     ];
+    final effectiveTab = tab < pages.length ? tab : 0;
 
     return PopScope(
       canPop: false,
@@ -266,9 +277,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       },
       child: Scaffold(
         backgroundColor: AppColors.background,
-        body: IndexedStack(index: tab, children: pages),
+        body: IndexedStack(index: effectiveTab, children: pages),
         bottomNavigationBar: BottomNav(
-          currentIndex: tab,
+          currentIndex: effectiveTab,
+          showOrderMarket: marketEnabled,
           onTap: (i) => ref.read(homeTabProvider.notifier).state = i,
         ),
       ),

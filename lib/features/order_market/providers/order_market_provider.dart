@@ -11,12 +11,14 @@ import '../models/market_order.dart';
 
 class OrderMarketState {
   final List<MarketOrder> orders;
+  final bool enabled;
   final bool loading;
   final int? claimingId;
   final String? error;
 
   const OrderMarketState({
     this.orders = const [],
+    this.enabled = false,
     this.loading = false,
     this.claimingId,
     this.error,
@@ -24,6 +26,7 @@ class OrderMarketState {
 
   OrderMarketState copyWith({
     List<MarketOrder>? orders,
+    bool? enabled,
     bool? loading,
     int? claimingId,
     bool clearClaiming = false,
@@ -31,6 +34,7 @@ class OrderMarketState {
   }) =>
       OrderMarketState(
         orders: orders ?? this.orders,
+        enabled: enabled ?? this.enabled,
         loading: loading ?? this.loading,
         claimingId: clearClaiming ? null : (claimingId ?? this.claimingId),
         error: error,
@@ -59,6 +63,8 @@ class OrderMarketNotifier extends StateNotifier<OrderMarketState> {
     try {
       final response = await _ref.read(apiClientProvider).get('/orders/market');
       final raw = response.data['data'];
+      final enabled = response.data['market_enabled'] == true ||
+          response.data['market_enabled'] == 1;
       final orders = raw is List
           ? raw
               .map((e) =>
@@ -66,7 +72,7 @@ class OrderMarketNotifier extends StateNotifier<OrderMarketState> {
               .toList()
           : <MarketOrder>[];
       if (requestId == _requestId) {
-        state = OrderMarketState(orders: orders);
+        state = OrderMarketState(orders: orders, enabled: enabled);
       }
     } catch (e) {
       if (requestId == _requestId && !silent) {

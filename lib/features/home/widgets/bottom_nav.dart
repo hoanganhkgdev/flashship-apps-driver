@@ -13,19 +13,29 @@ class NavItem {
 class BottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
-  const BottomNav({super.key, required this.currentIndex, required this.onTap});
+  final bool showOrderMarket;
+  const BottomNav({
+    super.key,
+    required this.currentIndex,
+    required this.onTap,
+    this.showOrderMarket = false,
+  });
 
   // Scaffold tự chừa chiều cao thanh điều hướng. Các màn cuộn chỉ cần một
   // khoảng thở nhỏ ở cuối danh sách.
   static double reservedHeight(BuildContext context) => AppSpacing.sm;
 
-  static const _tabs = [
-    NavItem(Icons.home_rounded, Icons.home_outlined, 'Trang chủ'),
-    NavItem(Icons.storefront_rounded, Icons.storefront_outlined, 'Chợ đơn'),
-    NavItem(Icons.history_rounded, Icons.history_outlined, 'Lịch sử'),
-    NavItem(Icons.payments_rounded, Icons.payments_outlined, 'Thu nhập'),
-    NavItem(Icons.person_rounded, Icons.person_outline_rounded, 'Tài khoản'),
-  ];
+  List<NavItem> get _tabs => [
+        const NavItem(Icons.home_rounded, Icons.home_outlined, 'Trang chủ'),
+        if (showOrderMarket)
+          const NavItem(
+              Icons.storefront_rounded, Icons.storefront_outlined, 'Chợ đơn'),
+        const NavItem(Icons.history_rounded, Icons.history_outlined, 'Lịch sử'),
+        const NavItem(
+            Icons.payments_rounded, Icons.payments_outlined, 'Thu nhập'),
+        const NavItem(
+            Icons.person_rounded, Icons.person_outline_rounded, 'Tài khoản'),
+      ];
 
   @override
   Widget build(BuildContext context) {

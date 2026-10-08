@@ -50,7 +50,7 @@ class OrderMarketScreen extends ConsumerWidget {
                       )
                     else
                       Text(
-                        'Nhận một offer chính để mở phiên gom chuyến.',
+                        'Bạn đang rảnh: đơn đầu tiên nhận từ Chợ đơn sẽ trở thành đơn chính.',
                         style: AppTextStyles.label
                             .copyWith(color: AppColors.textSecondary),
                       ),

@@ -197,7 +197,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     await LocationPushService.instance.resume(user!.id);
     if (!mounted || ref.read(authProvider).user?.isOnline != true) return;
     OfferListenerService.instance.start(user.id);
-    await OfferListenerService.instance.ensureOfferVisible(user.id);
+    await NotificationService.reconcileOffer(ref, user.id);
   }
 
   Future<void> _fetchServiceLabels() => Fmt.ensureLabelsLoaded();

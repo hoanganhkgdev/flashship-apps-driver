@@ -73,12 +73,12 @@ int _offerTimeoutMs(Map<String, dynamic> data) {
 /// `OfferListenerService.ensureOfferVisible()` — đọc thẳng RTDB (nguồn dữ
 /// liệu đầy đủ) và tái dùng đúng logic điều hướng đã có, không tạo đường
 /// điều hướng thứ 2 chạy song song dễ lệch nhau.
-void _navigateToOfferFromNotification(
-    Map<String, dynamic> data, WidgetRef ref) {
+Future<void> _navigateToOfferFromNotification(
+    Map<String, dynamic> data, WidgetRef ref) async {
   if (data['type'] != 'order_offer') return;
   final driverId = ref.read(authProvider).user?.id;
   if (driverId == null) return;
-  OfferListenerService.instance.ensureOfferVisible(driverId);
+  await NotificationService.reconcileOffer(ref, driverId);
 }
 
 Future<void> _handleNotificationTap(
@@ -89,7 +89,7 @@ Future<void> _handleNotificationTap(
     if (orderCode.isNotEmpty) {
       await _localNotif.cancel(_offerNotificationId(orderCode));
     }
-    _navigateToOfferFromNotification(data, ref);
+    await _navigateToOfferFromNotification(data, ref);
     return;
   }
 
@@ -357,27 +357,24 @@ class NotificationService {
     _onMessageSub = FirebaseMessaging.onMessage.listen((msg) async {
       final type = msg.data['type'];
       if (type == 'order_offer') {
-        final orderId = int.tryParse('${msg.data['order_id'] ?? ''}');
         if (msg.data['ack_only'] == '1') {
-          if (orderId != null) {
-            await OfferAckService.received(
-              orderId,
-              receiptUrl: msg.data['receipt_url'],
-            );
-          }
+          // Ở foreground, silent wake-up không chứng minh banner đã hiện.
+          // Dựng offer qua API trước; OfferListener chỉ ACK sau khi thật sự
+          // điều hướng được tới màn hình.
+          final driverId = ref.read(authProvider).user?.id;
+          if (driverId != null) await reconcileOffer(ref, driverId);
           return;
         }
         // Foreground: RTDB listener tự mở màn offer; màn hình đó là nguồn
         // phát chuông duy nhất. Không tạo local notification/banner ở đây.
         // Khi app background, message đi qua firebaseBackgroundHandler và
         // handler đó mới tạo notification Android.
-        final data = msg.data;
-        if (orderId != null) {
-          await OfferAckService.received(
-            orderId,
-            receiptUrl: data['receipt_url'],
-          );
-        }
+        // RTDB có thể đang reconnect dù FCM đã tới. Đối chiếu API để offer
+        // vẫn mở ngay ở foreground. Không ACK trực tiếp tại đây: khi API/RTDB
+        // thật sự dựng được màn hình, OfferListenerService mới ACK; nếu cả hai
+        // kênh lỗi thì không được ghi nhận là tài xế đã nhìn thấy offer.
+        final driverId = ref.read(authProvider).user?.id;
+        if (driverId != null) await reconcileOffer(ref, driverId);
       } else if (type == 'order_status' || type == 'order_assigned_direct') {
         try {
           ref.read(activeOrderProvider.notifier).fetch();
@@ -474,6 +471,25 @@ class NotificationService {
 
   static void ensureOfferListener(int driverId) {
     OfferListenerService.instance.start(driverId);
+  }
+
+  /// Đối chiếu offer hiện tại với backend. Thành công thì API có quyền đóng
+  /// offer RTDB cũ hoặc dựng lại offer bị mất; lỗi mạng mới fallback sang
+  /// đọc RTDB để không làm gián đoạn luồng realtime đang chạy.
+  static Future<void> reconcileOffer(WidgetRef ref, int driverId) async {
+    try {
+      final response = await ref
+          .read(apiClientProvider)
+          .get('/orders/pending-offer')
+          .timeout(const Duration(seconds: 8));
+      final root = response.data;
+      final data = root is Map ? root['data'] : null;
+      final raw = data is Map ? (data['offer'] ?? data['order']) : null;
+      final offer = raw is Map ? Map<String, dynamic>.from(raw) : null;
+      OfferListenerService.instance.applyAuthoritativeOffer(offer);
+    } catch (_) {
+      await OfferListenerService.instance.ensureOfferVisible(driverId);
+    }
   }
 
   static Future<void> _refreshFcmToken(WidgetRef ref) async {

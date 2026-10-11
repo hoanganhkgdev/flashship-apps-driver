@@ -75,6 +75,13 @@ class OfferListenerService {
     }
   }
 
+  /// Áp dụng kết quả đối chiếu từ API. API là nguồn sự thật nghiệp vụ;
+  /// RTDB chỉ là kênh realtime nên có thể chậm hoặc còn node cũ khi cleanup
+  /// Firebase gặp lỗi. null nghĩa là backend xác nhận không còn offer.
+  void applyAuthoritativeOffer(Map<String, dynamic>? offer) {
+    _handleValue(offer);
+  }
+
   void _handleValue(Object? data) {
     if (data == null) {
       // Offer bị thu hồi (hết hạn / người khác nhận / khách huỷ)

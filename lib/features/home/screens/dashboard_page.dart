@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../core/services/location_push_service.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/services/offer_listener_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_status_banner.dart';
@@ -74,11 +75,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     if (state == AppLifecycleState.resumed) _loadAll();
   }
 
-  void _syncOnlineServices() {
+  Future<void> _syncOnlineServices() async {
     final driver = ref.read(authProvider).user;
     if (driver?.isOnline != true) return;
     OfferListenerService.instance.start(driver!.id);
     LocationPushService.instance.start(driver.id);
+    await NotificationService.reconcileOffer(ref, driver.id);
   }
 
   @override

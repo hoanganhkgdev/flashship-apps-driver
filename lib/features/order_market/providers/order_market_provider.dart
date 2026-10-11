@@ -128,12 +128,29 @@ class OrderMarketNotifier extends StateNotifier<OrderMarketState> {
     if (state.claimingId != null) return 'Hệ thống đang xử lý đơn khác.';
     state = state.copyWith(claimingId: orderId, error: null);
     try {
-      await _ref.read(apiClientProvider).post('/orders/$orderId/market/claim');
-      await Future.wait([
-        _ref.read(activeOrderProvider.notifier).fetch(),
-        fetch(silent: true),
-      ]);
-      state = state.copyWith(clearClaiming: true);
+      final response = await _ref
+          .read(apiClientProvider)
+          .post('/orders/$orderId/market/claim');
+
+      // POST thành công là kết quả có thẩm quyền. Dùng payload trả về để
+      // hiện đơn ngay; refresh sau đó chỉ là đối chiếu và không được đổi một
+      // lần nhận thành công thành thông báo lỗi nếu mạng vừa chập chờn.
+      final root = response.data;
+      final rawOrder = root is Map ? root['order'] : null;
+      var applied = false;
+      if (rawOrder is Map) {
+        applied = await _ref
+            .read(activeOrderProvider.notifier)
+            .upsertAssignedPayload(Map<String, dynamic>.from(rawOrder));
+      }
+      state = state.copyWith(
+        orders: state.orders.where((order) => order.id != orderId).toList(),
+        clearClaiming: true,
+      );
+      if (!applied) {
+        unawaited(_ref.read(activeOrderProvider.notifier).fetch());
+      }
+      unawaited(fetch(silent: true));
       return null;
     } on DioException catch (e) {
       await fetch(silent: true);

@@ -171,6 +171,27 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
     }
   }
 
+  /// Áp dụng ngay đơn đã được backend xác nhận giao cho tài xế. Dùng cho
+  /// Chợ đơn để một lỗi refresh xảy ra sau khi claim thành công không làm
+  /// app báo thất bại hoặc để màn hình thiếu đơn vừa nhận.
+  Future<bool> upsertAssignedPayload(Map<String, dynamic> payload) async {
+    try {
+      final order = OrderModel.fromJson(payload);
+      if (!order.isActive) return false;
+
+      _stateRevision++;
+      final updated = [
+        ...state.orders.where((item) => item.id != order.id),
+        order,
+      ].take(3).toList();
+      state = ActiveOrderState(orders: updated, isRestored: true);
+      await _persist(updated);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<String?> accept(int orderId, {OrderModel? fallback}) async {
     _stateRevision++;
     try {

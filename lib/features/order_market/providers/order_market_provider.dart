@@ -12,9 +12,6 @@ import '../models/market_order.dart';
 class OrderMarketState {
   final List<MarketOrder> orders;
   final bool enabled;
-  final int? mainOrderId;
-  final int extrasRemaining;
-  final DateTime? sessionExpiresAt;
   final bool loading;
   final int? claimingId;
   final String? error;
@@ -22,9 +19,6 @@ class OrderMarketState {
   const OrderMarketState({
     this.orders = const [],
     this.enabled = false,
-    this.mainOrderId,
-    this.extrasRemaining = 0,
-    this.sessionExpiresAt,
     this.loading = false,
     this.claimingId,
     this.error,
@@ -33,9 +27,6 @@ class OrderMarketState {
   OrderMarketState copyWith({
     List<MarketOrder>? orders,
     bool? enabled,
-    int? mainOrderId,
-    int? extrasRemaining,
-    DateTime? sessionExpiresAt,
     bool? loading,
     int? claimingId,
     bool clearClaiming = false,
@@ -44,9 +35,6 @@ class OrderMarketState {
       OrderMarketState(
         orders: orders ?? this.orders,
         enabled: enabled ?? this.enabled,
-        mainOrderId: mainOrderId ?? this.mainOrderId,
-        extrasRemaining: extrasRemaining ?? this.extrasRemaining,
-        sessionExpiresAt: sessionExpiresAt ?? this.sessionExpiresAt,
         loading: loading ?? this.loading,
         claimingId: clearClaiming ? null : (claimingId ?? this.claimingId),
         error: error,
@@ -70,9 +58,20 @@ class OrderMarketNotifier extends StateNotifier<OrderMarketState> {
     // tài xế phải vuốt tay mới thấy đơn.
     _fallbackTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       _fallbackTicks++;
+      _pruneExpired();
       if (state.enabled || _fallbackTicks % 3 == 0) fetch(silent: true);
     });
     Future.microtask(fetch);
+  }
+
+  void _pruneExpired() {
+    final now = DateTime.now();
+    final liveOrders = state.orders
+        .where((order) => order.expiresAt.isAfter(now))
+        .toList(growable: false);
+    if (liveOrders.length != state.orders.length) {
+      state = state.copyWith(orders: liveOrders);
+    }
   }
 
   void _ensureRealtime(int cityId) {
@@ -97,22 +96,18 @@ class OrderMarketNotifier extends StateNotifier<OrderMarketState> {
       final raw = response.data['data'];
       final enabled = response.data['market_enabled'] == true ||
           response.data['market_enabled'] == 1;
-      final session = response.data['bundle_session'] as Map?;
+      final now = DateTime.now();
       final orders = raw is List
           ? raw
               .map((e) =>
                   MarketOrder.fromJson(Map<String, dynamic>.from(e as Map)))
+              .where((order) => order.expiresAt.isAfter(now))
               .toList()
           : <MarketOrder>[];
       if (requestId == _requestId) {
         state = OrderMarketState(
           orders: orders,
           enabled: enabled,
-          mainOrderId: (session?['main_order_id'] as num?)?.toInt(),
-          extrasRemaining: (session?['extras_remaining'] as num?)?.toInt() ?? 0,
-          sessionExpiresAt: session?['expires_at'] == null
-              ? null
-              : DateTime.tryParse(session!['expires_at'].toString()),
         );
       }
     } catch (e) {

@@ -251,12 +251,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final tab = ref.watch(homeTabProvider);
+    final marketTabRequested = ref.watch(orderMarketTabRequestedProvider);
     final marketEnabled =
         ref.watch(orderMarketProvider.select((s) => s.enabled));
     ref.listen<bool>(orderMarketProvider.select((s) => s.enabled),
         (previous, next) {
       if (previous != null && previous != next) {
-        ref.read(homeTabProvider.notifier).state = 0;
+        if (next && ref.read(orderMarketTabRequestedProvider)) {
+          ref.read(homeTabProvider.notifier).state = 1;
+          ref.read(orderMarketTabRequestedProvider.notifier).state = false;
+        } else {
+          ref.read(homeTabProvider.notifier).state = 0;
+        }
       }
     });
     final pages = <Widget>[
@@ -268,7 +274,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       const EarningsScreen(),
       const ProfileScreen(),
     ];
-    final effectiveTab = tab < pages.length ? tab : 0;
+    // Trường hợp app đã biết marketEnabled trước khi HomeScreen được dựng
+    // (ví dụ bấm notification lúc app đang ở nền), mở đúng Chợ đơn ngay ở
+    // frame đầu và đồng bộ lại state sau frame để không ghi provider trong
+    // build.
+    final effectiveTab = marketTabRequested && marketEnabled
+        ? 1
+        : (tab < pages.length ? tab : 0);
+    if (marketTabRequested && marketEnabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(homeTabProvider.notifier).state = 1;
+        ref.read(orderMarketTabRequestedProvider.notifier).state = false;
+      });
+    }
 
     return PopScope(
       canPop: false,

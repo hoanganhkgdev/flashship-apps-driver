@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,11 +8,32 @@ import '../../../core/utils/formatters.dart';
 import '../models/market_order.dart';
 import '../providers/order_market_provider.dart';
 
-class OrderMarketScreen extends ConsumerWidget {
+class OrderMarketScreen extends ConsumerStatefulWidget {
   const OrderMarketScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OrderMarketScreen> createState() => _OrderMarketScreenState();
+}
+
+class _OrderMarketScreenState extends ConsumerState<OrderMarketScreen> {
+  Timer? _countdownTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(orderMarketProvider);
 
     return SafeArea(
@@ -28,32 +51,11 @@ class OrderMarketScreen extends ConsumerWidget {
                     Text('Chợ đơn', style: AppTextStyles.screenTitle),
                     const SizedBox(height: 6),
                     Text(
-                      'Đơn đã phát nhiều lần nhưng chưa có tài xế nhận. Ai bấm nhận trước sẽ được giao đơn.',
+                      'Các đơn mới phù hợp trong khu vực. Tài xế đang rảnh bấm nhận trước sẽ được giao đơn.',
                       style: AppTextStyles.body.copyWith(
                         color: AppColors.textSecondary,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    if (state.mainOrderId != null)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.primarySoft,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          'Phiên gom chuyến #${state.mainOrderId}: còn ${state.extrasRemaining} lượt nhận đơn phụ${state.sessionExpiresAt == null ? '' : ' · hết lúc ${TimeOfDay.fromDateTime(state.sessionExpiresAt!.toLocal()).format(context)}'}',
-                          style: AppTextStyles.bodyStrong
-                              .copyWith(color: AppColors.primaryDark),
-                        ),
-                      )
-                    else
-                      Text(
-                        'Bạn đang rảnh: đơn đầu tiên nhận từ Chợ đơn sẽ trở thành đơn chính.',
-                        style: AppTextStyles.label
-                            .copyWith(color: AppColors.textSecondary),
-                      ),
                   ],
                 ),
               ),
@@ -181,6 +183,7 @@ class _MarketCard extends StatelessWidget {
                 icon: Icons.location_on_rounded, text: order.deliveryAddress),
             const SizedBox(height: 12),
             Wrap(spacing: 8, runSpacing: 8, children: [
+              _ExpiryChip(order.expiresAt),
               _Chip(
                   '${order.pickupDistanceKm.toStringAsFixed(1)} km tới điểm lấy'),
               if (order.distance != null)
@@ -207,6 +210,21 @@ class _MarketCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _ExpiryChip extends StatelessWidget {
+  final DateTime expiresAt;
+  const _ExpiryChip(this.expiresAt);
+
+  @override
+  Widget build(BuildContext context) {
+    final seconds =
+        expiresAt.difference(DateTime.now()).inSeconds.clamp(0, 3599);
+    final label = seconds >= 60
+        ? 'Còn ${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}'
+        : 'Còn ${seconds}s';
+    return _Chip(label);
   }
 }
 

@@ -8,6 +8,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/home/providers/home_providers.dart';
+import '../../features/order_market/providers/order_market_provider.dart';
 import '../../features/orders/providers/order_provider.dart';
 import '../../features/wallet/providers/wallet_provider.dart';
 import '../router/app_router.dart';
@@ -116,6 +118,11 @@ Future<void> _handleNotificationTap(
     case 'order_status':
       await ref.read(activeOrderProvider.notifier).fetch();
       router.go('/home');
+      break;
+    case 'order_market':
+      ref.read(orderMarketTabRequestedProvider.notifier).state = true;
+      router.go('/home');
+      unawaited(ref.read(orderMarketProvider.notifier).fetch(silent: true));
       break;
     default:
       router.go('/home');
@@ -375,6 +382,13 @@ class NotificationService {
         // kênh lỗi thì không được ghi nhận là tài xế đã nhìn thấy offer.
         final driverId = ref.read(authProvider).user?.id;
         if (driverId != null) await reconcileOffer(ref, driverId);
+      } else if (type == 'order_market') {
+        // RTDB chỉ mang revision. FCM là kênh dự phòng độc lập: khi nhận được
+        // push lúc foreground, tải danh sách có thẩm quyền từ API ngay để
+        // tài xế không phải chờ nhịp poll hoặc tự kéo làm mới.
+        try {
+          await ref.read(orderMarketProvider.notifier).fetch(silent: true);
+        } catch (_) {}
       } else if (type == 'order_status' || type == 'order_assigned_direct') {
         try {
           ref.read(activeOrderProvider.notifier).fetch();

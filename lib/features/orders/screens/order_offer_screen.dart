@@ -33,6 +33,7 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   int _remaining = 30;
   int _totalDuration = 30;
+  late final int _decisionSeconds;
   int? _expiresAt;
   Timer? _timer;
   StreamSubscription<(int, int)>? _deadlineSub;
@@ -47,11 +48,15 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
   @override
   void initState() {
     super.initState();
+    _decisionSeconds =
+        ((widget.orderData['decision_seconds'] as num?)?.toInt() ?? 15)
+            .clamp(5, 180)
+            .toInt();
     _deadlineSub = OfferListenerService.instance.deadlines.listen((event) {
       if (event.$1 != widget.orderId || !mounted) return;
       if (event.$2 <= (_expiresAt ?? 0)) return;
       _expiresAt = event.$2;
-      _totalDuration = 30;
+      _totalDuration = _decisionSeconds;
       _viewSyncUntil = null;
       _syncRemainingWithServerDeadline();
     });
@@ -119,7 +124,7 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
   bool _accepting = false;
   bool _declining = false;
 
-  // Hiển thị ngay 30 giây trong lúc xác nhận, giữ riêng deadline server
+  // Hiển thị ngay khoảng quyết định trong lúc xác nhận, giữ riêng deadline server
   // để quay về hạn thật nếu quá thời gian đồng bộ hoặc gia hạn thất bại.
   void _markOfferViewed() {
     if (_viewedCalled) return;
@@ -130,10 +135,11 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
     // Cho request gia hạn đang chạy một khoảng đồng bộ hữu hạn. Không đóng
     // màn hình bằng deadline cũ trước khi nhận deadline mới từ server.
     _viewSyncUntil = DateTime.now().add(const Duration(seconds: 8));
-    _previewExpiresAt = DateTime.now().millisecondsSinceEpoch ~/ 1000 + 30;
+    _previewExpiresAt =
+        DateTime.now().millisecondsSinceEpoch ~/ 1000 + _decisionSeconds;
     setState(() {
-      _remaining = 30;
-      _totalDuration = 30;
+      _remaining = _decisionSeconds;
+      _totalDuration = _decisionSeconds;
     });
 
     // Backend xác nhận và trả deadline có thẩm quyền; không gia hạn lại
@@ -158,7 +164,7 @@ class _OrderOfferScreenState extends ConsumerState<OrderOfferScreen>
           raw is Map ? (raw['expires_at'] as num?)?.toInt() : null;
       if (expiresAt != null && mounted) {
         _expiresAt = expiresAt > (_expiresAt ?? 0) ? expiresAt : _expiresAt;
-        _totalDuration = 30;
+        _totalDuration = _decisionSeconds;
         _viewSyncUntil = null;
         _syncRemainingWithServerDeadline();
       } else if (mounted) {

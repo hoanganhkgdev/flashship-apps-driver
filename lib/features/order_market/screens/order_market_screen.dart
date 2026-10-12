@@ -51,7 +51,7 @@ class _OrderMarketScreenState extends ConsumerState<OrderMarketScreen> {
                     Text('Chợ đơn', style: AppTextStyles.screenTitle),
                     const SizedBox(height: 6),
                     Text(
-                      'Các đơn mới phù hợp trong khu vực. Tài xế đang rảnh bấm nhận trước sẽ được giao đơn.',
+                      'Các đơn mới phù hợp trong khu vực. Tài xế bấm nhận trước sẽ được giao đơn (tối đa 3 đơn cùng lúc).',
                       style: AppTextStyles.body.copyWith(
                         color: AppColors.textSecondary,
                       ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/api_error.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/launch_utils.dart';
 import '../../../core/widgets/app_section_header.dart';
@@ -57,9 +58,12 @@ class _BatchStopsCardState extends ConsumerState<BatchStopsCard> {
       if (isFinalStop) widget.onCompletionStateChanged?.call(false);
       if (mounted) {
         setState(() => _delivering.remove(seq));
+        // Hiện đúng lý do server trả về (vd. "cách điểm giao 1734 m, cần trong
+        // 1500 m", "cần giao các điểm trước theo thứ tự") thay vì báo chung.
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Không thể cập nhật điểm giao. Vui lòng thử lại.'),
+          SnackBar(
+            content: Text(parseApiError(e,
+                fallback: 'Không thể cập nhật điểm giao. Vui lòng thử lại.')),
             backgroundColor: AppColors.danger,
           ),
         );

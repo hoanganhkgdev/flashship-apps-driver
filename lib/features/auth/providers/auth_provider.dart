@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -9,7 +10,6 @@ import '../../../core/api/api_client.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/api_error.dart';
 import '../../../core/services/location_push_service.dart';
-import '../../../core/services/offer_listener_service.dart';
 import '../../../core/services/session_guard_service.dart';
 import '../models/driver_model.dart';
 
@@ -62,6 +62,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   bool _toggleInFlight = false;
   int _stateRevision = 0;
   int _refreshRequestId = 0;
+  Future<bool>? _firebaseAuthInFlight;
 
   Future<void> _restore() async {
     final prefs = await SharedPreferences.getInstance();
@@ -78,7 +79,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
         // trước đây KHÔNG BAO GIỜ ký nhập Firebase — tài xế cập nhật app rồi
         // mở lại (không logout/login) sẽ bị Security Rules chặn ghi GPS âm
         // thầm mãi mãi cho tới lần đăng nhập kế tiếp. Xem điều tra tài xế #107.
-        _reauthenticateFirebase(token, user.id);
+        ensureFirebaseAuthenticated(token: token, driverId: user.id);
+        // Cache từ các bản app cũ có thể chưa lưu city_id. Home vẫn mở được
+        // nhưng danh sách đơn không biết phải nghe nhánh city_X nào. Làm mới
+        // nền; orderMarketProvider đang watch cityId nên sẽ tự dựng lại ngay
+        // khi profile server trả về.
+        if (user.cityId == null) refreshUser();
         return;
       } catch (_) {}
     }
@@ -109,6 +115,30 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } catch (e) {
       debugPrint('[Auth] Khôi phục Firebase Auth thất bại: $e');
     }
+  }
+
+  /// Bảo đảm Firebase Auth đang dùng đúng UID của tài xế/thiết bị hiện tại.
+  /// Có thể gọi lại từ các tính năng RTDB sau một lần khôi phục phiên lỗi;
+  /// các lời gọi đồng thời dùng chung một request custom token.
+  Future<bool> ensureFirebaseAuthenticated({String? token, int? driverId}) {
+    final existing = _firebaseAuthInFlight;
+    if (existing != null) return existing;
+
+    final authToken = token ?? state.token;
+    final id = driverId ?? state.user?.id;
+    if (authToken == null || id == null) return Future.value(false);
+
+    final future = () async {
+      await _reauthenticateFirebase(authToken, id);
+      final deviceId = await SessionGuardService.getDeviceId();
+      return FirebaseAuth.instance.currentUser?.uid == 'driver_${id}_$deviceId';
+    }();
+    _firebaseAuthInFlight = future;
+    return future.whenComplete(() {
+      if (identical(_firebaseAuthInFlight, future)) {
+        _firebaseAuthInFlight = null;
+      }
+    });
   }
 
   // Returns: 'ok' | 'pending' | 'error'
@@ -145,29 +175,120 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> sendOtp(String phone) async {
+  // Xác minh số điện thoại bằng Firebase Phone Auth (SMS do Firebase gửi).
+  String? _verificationId;
+  int? _resendToken;
+
+  String _e164(String phone) {
+    final digits = phone.replaceAll(RegExp(r'\D'), '');
+    if (digits.startsWith('84')) return '+$digits';
+    return '+84${digits.startsWith('0') ? digits.substring(1) : digits}';
+  }
+
+  /// Gửi (hoặc gửi lại) mã SMS qua Firebase. [purpose] = 'register' hoặc
+  /// 'forgot_password' thì hỏi backend trước (không tốn SMS cho số không hợp
+  /// lệ); null cho đổi mật khẩu khi đã đăng nhập.
+  Future<bool> sendOtp(String phone, {String? purpose = 'register'}) async {
     state = state.copyWith(isLoading: true, error: null);
+    if (purpose != null) {
+      try {
+        await ApiClient(null).post('/auth/check-phone',
+            data: {'phone': phone, 'purpose': purpose});
+      } on DioException catch (e) {
+        state = state.copyWith(
+          isLoading: false,
+          error: parseApiError(e, fallback: 'Không thể gửi OTP'),
+        );
+        return false;
+      } catch (_) {
+        state = state.copyWith(
+            isLoading: false, error: 'Có lỗi xảy ra. Vui lòng thử lại.');
+        return false;
+      }
+    }
+
+    final completer = Completer<bool>();
     try {
-      final api = ApiClient(null);
-      await api.post('/auth/send-otp', data: {'phone': phone});
-      state = state.copyWith(isLoading: false);
-      return true;
-    } on DioException catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: parseApiError(e, fallback: 'Không thể gửi OTP'),
+      await FirebaseAuth.instance.verifyPhoneNumber(
+        phoneNumber: _e164(phone),
+        forceResendingToken: _resendToken,
+        timeout: const Duration(seconds: 60),
+        // Không tự đăng nhập khi Android đọc được SMS — luôn để tài xế nhập mã
+        // rồi lấy ID token ở confirmCode().
+        verificationCompleted: (_) {},
+        verificationFailed: (e) {
+          debugPrint('[PhoneAuth] ${e.code}: ${e.message}');
+          if (!completer.isCompleted) {
+            state =
+                state.copyWith(isLoading: false, error: _firebaseError(e.code));
+            completer.complete(false);
+          }
+        },
+        codeSent: (id, token) {
+          _verificationId = id;
+          _resendToken = token;
+          if (!completer.isCompleted) {
+            state = state.copyWith(isLoading: false);
+            completer.complete(true);
+          }
+        },
+        codeAutoRetrievalTimeout: (id) => _verificationId = id,
       );
-      return false;
     } catch (_) {
+      if (!completer.isCompleted) {
+        state = state.copyWith(
+            isLoading: false, error: 'Có lỗi xảy ra. Vui lòng thử lại.');
+        completer.complete(false);
+      }
+    }
+    return completer.future;
+  }
+
+  /// Kiểm tra mã SMS với Firebase, trả ID token để gửi lên backend (null nếu sai mã).
+  Future<String?> confirmCode(String code) async {
+    final id = _verificationId;
+    if (id == null) {
+      state = state.copyWith(error: 'Vui lòng gửi lại mã xác minh');
+      return null;
+    }
+    state = state.copyWith(isLoading: true, error: null);
+    // Tài xế đã đăng nhập (đổi mật khẩu) đang giữ phiên Firebase riêng để ghi
+    // GPS; đăng nhập bằng số điện thoại sẽ thay phiên đó nên phải ký lại sau.
+    final hadSession = state.token != null && state.user != null;
+    try {
+      final cred = await FirebaseAuth.instance.signInWithCredential(
+        PhoneAuthProvider.credential(verificationId: id, smsCode: code),
+      );
+      final token = await cred.user?.getIdToken();
+      await FirebaseAuth.instance.signOut();
+      if (hadSession) await ensureFirebaseAuthenticated();
+      state = state.copyWith(isLoading: false);
+      return token;
+    } on FirebaseAuthException catch (e) {
+      state = state.copyWith(isLoading: false, error: _firebaseError(e.code));
+      if (hadSession) await ensureFirebaseAuthenticated();
+      return null;
+    } catch (e) {
+      debugPrint('[PhoneAuth] confirmCode lỗi: $e');
       state = state.copyWith(
           isLoading: false, error: 'Có lỗi xảy ra. Vui lòng thử lại.');
-      return false;
+      if (hadSession) await ensureFirebaseAuthenticated();
+      return null;
     }
   }
 
+  String _firebaseError(String code) => switch (code) {
+        'invalid-verification-code' => 'Mã OTP không đúng',
+        'session-expired' => 'Mã OTP đã hết hạn, vui lòng gửi lại',
+        'too-many-requests' => 'Bạn thử quá nhiều lần, vui lòng thử lại sau',
+        'invalid-phone-number' => 'Số điện thoại không hợp lệ',
+        'network-request-failed' => 'Lỗi mạng, vui lòng thử lại',
+        _ => 'Không gửi được mã xác minh ($code), vui lòng thử lại',
+      };
+
   Future<bool> verifyOtpAndRegister({
     required String phone,
-    required String otp,
+    required String idToken,
     required String name,
     required String password,
     int? cityId,
@@ -179,7 +300,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final deviceId = await SessionGuardService.getDeviceId();
       final formData = FormData.fromMap({
         'phone': phone,
-        'otp': otp,
+        'id_token': idToken,
         'name': name,
         'password': password,
         'device_id': deviceId,
@@ -199,7 +320,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         error: parseApiError(e, fallback: 'Xác thực thất bại'),
       );
       return false;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[PhoneAuth] đăng ký lỗi: $e');
       state = state.copyWith(
           isLoading: false, error: 'Có lỗi xảy ra. Vui lòng thử lại.');
       return false;
@@ -258,7 +380,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
 
     LocationPushService.instance.stop();
-    OfferListenerService.instance.stop();
     SessionGuardService.instance.stop();
     if (uid != null) {
       FirebaseDatabase.instance.ref('locations/driver_$uid').remove().ignore();
@@ -292,12 +413,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
       name: name,
       phone: u.phone,
       email: u.email,
+      cityId: u.cityId,
       isOnline: u.isOnline,
       onlineSince: u.onlineSince,
       latitude: u.latitude,
       longitude: u.longitude,
       planType: u.planType,
       vehicleType: u.vehicleType,
+      hasCarLicense: u.hasCarLicense,
       licensePlate: u.licensePlate,
       balance: u.balance,
       profilePhotoUrl: u.profilePhotoUrl,
@@ -366,6 +489,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
           'name': user.name,
           'phone': user.phone,
           'email': user.email,
+          'city_id': user.cityId,
+          'has_car_license': user.hasCarLicense,
           'is_online': user.isOnline,
           'online_since': user.onlineSince?.toIso8601String(),
           'latitude': user.latitude,

@@ -62,3 +62,53 @@ class ShiftChangeRequestModel {
   bool get isApproved => status == 'approved';
   bool get isRejected => status == 'rejected';
 }
+
+/// Trạng thái Offline trong ca đang diễn ra (mỗi ca được Offline tối đa
+/// [limitSeconds], vượt quá bị phạt [penaltyAmount]).
+class ShiftOfflineStatus {
+  final String shiftName;
+  final int limitSeconds;
+  final int offlineSeconds;
+  final bool penalized;
+  final bool exempt;
+  final int penaltyAmount;
+  final DateTime measuredAt;
+  final DateTime shiftEndAt;
+
+  const ShiftOfflineStatus({
+    required this.shiftName,
+    required this.limitSeconds,
+    required this.offlineSeconds,
+    required this.penalized,
+    required this.exempt,
+    required this.penaltyAmount,
+    required this.measuredAt,
+    required this.shiftEndAt,
+  });
+
+  factory ShiftOfflineStatus.fromJson(Map<String, dynamic> j) =>
+      ShiftOfflineStatus(
+        shiftName: j['shift_name']?.toString() ?? '',
+        limitSeconds: (j['limit_seconds'] as num?)?.toInt() ?? 0,
+        offlineSeconds: (j['offline_seconds'] as num?)?.toInt() ?? 0,
+        penalized: j['penalized'] == true,
+        exempt: j['exempt'] == true,
+        penaltyAmount: (j['penalty_amount'] as num?)?.toInt() ?? 0,
+        measuredAt: DateTime.tryParse(j['measured_at']?.toString() ?? '') ??
+            DateTime.now(),
+        shiftEndAt: DateTime.tryParse(j['shift_end_at']?.toString() ?? '') ??
+            DateTime.now(),
+      );
+
+  /// Số giây Offline còn được phép tại thời điểm [now]. Lúc đang Offline thì
+  /// đếm ngược theo đồng hồ máy kể từ lúc server đo; lúc Online giữ nguyên.
+  int remainingSeconds({required bool isOnline, DateTime? now}) {
+    final t = now ?? DateTime.now();
+    final extra =
+        isOnline ? 0 : t.difference(measuredAt).inSeconds.clamp(0, 86400);
+    final left = limitSeconds - (offlineSeconds + extra);
+    return left < 0 ? 0 : left;
+  }
+
+  bool isActiveAt(DateTime now) => now.isBefore(shiftEndAt);
+}

@@ -66,11 +66,11 @@ class _CitySheetState extends State<CitySheet> {
       height: MediaQuery.of(context).size.height * 0.62,
       child: Column(
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
             child: AppBottomSheetHeader(
               title: 'Chọn khu vực',
-              subtitle: 'Khu vực bạn sẽ nhận đơn',
+              subtitle: '${widget.cities.length} khu vực đang hoạt động',
               icon: Icons.location_on_outlined,
             ),
           ),
@@ -83,11 +83,10 @@ class _CitySheetState extends State<CitySheet> {
           const SizedBox(height: AppSpacing.sm),
           Expanded(
             child: _filtered.isEmpty
-                ? const Center(
-                    child: Text('Không tìm thấy khu vực',
-                        style: TextStyle(
-                            fontSize: AppFontSize.base,
-                            color: AppColors.textSecondary)),
+                ? const AppSheetEmptyState(
+                    icon: Icons.location_off_outlined,
+                    title: 'Không tìm thấy khu vực',
+                    subtitle: 'Thử tìm bằng tên tỉnh hoặc thành phố khác.',
                   )
                 : ListView.builder(
                     padding: EdgeInsets.fromLTRB(12, 4, 12, bottom + 16),

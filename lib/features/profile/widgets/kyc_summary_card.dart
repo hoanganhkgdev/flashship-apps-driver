@@ -14,18 +14,13 @@ class KycSummaryCard extends StatelessWidget {
     required this.onTap,
   });
 
-  int get _steps {
-    int n = 0;
-    if (cccdStatus == 'approved') n++;
-    if (licenseStatus == 'approved') n++;
-    return n;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final steps = _steps;
-    final isDone = steps == 2;
-    final color = isDone ? AppColors.success : AppColors.primary;
+    // CCCD là điều kiện KYC bắt buộc. Bằng lái ô tô chỉ là giấy tờ bổ sung,
+    // không được làm tài khoản đang xác minh trở thành "chưa hoàn tất".
+    final isDone = cccdStatus == 'approved';
+    final accent = isDone ? AppColors.success : AppColors.primary;
+    final accentSoft = isDone ? AppColors.successSoft : AppColors.primarySoft;
 
     return Material(
       color: Colors.transparent,
@@ -33,108 +28,68 @@ class KycSummaryCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadius.card),
         onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(16),
+        child: Ink(
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(AppRadius.card),
-            boxShadow: AppShadows.soft,
+            border: Border.all(color: accent.withValues(alpha: .14)),
           ),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
+          child: Row(
+            children: [
               Container(
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(11),
+                  color: accentSoft,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Icon(
-                  isDone ? Icons.verified_user_rounded : Icons.shield_rounded,
-                  color: color,
+                  isDone ? Icons.verified_user_rounded : Icons.badge_rounded,
+                  color: accent,
                   size: 20,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Hồ sơ tài xế',
-                          style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary)),
-                      Text(
-                        isDone
-                            ? 'Hồ sơ đã hoàn thiện'
-                            : '$steps/2 mục đã hoàn thiện',
-                        style: const TextStyle(
-                            fontSize: 12, color: AppColors.textSecondary),
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Xác minh tài khoản',
+                      style: AppTextStyles.bodyStrong.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
                       ),
-                    ]),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isDone ? 'Đã xác minh' : 'Chưa hoàn tất',
+                      style: AppTextStyles.label.copyWith(
+                        color: isDone ? AppColors.success : AppColors.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                width: 30,
+                height: 30,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(20),
+                  color: accentSoft,
+                  shape: BoxShape.circle,
                 ),
-                child: Text('$steps/2',
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: color)),
+                child: Icon(
+                  Icons.arrow_forward_rounded,
+                  color: accent,
+                  size: 16,
+                ),
               ),
-              const SizedBox(width: 6),
-              const Icon(Icons.chevron_right_rounded,
-                  color: Color(0xFFD0D0D5), size: 20),
-            ]),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(3),
-              child: LinearProgressIndicator(
-                value: steps / 2,
-                minHeight: 5,
-                backgroundColor: AppColors.surfaceAlt,
-                valueColor: AlwaysStoppedAnimation<Color>(color),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              StepChip('CCCD', cccdStatus == 'approved'),
-              StepChip('Bằng lái', licenseStatus == 'approved'),
-            ]),
-          ]),
+            ],
+          ),
         ),
       ),
     );
-  }
-}
-
-class StepChip extends StatelessWidget {
-  final String label;
-  final bool done;
-  const StepChip(this.label, this.done, {super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = done ? AppColors.success : AppColors.textSecondary;
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(
-        done
-            ? Icons.check_circle_rounded
-            : Icons.radio_button_unchecked_rounded,
-        size: 13,
-        color: color,
-      ),
-      const SizedBox(width: 4),
-      Text(label,
-          style: TextStyle(
-              fontSize: 12,
-              fontWeight: done ? FontWeight.w600 : FontWeight.w400,
-              color: color)),
-    ]);
   }
 }

@@ -54,15 +54,19 @@ class DefaultFirebaseOptions {
     appId: '1:219581386028:android:a577b245c7395c69f27089',
     messagingSenderId: '219581386028',
     projectId: 'flashship-app',
+    databaseURL:
+        'https://flashship-app-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'flashship-app.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBiEyWGNhWj-sVJYmkfk_V5Y6wkNm5LJIA',
-    appId: '1:219581386028:ios:20fd513cdbfbe84ff27089',
+    appId: '1:219581386028:ios:765677605b0175b4f27089',
     messagingSenderId: '219581386028',
     projectId: 'flashship-app',
+    databaseURL:
+        'https://flashship-app-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'flashship-app.firebasestorage.app',
-    iosBundleId: 'vn.flashship.driver',
+    iosBundleId: 'com.flashship.driver',
   );
 }

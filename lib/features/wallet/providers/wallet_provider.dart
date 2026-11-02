@@ -13,6 +13,8 @@ class WalletState {
   final List<BankListItem> bankList;
   final List<DailyEarning> dailyEarnings;
   final bool dailyEarningsLoading;
+  final bool earningsSummaryLoading;
+  final bool earningsSummaryLoaded;
   final bool loading;
   // true nếu lần fetch gần nhất không lấy được số dư (lỗi mạng) — để phân
   // biệt với "số dư thật sự bằng 0", tránh tài xế hiểu nhầm.
@@ -29,6 +31,8 @@ class WalletState {
     this.bankList = const [],
     this.dailyEarnings = const [],
     this.dailyEarningsLoading = false,
+    this.earningsSummaryLoading = false,
+    this.earningsSummaryLoaded = false,
     this.loading = false,
     this.balanceError = false,
   });
@@ -44,6 +48,8 @@ class WalletState {
     List<BankListItem>? bankList,
     List<DailyEarning>? dailyEarnings,
     bool? dailyEarningsLoading,
+    bool? earningsSummaryLoading,
+    bool? earningsSummaryLoaded,
     bool? loading,
     bool? balanceError,
   }) =>
@@ -58,6 +64,10 @@ class WalletState {
         bankList: bankList ?? this.bankList,
         dailyEarnings: dailyEarnings ?? this.dailyEarnings,
         dailyEarningsLoading: dailyEarningsLoading ?? this.dailyEarningsLoading,
+        earningsSummaryLoading:
+            earningsSummaryLoading ?? this.earningsSummaryLoading,
+        earningsSummaryLoaded:
+            earningsSummaryLoaded ?? this.earningsSummaryLoaded,
         loading: loading ?? this.loading,
         balanceError: balanceError ?? this.balanceError,
       );
@@ -65,92 +75,126 @@ class WalletState {
 
 class WalletNotifier extends StateNotifier<WalletState> {
   final Ref _ref;
+  Future<void>? _fetchInFlight;
 
   WalletNotifier(this._ref) : super(const WalletState());
 
-  Future<void> fetch() async {
-    state = state.copyWith(loading: true);
+  Future<void> fetch() {
+    final inFlight = _fetchInFlight;
+    if (inFlight != null) return inFlight;
+
+    late final Future<void> request;
+    request = _fetch().whenComplete(() {
+      if (identical(_fetchInFlight, request)) _fetchInFlight = null;
+    });
+    _fetchInFlight = request;
+    return request;
+  }
+
+  Future<void> _fetch() async {
+    state = state.copyWith(
+      loading: true,
+      // Chỉ hiện skeleton ở lần tải đầu. Khi refresh, giữ nguyên số liệu cũ
+      // để card không nhấp nháy loading theo các API ví không liên quan.
+      earningsSummaryLoading: !state.earningsSummaryLoaded,
+    );
 
     // Chạy độc lập — 1 API lỗi không làm trắng toàn bộ ví
     int? balance;
     bool balanceFailed = false;
     List<dynamic>? txList;
     List<dynamic>? debtList;
-    Map<String, dynamic>? earningsData;
     Map<String, dynamic>? profileData;
     List<dynamic>? bankListRaw;
 
-    await Future.wait([
-      _ref.read(apiClientProvider).get('/wallet').then((r) {
-        final d = (r.data['data'] ?? r.data) as Map<String, dynamic>;
-        balance = (d['balance'] as num?)?.toInt() ?? 0;
-      }).catchError((_) {
-        balanceFailed = true;
-      }),
-      _ref.read(apiClientProvider).get('/wallet/transactions').then((r) {
-        final d = r.data['data'] ?? r.data;
-        txList = d is List ? d : <dynamic>[];
-      }).catchError((_) {}),
-      _ref.read(apiClientProvider).get('/debts').then((r) {
-        final d = r.data['data'] ?? r.data;
-        debtList = d is List ? d : <dynamic>[];
-      }).catchError((_) {}),
-      _ref.read(apiClientProvider).get('/earnings/summary').then((r) {
-        earningsData = (r.data['data'] ?? r.data) as Map<String, dynamic>;
-      }).catchError((_) {}),
-      _ref.read(apiClientProvider).get('/driver/profile').then((r) {
-        profileData = ((r.data['data'] ?? r.data)
-                as Map<String, dynamic>)['user'] as Map<String, dynamic>? ??
-            {};
-      }).catchError((_) {}),
-      _ref.read(apiClientProvider).get('/driver/bank-lists').then((r) {
-        final d = r.data['data'] ?? r.data;
-        bankListRaw = d is List ? d : <dynamic>[];
-      }).catchError((_) {}),
-    ]);
+    try {
+      await Future.wait([
+        _ref.read(apiClientProvider).get('/wallet').then((r) {
+          final d = (r.data['data'] ?? r.data) as Map<String, dynamic>;
+          balance = (d['balance'] as num?)?.toInt() ?? 0;
+        }).catchError((_) {
+          balanceFailed = true;
+        }),
+        _ref.read(apiClientProvider).get('/wallet/transactions').then((r) {
+          final d = r.data['data'] ?? r.data;
+          txList = d is List ? d : <dynamic>[];
+        }).catchError((_) {}),
+        _ref.read(apiClientProvider).get('/debts').then((r) {
+          final d = r.data['data'] ?? r.data;
+          debtList = d is List ? d : <dynamic>[];
+        }).catchError((_) {}),
+        _ref.read(apiClientProvider).get('/earnings/summary').then((r) {
+          final data = (r.data['data'] ?? r.data) as Map<String, dynamic>;
+          // Cập nhật ngay khi API thu nhập hoàn tất, không chờ 5 API ví còn
+          // lại. Nhờ vậy card Tổng thu nhập không bị giữ loading oan.
+          state = state.copyWith(
+            earningsToday: EarningsSummary.fromJson(
+                data['today'] as Map<String, dynamic>? ?? {}),
+            earningsWeekly: EarningsSummary.fromJson(
+                data['weekly'] as Map<String, dynamic>? ?? {}),
+            earningsMonthly: EarningsSummary.fromJson(
+                data['monthly'] as Map<String, dynamic>? ?? {}),
+            earningsSummaryLoading: false,
+            earningsSummaryLoaded: true,
+          );
+        }).catchError((_) {
+          state = state.copyWith(earningsSummaryLoading: false);
+        }),
+        _ref.read(apiClientProvider).get('/driver/profile').then((r) {
+          profileData = ((r.data['data'] ?? r.data)
+                  as Map<String, dynamic>)['user'] as Map<String, dynamic>? ??
+              {};
+        }).catchError((_) {}),
+        _ref.read(apiClientProvider).get('/driver/bank-lists').then((r) {
+          final d = r.data['data'] ?? r.data;
+          bankListRaw = d is List ? d : <dynamic>[];
+        }).catchError((_) {}),
+      ]);
 
-    state = WalletState(
-      balance: balance ?? state.balance,
-      transactions: txList != null
-          ? txList!
-              .map((e) => WalletTransaction.fromJson(e as Map<String, dynamic>))
-              .toList()
-          : state.transactions,
-      debts: debtList != null
-          ? debtList!
-              .map((e) => DriverDebt.fromJson(e as Map<String, dynamic>))
-              .where((d) => !d.isPaid)
-              .toList()
-          : state.debts,
-      earningsToday: earningsData != null
-          ? EarningsSummary.fromJson(
-              earningsData!['today'] as Map<String, dynamic>? ?? {})
-          : state.earningsToday,
-      earningsWeekly: earningsData != null
-          ? EarningsSummary.fromJson(
-              earningsData!['weekly'] as Map<String, dynamic>? ?? {})
-          : state.earningsWeekly,
-      earningsMonthly: earningsData != null
-          ? EarningsSummary.fromJson(
-              earningsData!['monthly'] as Map<String, dynamic>? ?? {})
-          : state.earningsMonthly,
-      bankAccount: profileData != null
-          ? BankAccount.fromJson(profileData!)
-          : state.bankAccount,
-      bankList: bankListRaw != null
-          ? bankListRaw!
-              .map((e) => BankListItem.fromJson(e as Map<String, dynamic>))
-              .toList()
-          : state.bankList,
-      // fetch() không đụng tới biểu đồ thu nhập theo ngày — giữ nguyên để
-      // tránh bị xoá mất khi refresh() gọi song song với fetchDailyEarnings().
-      dailyEarnings: state.dailyEarnings,
-      dailyEarningsLoading: state.dailyEarningsLoading,
-      balanceError: balanceFailed,
-    );
+      List<WalletTransaction>? transactions;
+      List<DriverDebt>? debts;
+      BankAccount? bankAccount;
+      List<BankListItem>? bankList;
+      try {
+        transactions = txList
+            ?.map((e) => WalletTransaction.fromJson(e as Map<String, dynamic>))
+            .toList();
+      } catch (_) {}
+      try {
+        debts = debtList
+            ?.map((e) => DriverDebt.fromJson(e as Map<String, dynamic>))
+            .where((d) => !d.isPaid)
+            .toList();
+      } catch (_) {}
+      try {
+        bankAccount =
+            profileData == null ? null : BankAccount.fromJson(profileData!);
+      } catch (_) {}
+      try {
+        bankList = bankListRaw
+            ?.map((e) => BankListItem.fromJson(e as Map<String, dynamic>))
+            .toList();
+      } catch (_) {}
 
-    if (balance != null) {
-      _ref.read(authProvider.notifier).updateBalance(balance!);
+      state = state.copyWith(
+        balance: balance,
+        transactions: transactions,
+        debts: debts,
+        bankAccount: bankAccount,
+        bankList: bankList,
+        balanceError: balanceFailed,
+      );
+
+      if (balance != null) {
+        _ref.read(authProvider.notifier).updateBalance(balance!);
+      }
+    } finally {
+      // Không để UI kẹt skeleton nếu API hoặc bước parse dữ liệu phát sinh
+      // lỗi ngoài dự kiến.
+      state = state.copyWith(
+        loading: false,
+        earningsSummaryLoading: false,
+      );
     }
   }
 

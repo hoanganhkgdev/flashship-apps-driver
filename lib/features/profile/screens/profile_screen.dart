@@ -9,19 +9,17 @@ import 'package:image_picker/image_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/app_root_header_title.dart';
-import '../../../core/widgets/app_bottom_sheet.dart';
-import '../../../core/utils/formatters.dart';
 import '../widgets/avatar_picker_sheet.dart';
-import '../widgets/balance_row.dart';
 import '../widgets/edit_name_sheet.dart';
 import '../widgets/kyc_summary_card.dart';
+import '../widgets/profile_finance_card.dart';
 import '../widgets/profile_header.dart';
-import '../widgets/profile_score_card.dart';
 import '../widgets/settings_section.dart';
+import '../widgets/work_schedule_card.dart';
 import 'change_password_screen.dart';
 import 'legal_page_screen.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../shifts/providers/shift_provider.dart';
 import '../../home/widgets/bottom_nav.dart';
 import '../../wallet/models/wallet_model.dart';
 import '../../wallet/screens/debt_screen.dart';
@@ -44,8 +42,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   String? _licenseStatus;
   String? _cccdImageStatus;
-  String? _vehicleType;
-  String? _licensePlate;
   bool _deleteRequested = false;
 
   int? _balance;
@@ -55,15 +51,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   int? _acceptanceRate;
   int? _completionRate;
-
-  int? _score;
-  int? _maxScore;
-  String? _scoreLabel;
-  int? _scoreBonusAt;
-  int? _scorePenaltyAt;
-  int? _scoreBonusAmt;
-  int? _scorePenaltyAmt;
-  int? _scoreStreak;
 
   List<DriverDebt> _debts = const [];
 
@@ -79,11 +66,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Future<void> _loadData() async {
     // Chạy độc lập — 1 API lỗi (vd /driver/stats timeout) không được làm
-    // trắng cả trang, kể cả khi profile/score đã lấy được bình thường.
+    // trắng cả trang, kể cả khi profile đã lấy được bình thường.
     Map<String, dynamic>? profileData;
     Map<String, dynamic>? statsData;
     Map<String, dynamic>? dashboardData;
-    Map<String, dynamic>? scoreData;
     List<dynamic>? debtsRaw;
 
     await Future.wait([
@@ -96,9 +82,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       }).catchError((_) {}),
       ref.read(apiClientProvider).get('/orders/dashboard').then((r) {
         dashboardData = (r.data['data'] ?? r.data) as Map<String, dynamic>?;
-      }).catchError((_) {}),
-      ref.read(apiClientProvider).get('/driver/score').then((r) {
-        scoreData = (r.data['data'] ?? r.data) as Map<String, dynamic>?;
       }).catchError((_) {}),
       ref.read(apiClientProvider).get('/debts').then((r) {
         final d = r.data['data'] ?? r.data;
@@ -114,8 +97,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           _photoUrl = p['profile_photo_url'] as String?;
           _licenseStatus = p['license_status'] as String?;
           _cccdImageStatus = p['cccd_image_status'] as String?;
-          _vehicleType = p['vehicle_type'] as String?;
-          _licensePlate = p['license_plate'] as String?;
           _balance = (p['balance'] as num?)?.toInt();
           _bankName = p['bank_name'] as String?;
           _bankAccount = p['bank_account'] as String?;
@@ -135,19 +116,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         if (dashboard != null) {
           _rating = (dashboard['rating'] as num?)?.toDouble();
         }
-        final sc = scoreData;
-        if (sc != null) {
-          _score = sc['score'] as int?;
-          _maxScore = sc['max_score'] as int?;
-          _scoreLabel = sc['label'] as String?;
-          final week = sc['week'] as Map<String, dynamic>?;
-          _scoreBonusAt = (week?['bonus_at'] as num?)?.toInt();
-          _scorePenaltyAt = (week?['penalty_at'] as num?)?.toInt();
-          _scoreBonusAmt = (week?['bonus_amount'] as num?)?.toInt();
-          _scorePenaltyAmt = (week?['penalty_amount'] as num?)?.toInt();
-          final streak = sc['streak'] as Map<String, dynamic>?;
-          _scoreStreak = (streak?['count'] as num?)?.toInt();
-        }
         if (debtsRaw != null) {
           _debts = debtsRaw!
               .map((e) => DriverDebt.fromJson(e as Map<String, dynamic>))
@@ -158,174 +126,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
-  // ── Công nợ trailing ──────────────────────────────────────────────────────
-
-  Widget? _debtTrailing() {
-    if (_debts.isEmpty) {
-      return const Text('Không có nợ',
-          style: TextStyle(fontSize: 12, color: AppColors.textTertiary));
-    }
-    final total = _debts.fold<int>(0, (s, d) => s + d.remaining);
-    final hasOverdue = _debts.any((d) => d.isOverdue);
-    if (hasOverdue) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: AppColors.dangerSoft,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: const Text('Cần thanh toán ngay',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: AppColors.danger,
-            )),
-      );
-    }
-    return Text(Fmt.currency(total),
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          color: AppColors.primary,
-        ));
-  }
-
-  Future<void> _showVehicleEditor() async {
-    var selectedType = _vehicleType ?? 'motorbike';
-    var saving = false;
-    var plateInput = _licensePlate ?? '';
-
-    await showAppBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (context, setSheetState) {
-          final media = MediaQuery.of(context);
-          final maxHeight = (media.size.height -
-                  media.viewInsets.bottom -
-                  media.padding.top -
-                  16)
-              .clamp(240.0, media.size.height * 0.9)
-              .toDouble();
-          return AnimatedPadding(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOut,
-            padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: maxHeight),
-              child: SingleChildScrollView(
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                padding:
-                    EdgeInsets.fromLTRB(20, 12, 20, media.padding.bottom + 20),
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  const AppBottomSheetHeader(
-                    title: 'Thông tin phương tiện',
-                    subtitle: 'Loại xe và biển số bạn đang chạy',
-                    icon: Icons.two_wheeler_rounded,
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  SegmentedButton<String>(
-                    showSelectedIcon: false,
-                    style: SegmentedButton.styleFrom(
-                      selectedBackgroundColor: AppColors.primary,
-                      selectedForegroundColor: Colors.white,
-                      side: const BorderSide(color: AppColors.divider),
-                    ),
-                    segments: const [
-                      ButtonSegment(
-                          value: 'motorbike',
-                          label: Text('Xe máy'),
-                          icon: Icon(Icons.two_wheeler_rounded)),
-                      ButtonSegment(
-                          value: 'car',
-                          label: Text('Ô tô'),
-                          icon: Icon(Icons.directions_car_rounded)),
-                    ],
-                    selected: {selectedType},
-                    onSelectionChanged: saving
-                        ? null
-                        : (value) =>
-                            setSheetState(() => selectedType = value.first),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text('Biển số xe',
-                        style: AppTextStyles.bodyStrong
-                            .copyWith(color: AppColors.textSecondary)),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  TextFormField(
-                    initialValue: plateInput,
-                    onChanged: (value) => plateInput = value,
-                    enabled: !saving,
-                    textCapitalization: TextCapitalization.characters,
-                    maxLength: 20,
-                    style: const TextStyle(
-                        fontSize: AppFontSize.md,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary),
-                    decoration: appSheetInputDecoration(
-                      hint: 'Ví dụ: 68B1-123.45',
-                      prefixIcon: const Icon(Icons.pin_rounded,
-                          size: 20, color: AppColors.textSecondary),
-                    ).copyWith(counterText: ''),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  AppSheetButton(
-                    label: 'Lưu thông tin',
-                    loading: saving,
-                    onPressed: () async {
-                      final plate = plateInput.trim().toUpperCase();
-                      if (plate.isEmpty) {
-                        _toast(sheetContext, 'Vui lòng nhập biển số xe');
-                        return;
-                      }
-                      setSheetState(() => saving = true);
-                      try {
-                        await ref.read(apiClientProvider).post(
-                          '/driver/profile/update',
-                          data: {
-                            'vehicle_type': selectedType,
-                            'license_plate': plate,
-                          },
-                        );
-                        if (!mounted) return;
-                        setState(() {
-                          _vehicleType = selectedType;
-                          _licensePlate = plate;
-                        });
-                        await ref.read(authProvider.notifier).refreshUser();
-                        if (!sheetContext.mounted) return;
-                        Navigator.pop(sheetContext);
-                        _toast(context, 'Cập nhật phương tiện thành công',
-                            success: true);
-                      } on DioException catch (e) {
-                        final data = e.response?.data;
-                        final message =
-                            data is Map ? data['message'] as String? : null;
-                        if (sheetContext.mounted) {
-                          _toast(sheetContext,
-                              message ?? 'Không thể cập nhật phương tiện');
-                          setSheetState(() => saving = false);
-                        }
-                      } catch (_) {
-                        if (sheetContext.mounted) {
-                          _toast(
-                              sheetContext, 'Không thể cập nhật phương tiện');
-                          setSheetState(() => saving = false);
-                        }
-                      }
-                    },
-                  ),
-                ]),
-              ),
-            ),
-          );
-        },
-      ),
-    );
+  String _currentShiftNames() {
+    final shiftState = ref.watch(shiftProvider);
+    return shiftState.shifts
+        .where((s) => shiftState.currentShiftIds.contains(s.id))
+        .map((s) => s.name)
+        .join(', ');
   }
 
   @override
@@ -343,7 +149,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       child: Scaffold(
         backgroundColor: AppColors.background,
         body: Column(children: [
-          const AppRootHeader(title: 'Tài khoản'),
+          const _ProfileScreenHeader(),
           Expanded(
             child: RefreshIndicator(
               color: AppColors.primary,
@@ -368,25 +174,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                   const SizedBox(height: 12),
 
-                  // ── Score card ────────────────────────────────────────────
-                  if (_score != null) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: ProfileScoreCard(
-                        score: _score!,
-                        maxScore: _maxScore ?? 140,
-                        label: _scoreLabel ?? '',
-                        bonusAt: _scoreBonusAt,
-                        penaltyAt: _scorePenaltyAt,
-                        bonusAmt: _scoreBonusAmt,
-                        penaltyAmt: _scorePenaltyAmt,
-                        streak: _scoreStreak,
-                        onTap: () => context.push('/score'),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-
                   // ── Hồ sơ tài xế ─────────────────────────────────────────
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -402,134 +189,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                   const SizedBox(height: 12),
 
-                  // ── Phương tiện ────────────────────────────────────────
-                  SettingsSection(
-                    header: 'Phương tiện',
-                    children: [
-                      SettingsRow(
-                        icon: _vehicleType == 'car'
-                            ? Icons.directions_car_rounded
-                            : Icons.two_wheeler_rounded,
-                        iconBg: AppColors.primary.withValues(alpha: 0.12),
-                        iconColor: AppColors.primary,
-                        label: 'Loại xe',
-                        trailing: Text(
-                          switch (_vehicleType) {
-                            'motorbike' => 'Xe máy',
-                            'car' => 'Ô tô',
-                            _ => 'Chưa cập nhật',
-                          },
-                          style: const TextStyle(
-                              fontSize: 14, color: AppColors.textSecondary),
-                        ),
-                        onTap: _showVehicleEditor,
-                      ),
-                      const Divider(
-                          height: 1, indent: 64, color: AppColors.surfaceAlt),
-                      SettingsRow(
-                        icon: Icons.pin_rounded,
-                        iconBg: AppColors.primary.withValues(alpha: 0.12),
-                        iconColor: AppColors.primary,
-                        label: 'Biển số xe',
-                        trailing: Text(
-                          _licensePlate?.trim().isNotEmpty == true
-                              ? _licensePlate!.toUpperCase()
-                              : 'Chưa cập nhật',
-                          style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary),
-                        ),
-                        onTap: _showVehicleEditor,
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-
                   // ── Lịch làm việc ────────────────────────────────────────
-                  SettingsSection(
-                    header: 'Lịch làm việc',
-                    children: [
-                      SettingsRow(
-                        icon: Icons.schedule_rounded,
-                        iconBg: AppColors.primary.withValues(alpha: 0.12),
-                        iconColor: AppColors.primary,
-                        label: 'Ca làm việc',
-                        onTap: () => context.push('/shifts'),
-                      ),
-                    ],
+                  WorkScheduleCard(
+                    currentShiftNames: _currentShiftNames(),
+                    onShiftTap: () => context.push('/shifts'),
+                    onLeaveTap: () => context.push('/leave-request'),
                   ),
 
                   const SizedBox(height: 12),
 
                   // ── Tài chính ────────────────────────────────────────────
-                  SettingsSection(
-                    header: 'Tài chính',
-                    children: [
-                      // Balance row
-                      BalanceRow(
-                        balance: _balance,
-                        onTap: () => context.push('/wallet'),
-                      ),
-                      const Divider(
-                          height: 1, indent: 64, color: AppColors.surfaceAlt),
-                      // Công nợ
-                      SettingsRow(
-                        icon: Icons.warning_amber_rounded,
-                        iconBg: AppColors.danger.withValues(alpha: 0.12),
-                        iconColor: AppColors.danger,
-                        label: 'Công nợ',
-                        trailing: _debtTrailing(),
-                        onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                                builder: (_) => const DebtScreen())),
-                      ),
-                      const Divider(
-                          height: 1, indent: 64, color: AppColors.surfaceAlt),
-                      // Ngân hàng liên kết
-                      SettingsRow(
-                        icon: Icons.account_balance_rounded,
-                        iconBg: AppColors.primary.withValues(alpha: 0.12),
-                        iconColor: AppColors.primary,
-                        label: 'Tài khoản ngân hàng',
-                        trailing: _bankName != null
-                            ? Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(_bankName!,
-                                      style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: AppColors.textSecondary)),
-                                  if (_bankAccount != null)
-                                    Text(
-                                      '••••${_bankAccount!.length > 4 ? _bankAccount!.substring(_bankAccount!.length - 4) : _bankAccount!}',
-                                      style: const TextStyle(
-                                          fontSize: 12,
-                                          color: AppColors.textSecondary),
-                                    ),
-                                ],
-                              )
-                            : Text('Chưa liên kết',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.danger
-                                        .withValues(alpha: 0.8))),
-                        onTap: () => context.push('/bank-account'),
-                      ),
-                      const Divider(
-                          height: 1, indent: 64, color: AppColors.surfaceAlt),
-                      // Giới thiệu cửa hàng
-                      SettingsRow(
-                        icon: Icons.card_giftcard_rounded,
-                        iconBg: AppColors.success.withValues(alpha: 0.12),
-                        iconColor: AppColors.success,
-                        label: 'Giới thiệu cửa hàng',
-                        onTap: () => context.push('/referral'),
-                      ),
-                    ],
+                  ProfileFinanceCard(
+                    balance: _balance ?? 0,
+                    debtAmount:
+                        _debts.fold<int>(0, (sum, d) => sum + d.remaining),
+                    hasOverdueDebt: _debts.any((d) => d.isOverdue),
+                    bankName: _bankName,
+                    bankAccount: _bankAccount,
+                    onWalletTap: () => context.push('/wallet'),
+                    onDebtTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const DebtScreen()),
+                    ),
+                    onBankTap: () => context.push('/bank-account'),
+                    onReferralTap: () => context.push('/referral'),
                   ),
 
                   const SizedBox(height: 12),
@@ -595,6 +277,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                   // ── Tài khoản ────────────────────────────────────────────
                   SettingsSection(
+                    header: 'Tài khoản',
                     children: [
                       SettingsRow(
                         icon: Icons.logout_rounded,
@@ -904,4 +587,73 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       backgroundColor: success ? AppColors.success : AppColors.danger,
     ));
   }
+}
+
+class _ProfileScreenHeader extends StatelessWidget {
+  const _ProfileScreenHeader();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          MediaQuery.paddingOf(context).top + 10,
+          AppSpacing.lg,
+          AppSpacing.md,
+        ),
+        decoration: const BoxDecoration(
+          color: AppColors.primarySoft,
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+          border: Border(bottom: BorderSide(color: Color(0xFFFFC9B3))),
+        ),
+        child: Row(children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text.rich(
+                  const TextSpan(children: [
+                    TextSpan(text: 'Tài '),
+                    TextSpan(
+                      text: 'khoản',
+                      style: TextStyle(color: AppColors.primary),
+                    ),
+                  ]),
+                  style: AppTextStyles.screenTitle.copyWith(
+                    fontSize: AppFontSize.xl2,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Row(children: [
+                  const Icon(Icons.tune_rounded,
+                      size: 14, color: AppColors.primary),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'Quản lý hồ sơ và thiết lập của bạn',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ]),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: .82),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: const Icon(Icons.person_outline_rounded,
+                size: 21, color: AppColors.primary),
+          ),
+        ]),
+      );
 }

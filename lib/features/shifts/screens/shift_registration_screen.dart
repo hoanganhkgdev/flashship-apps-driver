@@ -120,7 +120,10 @@ class _ShiftRegistrationScreenState
       ),
       child: Scaffold(
         backgroundColor: AppColors.background,
-        appBar: const AppScreenHeader(title: 'Ca làm việc'),
+        appBar: const AppScreenHeader(
+          title: 'Lịch làm việc',
+          backgroundColor: AppColors.primarySoft,
+        ),
         body: state.loading && state.shifts.isEmpty
             ? const Center(
                 child: CircularProgressIndicator(
@@ -142,40 +145,29 @@ class _ShiftRegistrationScreenState
                           if (isRegistered &&
                               state.currentShiftIds.isNotEmpty) ...[
                             Container(
-                              padding: const EdgeInsets.all(AppSpacing.lg),
+                              padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFF1F8A4C),
-                                    Color(0xFF34B368)
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
+                                color: AppColors.surface,
                                 borderRadius:
-                                    BorderRadius.circular(AppRadius.xl),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.success
-                                        .withValues(alpha: .28),
-                                    blurRadius: 24,
-                                    offset: const Offset(0, 10),
-                                  ),
-                                ],
+                                    BorderRadius.circular(AppRadius.card),
+                                border: Border.all(
+                                  color:
+                                      AppColors.success.withValues(alpha: .22),
+                                ),
                               ),
                               child: Row(children: [
                                 Container(
-                                  width: 48,
-                                  height: 48,
+                                  width: 42,
+                                  height: 42,
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: .22),
+                                    color: AppColors.successSoft,
                                     borderRadius:
                                         BorderRadius.circular(AppRadius.md),
                                   ),
                                   child: const Icon(
                                     Icons.event_available_rounded,
-                                    color: Colors.white,
-                                    size: 26,
+                                    color: AppColors.success,
+                                    size: 21,
                                   ),
                                 ),
                                 const SizedBox(width: AppSpacing.md),
@@ -184,24 +176,35 @@ class _ShiftRegistrationScreenState
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Text('CA ĐANG ÁP DỤNG',
+                                        Text('Ca đang áp dụng',
                                             style: AppTextStyles.caption
                                                 .copyWith(
-                                                    color:
-                                                        Colors.white.withValues(
-                                                            alpha: .85),
-                                                    letterSpacing: .8,
+                                                    color: AppColors.success,
                                                     fontWeight:
-                                                        FontWeight.w800)),
+                                                        FontWeight.w600)),
                                         const SizedBox(height: 2),
                                         Text(
                                           currentNames,
-                                          style: AppTextStyles.sectionTitle
-                                              .copyWith(
-                                                  color: Colors.white,
-                                                  fontSize: AppFontSize.lg),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style:
+                                              AppTextStyles.bodyStrong.copyWith(
+                                            color: AppColors.textPrimary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
                                       ]),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.successSoft,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.check_rounded,
+                                      size: 17, color: AppColors.success),
                                 ),
                               ]),
                             ),
@@ -217,17 +220,47 @@ class _ShiftRegistrationScreenState
                             RejectedBanner(request: state.changeRequest!),
                             const SizedBox(height: AppSpacing.lg),
                           ],
-                          Text(
-                            isRegistered ? 'Thay đổi ca' : 'Chọn ca làm việc',
-                            style: AppTextStyles.sectionTitle,
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            isRegistered
-                                ? 'Muốn đổi ca, chọn lại bên dưới rồi gửi yêu cầu để quản lý duyệt.'
-                                : 'Đăng ký ca phù hợp với bạn, áp dụng ngay và lặp lại mỗi ngày cho tới khi bạn đổi ca.',
-                            style: AppTextStyles.label
-                                .copyWith(color: AppColors.textSecondary),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 4,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.full),
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isRegistered
+                                          ? 'Thay đổi ca'
+                                          : 'Chọn ca làm việc',
+                                      style:
+                                          AppTextStyles.sectionTitle.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      isRegistered
+                                          ? 'Chọn ca mới và gửi yêu cầu để quản lý duyệt'
+                                          : 'Chọn ca phù hợp với thời gian của bạn',
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTextStyles.caption.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 14),
                           if (state.shifts.isEmpty && state.loadError)
@@ -288,19 +321,12 @@ class _ShiftRegistrationScreenState
             ? null
             : Container(
                 decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x1F1B1411),
-                      blurRadius: 24,
-                      offset: Offset(0, -8),
-                    ),
-                  ],
+                  color: AppColors.surface,
+                  border: Border(top: BorderSide(color: AppColors.divider)),
                 ),
                 padding: EdgeInsets.fromLTRB(
                     AppSpacing.lg,
-                    AppSpacing.lg,
+                    AppSpacing.md,
                     AppSpacing.lg,
                     MediaQuery.paddingOf(context).bottom + AppSpacing.md),
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -312,14 +338,16 @@ class _ShiftRegistrationScreenState
                       _selectedIds.isEmpty
                           ? 'Chưa chọn ca nào'
                           : 'Đã chọn ${_selectedIds.length} ca',
-                      style: AppTextStyles.bodyStrong
-                          .copyWith(color: AppColors.textSecondary),
+                      style: AppTextStyles.bodyStrong.copyWith(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ]),
                   const SizedBox(height: AppSpacing.md),
                   SizedBox(
                     width: double.infinity,
-                    height: 52,
+                    height: 48,
                     child: FilledButton(
                       onPressed: (canSubmit && !state.submitting)
                           ? () => _submit(isRegistered)
@@ -344,8 +372,10 @@ class _ShiftRegistrationScreenState
                                   : (isRegistered
                                       ? 'Gửi yêu cầu đổi ca'
                                       : 'Đăng ký ca làm việc'),
-                              style: AppTextStyles.sectionTitle
-                                  .copyWith(color: Colors.white),
+                              style: AppTextStyles.sectionTitle.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                     ),
                   ),

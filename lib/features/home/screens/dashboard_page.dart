@@ -6,35 +6,31 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../core/services/location_push_service.dart';
-import '../../../core/services/notification_service.dart';
-import '../../../core/services/offer_listener_service.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/app_status_banner.dart';
 import '../providers/home_providers.dart';
 import '../widgets/bottom_nav.dart';
 import '../widgets/dashboard_banners.dart';
 import '../widgets/dashboard_header.dart';
-import '../widgets/earnings_card.dart';
-import '../widgets/finance_card.dart';
-import '../widgets/score_card.dart';
-import '../widgets/shift_card.dart';
+import '../widgets/orders_tab_bar.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../orders/models/order_model.dart';
 import '../../orders/providers/order_provider.dart';
+import '../../order_market/providers/order_market_provider.dart';
+import '../../order_market/widgets/new_orders_section.dart';
+import '../../orders/widgets/completed_orders_sliver.dart';
 import '../../orders/widgets/history_active_order_card.dart';
+import '../../../core/widgets/empty_state.dart';
 import '../../wallet/providers/wallet_provider.dart';
 import '../../wallet/screens/debt_screen.dart';
 import '../../profile/screens/kyc_screen.dart';
-import '../../score/providers/score_provider.dart';
 import '../../shifts/providers/shift_provider.dart';
 import '../../shifts/screens/shift_registration_screen.dart';
 
 class DashboardPage extends ConsumerStatefulWidget {
-  final VoidCallback onGoToWallet;
-  const DashboardPage({super.key, required this.onGoToWallet});
+  const DashboardPage({super.key});
 
   @override
   ConsumerState<DashboardPage> createState() => _DashboardPageState();
@@ -42,30 +38,20 @@ class DashboardPage extends ConsumerStatefulWidget {
 
 class _DashboardPageState extends ConsumerState<DashboardPage>
     with WidgetsBindingObserver {
+  static const _onlineToggleCooldown = Duration(seconds: 5);
+
   bool _togglingOnline = false;
+  int _onlineToggleCooldownSeconds = 0;
+  final _scroll = ScrollController();
   Timer? _forceOfflineRetryTimer;
-  Map<String, dynamic> _stats = {};
-  int _todayEarnings = 0;
-  int _yesterdayEarnings = 0;
-  bool _statsLoadError = false;
-  bool _earningsLoadError = false;
-  bool _weeklyLoadError = false;
-  // 7 giá trị của tuần này (Thứ Hai → Chủ Nhật), lấy trực tiếp từ
-  // earnings/weekly — thu nhập đơn hàng thật theo ngày, không còn xấp xỉ từ
-  // giao dịch ví.
-  List<int> _last7Days = const [];
+  Timer? _onlineToggleCooldownTimer;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _scroll.addListener(_onScroll);
     _loadAll();
-    OfferListenerService.instance.onOfferDismissed =
-        () => ref.read(homeTabProvider.notifier).state = 0;
-    Future.microtask(() {
-      _syncOnlineServices();
-      final uid = ref.read(authProvider).user?.id;
-      if (uid != null) ref.read(scoreProvider.notifier).subscribeRTDB(uid);
-    });
+    Future.microtask(_syncOnlineServices);
   }
 
   @override
@@ -78,88 +64,80 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
   Future<void> _syncOnlineServices() async {
     final driver = ref.read(authProvider).user;
     if (driver?.isOnline != true) return;
-    OfferListenerService.instance.start(driver!.id);
-    LocationPushService.instance.start(driver.id);
-    await NotificationService.reconcileOffer(ref, driver.id);
+    await LocationPushService.instance.start(driver!.id);
+  }
+
+  void _onScroll() {
+    // Tab Hoàn thành tải thêm khi cuộn gần cuối danh sách.
+    if (ref.read(homeOrdersTabProvider) == 2 &&
+        _scroll.hasClients &&
+        _scroll.position.pixels >= _scroll.position.maxScrollExtent - 150) {
+      ref.read(orderHistoryProvider.notifier).fetch();
+    }
+  }
+
+  void _selectOrdersTab(int i) {
+    ref.read(homeOrdersTabProvider.notifier).state = i;
+    if (i == 2) {
+      ref.read(orderHistoryProvider.notifier).fetch(refresh: true);
+    }
+    if (_scroll.hasClients) _scroll.jumpTo(0);
+  }
+
+  Future<void> _refreshCurrentTab() {
+    switch (ref.read(homeOrdersTabProvider)) {
+      case 1:
+        return Future.wait([
+          _loadAll(),
+          ref.read(activeOrderProvider.notifier).fetch(),
+        ]);
+      case 2:
+        return ref.read(orderHistoryProvider.notifier).fetch(refresh: true);
+      default:
+        return Future.wait([
+          _loadAll(),
+          ref.read(orderMarketProvider.notifier).fetch(),
+        ]);
+    }
   }
 
   @override
   void dispose() {
+    _scroll.dispose();
     _forceOfflineRetryTimer?.cancel();
+    _onlineToggleCooldownTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
-    OfferListenerService.instance.onOfferDismissed = null;
     super.dispose();
   }
 
-  Future<void> _loadAll() => Future.wait([
-        _loadStats(),
-        _loadEarnings(),
-        _loadWeeklyEarnings(),
-        Future.microtask(() => ref.read(scoreProvider.notifier).fetch()),
-        Future.microtask(() => ref.read(shiftProvider.notifier).fetch()),
-      ]);
-
-  Future<void> _loadStats() async {
-    try {
-      final res = await ref.read(apiClientProvider).get('/orders/dashboard');
-      final data = (res.data['data'] ?? res.data) as Map<String, dynamic>;
-      if (mounted) {
-        setState(() {
-          _stats = data;
-          _statsLoadError = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _statsLoadError = true);
-    }
-  }
-
-  Future<void> _loadEarnings() async {
-    try {
-      final res = await ref.read(apiClientProvider).get('/earnings/summary');
-      final data = (res.data['data'] ?? res.data) as Map<String, dynamic>;
-      if (mounted) {
-        setState(() {
-          _todayEarnings = (data['today']?['total'] as num?)?.toInt() ?? 0;
-          _yesterdayEarnings =
-              (data['yesterday']?['total'] as num?)?.toInt() ?? 0;
-          _earningsLoadError = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _earningsLoadError = true);
-    }
-  }
-
-  Future<void> _loadWeeklyEarnings() async {
-    try {
-      final res = await ref.read(apiClientProvider).get('/earnings/weekly');
-      final list = (res.data['data'] ?? res.data) as List? ?? [];
-      final byDate = <String, int>{
-        for (final e in list)
-          (e as Map<String, dynamic>)['date'] as String:
-              ((e['total'] as num?) ?? 0).round(),
-      };
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      final monday = today.subtract(Duration(days: today.weekday - 1));
-      final values = List.generate(7, (i) {
-        final day = monday.add(Duration(days: i));
-        final key = '${day.year.toString().padLeft(4, '0')}-'
-            '${day.month.toString().padLeft(2, '0')}-'
-            '${day.day.toString().padLeft(2, '0')}';
-        return byDate[key] ?? 0;
+  void _startOnlineToggleCooldown() {
+    _onlineToggleCooldownTimer?.cancel();
+    if (mounted) {
+      setState(() {
+        _onlineToggleCooldownSeconds = _onlineToggleCooldown.inSeconds;
       });
-      if (mounted) {
-        setState(() {
-          _last7Days = values;
-          _weeklyLoadError = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _weeklyLoadError = true);
     }
+    _onlineToggleCooldownTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (timer) {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
+        setState(() {
+          _onlineToggleCooldownSeconds--;
+          if (_onlineToggleCooldownSeconds <= 0) {
+            _onlineToggleCooldownSeconds = 0;
+            timer.cancel();
+          }
+        });
+      },
+    );
   }
+
+  /// Ca đăng ký cần có sẵn để kiểm tra điều kiện Online.
+  Future<void> _loadAll() =>
+      Future.microtask(() => ref.read(shiftProvider.notifier).fetch());
 
   Future<bool> _ensureLocationPermission() async {
     // GPS service phải bật — nếu không tài xế online nhưng không push được
@@ -269,7 +247,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     // chờ tới lúc có phản hồi mới dừng thì stream vẫn kịp bắn 1 lần trong lúc
     // chờ mạng, ghi đè lên ngay sau lệnh xoá Firebase.
     LocationPushService.instance.stop();
-    OfferListenerService.instance.stop();
     try {
       final (nowOnline, onlineSince) = await _setOnlineStatus(false);
       await ref.read(authProvider.notifier).updateOnlineStatus(
@@ -319,7 +296,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     final driver = ref.read(authProvider).user;
     if (driver?.isOnline == true) {
       await LocationPushService.instance.start(driver!.id);
-      OfferListenerService.instance.start(driver.id);
     }
     _forceOfflineRetryTimer?.cancel();
     _forceOfflineRetryTimer = Timer(const Duration(seconds: 10), () {
@@ -330,7 +306,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
   Future<void> _toggleOnline() async {
     // Chặn gọi chồng — nếu không, có thể race với _forceOffline() (nợ vừa
     // quá hạn) hoặc 1 tap bị xử lý trễ, gây tắt/bật liên tiếp trong 1 giây.
-    if (_togglingOnline) return;
+    if (_togglingOnline || _onlineToggleCooldownSeconds > 0) return;
     final currentlyOnline = ref.read(authProvider).user?.isOnline ?? false;
     if (!currentlyOnline) {
       // Thứ tự chặn: CCCD → vị trí (GPS + quyền) → ca làm việc.
@@ -349,36 +325,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       if (!hasShift) {
         if (mounted) setState(() => _togglingOnline = false);
         return;
-      }
-      if (Platform.isAndroid && !await OfferOverlay.allowed()) {
-        if (!mounted) return;
-        final openSettings = await showDialog<bool>(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: const Text('Hiển thị thẻ đơn nổi'),
-            content: const Text(
-              'Cho phép Flash Driver hiển thị trên ứng dụng khác để thẻ đơn '
-              'và thời gian còn lại luôn dễ thấy khi bạn đang dùng ứng dụng khác. '
-              'Thẻ tự đóng khi hết hạn hoặc khi bạn mở app.\n\n'
-              'Trong Cài đặt, chọn Flash Driver và bật quyền hiển thị trên ứng dụng khác. '
-              'Nếu bỏ qua, bạn vẫn nhận thông báo trong khay.',
-            ),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.pop(dialogContext, false),
-                  child: const Text('Để sau')),
-              FilledButton(
-                  onPressed: () => Navigator.pop(dialogContext, true),
-                  child: const Text('Mở cài đặt')),
-            ],
-          ),
-        );
-        if (!mounted) return;
-        if (openSettings == true) {
-          await OfferOverlay.settings();
-          if (mounted) setState(() => _togglingOnline = false);
-          return;
-        }
       }
       if (await OfferOverlay.isXiaomi()) {
         if (!mounted) return;
@@ -443,9 +389,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       // đè lên đúng lúc lệnh xoá Firebase vừa chạy xong (thứ tự 2 request
       // mạng không đảm bảo) — marker "chớp lại" thay vì biến mất hẳn.
       LocationPushService.instance.stop();
-      OfferListenerService.instance.stop();
     }
     setState(() => _togglingOnline = true);
+    _startOnlineToggleCooldown();
     try {
       bool isOnline;
       DateTime? onlineSince;
@@ -463,7 +409,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         final uid = ref.read(authProvider).user?.id;
         if (uid != null) {
           LocationPushService.instance.start(uid);
-          OfferListenerService.instance.start(uid);
         }
       } else {
         // Đã dừng LocationPushService ở trên (trước khi gọi API) rồi — ở
@@ -489,10 +434,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         if (uid != null) {
           if (serverOnline == true) {
             LocationPushService.instance.start(uid);
-            OfferListenerService.instance.start(uid);
           } else {
             LocationPushService.instance.stop();
-            OfferListenerService.instance.stop();
             FirebaseDatabase.instance
                 .ref('locations/driver_$uid')
                 .remove()
@@ -531,6 +474,45 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     if (mounted) setState(() => _togglingOnline = false);
   }
 
+  Widget _receivedSliver(List<OrderModel> orders) {
+    if (orders.isEmpty) {
+      return SliverToBoxAdapter(
+        child: EmptyState(
+          icon: Icons.inventory_2_outlined,
+          iconColor: AppColors.primary.withValues(alpha: 0.45),
+          iconBgColor: AppColors.primary.withValues(alpha: 0.08),
+          circleSize: 76,
+          iconSize: 36,
+          title: 'Chưa nhận đơn nào',
+          titleFontSize: 16,
+          subtitle: 'Đơn bạn đã nhận và đang thực hiện sẽ hiện ở đây',
+        ),
+      );
+    }
+    return SliverList.separated(
+      itemCount: orders.length,
+      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
+      itemBuilder: (_, index) {
+        final card = ActiveOrderCard(
+          key: ValueKey(orders[index].id),
+          order: orders[index],
+          orderIndex: index,
+          totalCount: orders.length,
+          isPriority: index == 0,
+        );
+        if (index != 0) return card;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _ReceivedOrdersSummary(count: orders.length),
+            const SizedBox(height: AppSpacing.md),
+            card,
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Scaffold dùng extendBody: true (cho hiệu ứng kính mờ ở BottomNav) nên
@@ -539,14 +521,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     final navClearance = BottomNav.reservedHeight(context);
     final user = ref.watch(authProvider).user;
     final wallet = ref.watch(walletProvider);
-    final scoreState = ref.watch(scoreProvider);
     final isOnline = user?.isOnline ?? false;
     final notifDenied = ref.watch(notifDeniedProvider);
     final locationIssue = ref.watch(locationIssueProvider);
-    final shiftState = ref.watch(shiftProvider);
     final activeOrders = ref.watch(activeOrderProvider).orders;
-    final dashboardDataError =
-        _statsLoadError || _earningsLoadError || _weeklyLoadError;
+    final ordersTab = ref.watch(homeOrdersTabProvider);
+    final newOrderCount =
+        ref.watch(orderMarketProvider.select((s) => s.orders.length));
 
     ref.listen<WalletState>(walletProvider, (prev, next) {
       final hadOverdue = prev?.debts.any((d) => d.isOverdue) ?? false;
@@ -570,12 +551,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     final hasOverdueDebt = wallet.debts.any((d) => d.isOverdue);
     // Công nợ = tổng còn lại (amount - đã trả) của các khoản chưa tất toán,
     // lấy từ walletProvider (cùng nguồn với banner & màn công nợ).
-    final debtPending = wallet.debts.fold<int>(0, (s, d) => s + d.remaining);
-    final debtCount = wallet.debts.length;
-
-    final todayOrders = ((_stats['today_orders'] as num?) ?? 0).toInt();
-    final rating = (_stats['rating'] as num?)?.toDouble() ?? 0.0;
-    final ratingCount = ((_stats['rating_count'] as num?) ?? 0).toInt();
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -591,124 +566,71 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
             user: user,
             isOnline: isOnline,
             toggling: _togglingOnline,
+            toggleCooldownSeconds: _onlineToggleCooldownSeconds,
             locked: hasOverdueDebt,
             locationIssue: locationIssue,
+            todayEarnings: wallet.earningsToday.total,
+            todayOrders: wallet.earningsToday.orders,
             onToggle: _toggleOnline,
           ),
           Expanded(
             child: RefreshIndicator(
               color: AppColors.primary,
-              onRefresh: _loadAll,
-              child: SingleChildScrollView(
+              onRefresh: _refreshCurrentTab,
+              child: CustomScrollView(
+                controller: _scroll,
                 physics: const AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // ── Location / GPS banner ───────────────────────────
-                    if (locationIssue != null)
-                      LocationIssueBanner(issue: locationIssue),
-
-                    // ── Notification permission banner ─────────────────
-                    if (notifDenied) const NotifDeniedBanner(),
-
-                    // ── Overdue debt banner ─────────────────────────────
-                    if (wallet.debts.any((d) => d.isOverdue))
-                      OverdueBanner(
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const DebtScreen()),
+                slivers: [
+                  // ── Banner cảnh báo (GPS, thông báo, công nợ) ─────────
+                  SliverToBoxAdapter(
+                    child: Column(children: [
+                      if (locationIssue != null)
+                        LocationIssueBanner(issue: locationIssue),
+                      if (notifDenied) const NotifDeniedBanner(),
+                      if (hasOverdueDebt)
+                        OverdueBanner(
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (_) => const DebtScreen()),
+                          ),
                         ),
-                      ),
+                    ]),
+                  ),
 
-                    // ── Content cards ──────────────────────────────────
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg,
-                          AppSpacing.lg, navClearance + AppSpacing.lg),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (dashboardDataError) ...[
-                            AppStatusBanner(
-                              icon: Icons.cloud_off_rounded,
-                              color: AppColors.warning,
-                              title: 'Một số dữ liệu chưa được cập nhật',
-                              message:
-                                  'Ứng dụng đang giữ số liệu gần nhất trên máy.',
-                              actionLabel: 'Thử lại',
-                              onTap: _loadAll,
-                            ),
-                            const SizedBox(height: AppSpacing.lg),
-                          ],
-                          if (activeOrders.isNotEmpty) ...[
-                            ...List.generate(activeOrders.length, (index) {
-                              final order = activeOrders[index];
-                              return Padding(
-                                padding: EdgeInsets.only(
-                                    bottom: index == activeOrders.length - 1
-                                        ? 0
-                                        : AppSpacing.md),
-                                child: ActiveOrderCard(
-                                  order: order,
-                                  orderIndex: index,
-                                  totalCount: activeOrders.length,
-                                  isPriority: index == 0,
-                                ),
-                              );
-                            }),
-                            const SizedBox(height: AppSpacing.lg),
-                          ],
-                          // Earnings
-                          EarningsCard(
-                            todayEarnings: _todayEarnings,
-                            yesterdayEarnings: _yesterdayEarnings,
-                            todayOrders: todayOrders,
-                            rating: rating,
-                            ratingCount: ratingCount,
-                            onTap: widget.onGoToWallet,
-                            last7Days: _last7Days,
-                          ),
-
-                          const SizedBox(height: AppSpacing.lg),
-
-                          // Finance
-                          FinanceCard(
-                            balance: wallet.balance,
-                            debtPending: debtPending,
-                            debtCount: debtCount,
-                            onWalletTap: () => context.push('/wallet'),
-                            onDebtTap: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                    builder: (_) => const DebtScreen())),
-                          ),
-
-                          const SizedBox(height: AppSpacing.lg),
-
-                          // Shift
-                          ShiftCard(
-                            shifts: shiftState.shifts,
-                            currentShiftIds: shiftState.currentShiftIds,
-                            hasLoadedOnce: shiftState.hasLoadedOnce,
-                            isOnline: isOnline,
-                            onlineSeconds: shiftState.currentShiftOnlineSeconds,
-                            onlineMeasuredAt: shiftState.onlineMeasuredAt,
-                            shiftEndAt: shiftState.currentShiftEndAt,
-                            onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                    builder: (_) =>
-                                        const ShiftRegistrationScreen())),
-                          ),
-
-                          const SizedBox(height: AppSpacing.lg),
-
-                          // Score
-                          DashboardScoreCard(
-                            score: scoreState.score,
-                            onTap: () => context.push('/score'),
-                          ),
-                        ],
+                  // ── 3 tab con, ghim ở đầu vùng cuộn ──────────────────
+                  SliverPersistentHeader(
+                    pinned: true,
+                    delegate: PinnedHeaderDelegate(
+                      height: 62,
+                      child: OrdersTabBar(
+                        index: ordersTab,
+                        onChanged: _selectOrdersTab,
+                        newCount: isOnline ? newOrderCount : 0,
+                        receivedCount: activeOrders.length,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+
+                  SliverPadding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                    sliver: switch (ordersTab) {
+                      1 => _receivedSliver(activeOrders),
+                      2 => const CompletedOrdersSliver(),
+                      _ => SliverToBoxAdapter(
+                          child: NewOrdersSection(
+                            isOnline: isOnline,
+                            locked: hasOverdueDebt,
+                            togglingOnline: _togglingOnline,
+                            onGoOnline: _toggleOnline,
+                          ),
+                        ),
+                    },
+                  ),
+
+                  SliverToBoxAdapter(
+                      child: SizedBox(height: navClearance + AppSpacing.xl)),
+                ],
               ),
             ),
           ),
@@ -716,4 +638,61 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       ),
     );
   }
+}
+
+class _ReceivedOrdersSummary extends StatelessWidget {
+  final int count;
+
+  const _ReceivedOrdersSummary({required this.count});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: 10,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.infoSoft,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.info.withValues(alpha: .12)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: const BoxDecoration(
+                color: AppColors.info,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.route_rounded,
+                color: Colors.white,
+                size: 17,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$count đơn đang chạy',
+                    style: AppTextStyles.label.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    'Ưu tiên hoàn thành đơn đầu tiên trong danh sách',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
 }

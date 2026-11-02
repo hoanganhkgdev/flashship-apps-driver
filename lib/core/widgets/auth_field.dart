@@ -13,6 +13,7 @@ class AuthField extends StatelessWidget {
   final TextCapitalization textCapitalization;
   final TextInputAction? textInputAction;
   final void Function(String)? onFieldSubmitted;
+  final FocusNode? focusNode;
   final Widget? prefixIcon;
   final Widget? suffixIcon;
   final List<TextInputFormatter>? inputFormatters;
@@ -31,6 +32,7 @@ class AuthField extends StatelessWidget {
     this.textCapitalization = TextCapitalization.none,
     this.textInputAction,
     this.onFieldSubmitted,
+    this.focusNode,
     this.prefixIcon,
     this.suffixIcon,
     this.inputFormatters,
@@ -49,6 +51,7 @@ class AuthField extends StatelessWidget {
         textCapitalization: textCapitalization,
         textInputAction: textInputAction,
         onFieldSubmitted: onFieldSubmitted,
+        focusNode: focusNode,
         inputFormatters: inputFormatters,
         style: const TextStyle(
           fontSize: AppFontSize.lg,

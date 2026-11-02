@@ -132,56 +132,6 @@ class LocationPushService {
     }
   }
 
-  /// Lấy và đẩy một GPS fix mới ngay trước các thao tác cần xác minh vị trí
-  /// (ví dụ hoàn thành đơn). Không chờ heartbeat 20 giây vì vị trí lưu trên
-  /// Firebase có thể vẫn là điểm trước đó khi tài xế vừa tới nơi.
-  ///
-  /// Trả về mô tả lỗi để UI có thể báo đúng nguyên nhân; request hoàn thành
-  /// vẫn nên được gửi để backend giữ vai trò quyết định cuối cùng.
-  Future<String?> refreshForProximityCheck() async {
-    if (_driverId == null) {
-      return 'Chưa bật cập nhật vị trí. Vui lòng bật GPS và thử lại.';
-    }
-
-    try {
-      if (!await Geolocator.isLocationServiceEnabled()) {
-        await _recordDiagnostic('gps_disabled', 'location_service_disabled');
-        return 'GPS đang tắt. Vui lòng bật GPS và thử lại.';
-      }
-
-      final perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied ||
-          perm == LocationPermission.deniedForever) {
-        await _recordDiagnostic('permission_denied', perm.name);
-        return 'Ứng dụng chưa có quyền vị trí. Vui lòng cấp quyền GPS và thử lại.';
-      }
-
-      final gen = _generation;
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 10),
-        ),
-      );
-      if (gen != _generation || _driverId == null) {
-        return 'Phiên cập nhật vị trí vừa thay đổi. Vui lòng thử lại.';
-      }
-
-      await _push(
-        pos.latitude,
-        pos.longitude,
-        pos.heading < 0 ? 0.0 : pos.heading,
-        accuracy: pos.accuracy,
-        force: true,
-      );
-      return null;
-    } catch (e) {
-      await _recordDiagnostic('gps_error', _errorCode(e));
-      debugPrint('[LocationPush] Không lấy được GPS khi hoàn thành đơn: $e');
-      return 'Không lấy được vị trí hiện tại. Vui lòng ra nơi thoáng và thử lại.';
-    }
-  }
-
   void stop() {
     _generation++;
     _refreshTimer?.cancel();

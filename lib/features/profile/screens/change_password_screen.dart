@@ -64,10 +64,17 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       _error = null;
     });
     try {
-      await ref
-          .read(apiClientProvider)
-          .post('/driver/change-password/send-otp');
+      final phone = ref.read(authProvider).user?.phone ?? '';
+      final ok =
+          await ref.read(authProvider.notifier).sendOtp(phone, purpose: null);
       if (!mounted) return;
+      if (!ok) {
+        setState(() {
+          _sendingOtp = false;
+          _error = ref.read(authProvider).error ?? 'Không thể gửi OTP';
+        });
+        return;
+      }
       setState(() {
         _step = 1;
         _sendingOtp = false;
@@ -118,8 +125,18 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       _error = null;
     });
     try {
+      final idToken = await ref.read(authProvider.notifier).confirmCode(otp);
+      if (idToken == null) {
+        if (mounted) {
+          setState(() {
+            _submitting = false;
+            _error = ref.read(authProvider).error ?? 'Mã OTP không đúng';
+          });
+        }
+        return;
+      }
       await ref.read(apiClientProvider).post('/driver/change-password', data: {
-        'otp': otp,
+        'id_token': idToken,
         'new_password': newPass,
         'new_password_confirmation': confPass,
       });
@@ -159,11 +176,15 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       value: SystemUiOverlayStyle.dark,
       child: Scaffold(
         backgroundColor: AppColors.background,
-        appBar: const AppScreenHeader(title: 'Đổi mật khẩu'),
+        appBar: const AppScreenHeader(
+          title: 'Đổi mật khẩu',
+          backgroundColor: AppColors.primarySoft,
+        ),
         body: Column(children: [
           // ── Body ────────────────────────────────────────────────────────────
           Expanded(
             child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               padding: const EdgeInsets.fromLTRB(
                   AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xl3),
               child: Column(
@@ -172,17 +193,17 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                     // Huy hiệu + tiêu đề + tiến trình 2 bước
                     Center(
                       child: Container(
-                        width: 64,
-                        height: 64,
+                        width: 56,
+                        height: 56,
                         decoration: BoxDecoration(
                           color: AppColors.primarySoft,
-                          borderRadius: BorderRadius.circular(AppRadius.xl),
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
                         ),
                         child: Icon(
                             _step == 0
                                 ? Icons.shield_outlined
                                 : Icons.lock_reset_rounded,
-                            size: 32,
+                            size: 28,
                             color: AppColors.primary),
                       ),
                     ),
@@ -191,8 +212,8 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                       _step == 0 ? 'Xác minh tài khoản' : 'Tạo mật khẩu mới',
                       textAlign: TextAlign.center,
                       style: AppTextStyles.screenTitle.copyWith(
-                          fontSize: AppFontSize.xl2,
-                          fontWeight: FontWeight.w800,
+                          fontSize: AppFontSize.xl,
+                          fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary),
                     ),
                     const SizedBox(height: 4),
@@ -205,7 +226,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                           TextSpan(
                             text: phone,
                             style: const TextStyle(
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w600,
                                 color: AppColors.textPrimary),
                           ),
                         ],
@@ -226,19 +247,47 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                     const SizedBox(height: AppSpacing.lg),
 
                     AppSurfaceCard(
-                      color: Colors.white,
-                      showBorder: false,
+                      color: AppColors.surface,
+                      showBorder: true,
+                      showShadow: false,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          _SectionHeading(
+                            title: _step == 0
+                                ? 'Xác minh số điện thoại'
+                                : 'Thông tin bảo mật mới',
+                            subtitle: _step == 0
+                                ? 'Nhận mã OTP để xác minh chính chủ'
+                                : 'Tạo mật khẩu mới cho tài khoản',
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
                           if (_step == 0) ...[
                             // Step 0: chưa gửi OTP
-                            const Text(
-                              'OTP sẽ được gửi qua Zalo đến số điện thoại trên để xác minh danh tính trước khi đổi mật khẩu.',
-                              style: TextStyle(
-                                  fontSize: AppFontSize.base,
-                                  color: AppColors.textSecondary,
-                                  height: 1.5),
+                            Container(
+                              padding: const EdgeInsets.all(AppSpacing.md),
+                              decoration: BoxDecoration(
+                                color: AppColors.infoSoft,
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.md),
+                              ),
+                              child: const Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(Icons.sms_outlined,
+                                      size: 18, color: AppColors.info),
+                                  SizedBox(width: AppSpacing.sm),
+                                  Expanded(
+                                    child: Text(
+                                      'OTP sẽ được gửi qua SMS để xác minh danh tính trước khi đổi mật khẩu.',
+                                      style: TextStyle(
+                                          fontSize: AppFontSize.base,
+                                          color: AppColors.textSecondary,
+                                          height: 1.5),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                             const SizedBox(height: AppSpacing.xl),
                             _PrimaryButton(
@@ -259,9 +308,9 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                                 FilteringTextInputFormatter.digitsOnly
                               ],
                               style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 8,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 6,
                                   color: AppColors.textPrimary),
                               decoration: _inputDeco(hint: '_ _ _ _ _ _'),
                             ),
@@ -351,6 +400,50 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       appSheetInputDecoration(hint: hint).copyWith(counterText: '');
 }
 
+class _SectionHeading extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _SectionHeading({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) => Row(children: [
+        Container(
+          width: 4,
+          height: 36,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(AppRadius.full),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.sectionTitle.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ]);
+}
+
 class _StepBar extends StatelessWidget {
   final String label;
   final bool active;
@@ -369,7 +462,7 @@ class _StepBar extends StatelessWidget {
         const SizedBox(height: 6),
         Text(label,
             style: AppTextStyles.label.copyWith(
-                fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+                fontWeight: active ? FontWeight.w600 : FontWeight.w500,
                 color:
                     active ? AppColors.primaryDark : AppColors.textTertiary)),
       ]);
@@ -401,7 +494,7 @@ class _PassField extends StatelessWidget {
         obscureText: !show,
         style: const TextStyle(
             fontSize: 16,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w600,
             color: AppColors.textPrimary),
         decoration: appSheetInputDecoration(
           hint: hint,
@@ -444,7 +537,7 @@ class _PrimaryButton extends StatelessWidget {
                       strokeWidth: 2, color: Colors.white))
               : Text(label,
                   style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w800)),
+                      fontSize: 16, fontWeight: FontWeight.w700)),
         ),
       );
 }

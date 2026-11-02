@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/widgets/app_surface_card.dart';
 
-/// Tóm tắt hôm nay: hai ô số liệu cạnh nhau (số đơn, thu nhập).
+/// Tổng quan ca làm việc hôm nay ở đầu tab Hoàn thành.
 class HistoryOverviewHeader extends StatelessWidget {
   final int todayCount;
   final int todayEarnings;
@@ -16,83 +15,136 @@ class HistoryOverviewHeader extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg,
-          AppSpacing.lg,
-          AppSpacing.lg,
-          AppSpacing.xs,
+  Widget build(BuildContext context) {
+    final average = todayCount == 0 ? 0 : todayEarnings ~/ todayCount;
+    return Container(
+      margin: const EdgeInsets.only(top: AppSpacing.md, bottom: AppSpacing.xs),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF168547), Color(0xFF2AAA60)],
         ),
-        child: Row(children: [
-          Expanded(
-            child: _OverviewTile(
-              icon: Icons.inventory_2_rounded,
-              color: AppColors.secondary,
-              label: 'Đơn hôm nay',
-              value: '$todayCount',
-            ),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.success.withValues(alpha: .22),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: _OverviewTile(
-              icon: Icons.payments_rounded,
-              color: AppColors.success,
-              label: 'Thu nhập hôm nay',
-              value: Fmt.currency(todayEarnings),
-            ),
-          ),
-        ]),
-      );
-}
-
-class _OverviewTile extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String label;
-  final String value;
-
-  const _OverviewTile({
-    required this.icon,
-    required this.color,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) => AppSurfaceCard(
-        color: Colors.white,
-        showBorder: false,
-        child: Row(children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(AppRadius.sm + 2),
-            ),
-            child: Icon(icon, size: 22, color: color),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(value,
-                      style: AppTextStyles.metric
-                          .copyWith(color: AppColors.textPrimary)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .16),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
-                const SizedBox(height: 2),
-                Text(label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.caption
-                        .copyWith(color: AppColors.textSecondary)),
+                child: const Icon(
+                  Icons.account_balance_wallet_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'THU NHẬP HÔM NAY',
+                      style: AppTextStyles.caption.copyWith(
+                        color: Colors.white.withValues(alpha: .78),
+                        fontSize: 9,
+                        letterSpacing: .9,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      Fmt.currency(todayEarnings),
+                      style: AppTextStyles.metricLarge.copyWith(
+                        color: Colors.white,
+                        fontSize: 30,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .16),
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      size: 15,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      '$todayCount đơn',
+                      style: AppTextStyles.label.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: 10,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: .12),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.trending_up_rounded,
+                  size: 17,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  'Trung bình mỗi đơn',
+                  style: AppTextStyles.label.copyWith(
+                    color: Colors.white.withValues(alpha: .82),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  Fmt.currency(average),
+                  style: AppTextStyles.bodyStrong.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ],
             ),
           ),
-        ]),
-      );
+        ],
+      ),
+    );
+  }
 }

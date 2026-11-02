@@ -72,8 +72,9 @@ class _FinanceTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => AppSurfaceCard(
         onTap: onTap,
-        color: Colors.white,
-        showBorder: false,
+        color: AppColors.surface,
+        showBorder: true,
+        showShadow: false,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
             width: 40,
@@ -100,10 +101,16 @@ class _FinanceTile extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           Row(children: [
-            Text(hint,
+            Expanded(
+              child: Text(
+                hint,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.label
-                    .copyWith(color: color, fontWeight: FontWeight.w800)),
-            Icon(Icons.chevron_right_rounded, size: 18, color: color),
+                    .copyWith(color: color, fontWeight: FontWeight.w600),
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, size: 16, color: color),
           ]),
         ]),
       );

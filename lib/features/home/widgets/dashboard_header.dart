@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/formatters.dart';
 import '../../auth/models/driver_model.dart';
+import '../../shifts/widgets/offline_budget_banner.dart';
 
 class DashboardHeader extends StatelessWidget {
   final DriverModel? user;
   final bool isOnline;
   final bool toggling;
+  final int toggleCooldownSeconds;
   final bool locked;
   final String? locationIssue;
+  final int todayEarnings;
+  final int todayOrders;
   final VoidCallback onToggle;
 
   const DashboardHeader(
@@ -16,34 +21,16 @@ class DashboardHeader extends StatelessWidget {
       required this.user,
       required this.isOnline,
       required this.toggling,
+      this.toggleCooldownSeconds = 0,
       required this.locked,
       required this.locationIssue,
+      required this.todayEarnings,
+      required this.todayOrders,
       required this.onToggle});
-
-  static String _greeting() {
-    final h = DateTime.now().hour;
-    if (h < 11) return 'Chào buổi sáng';
-    if (h < 14) return 'Chào buổi trưa';
-    if (h < 18) return 'Chào buổi chiều';
-    return 'Chào buổi tối';
-  }
 
   @override
   Widget build(BuildContext context) {
-    final initials = user?.initials ?? 'TX';
-    final isCar = user?.vehicleType == 'car';
-    final vehicleLabel = switch (user?.vehicleType) {
-      'car' => 'Ô tô',
-      'motorbike' => 'Xe máy',
-      _ => 'Chưa cập nhật loại xe',
-    };
-    final plate = user?.licensePlate?.trim().toUpperCase();
-    final vehicleInfo = plate != null && plate.isNotEmpty
-        ? '$plate · $vehicleLabel'
-        : vehicleLabel;
     final gpsReady = locationIssue == null;
-    final active = isOnline && !locked;
-
     final statusColor = locked
         ? AppColors.danger
         : isOnline && !gpsReady
@@ -51,234 +38,211 @@ class DashboardHeader extends StatelessWidget {
             : isOnline
                 ? AppColors.success
                 : AppColors.textSecondary;
-    final statusBg = locked
-        ? AppColors.dangerSoft
-        : isOnline && !gpsReady
-            ? AppColors.warningSoft
-            : isOnline
-                ? AppColors.successSoft
-                : AppColors.surfaceAlt;
-    final statusTitle = locked
-        ? 'Đang khóa'
-        : isOnline && !gpsReady
-            ? 'Online · mất GPS'
-            : isOnline
-                ? 'Đang online'
-                : 'Đang offline';
-    final statusLabel = locked
-        ? 'Tạm khóa hoạt động'
-        : isOnline && !gpsReady
-            ? 'Tạm ngừng nhận đơn · kiểm tra GPS'
-            : isOnline
-                ? 'Sẵn sàng nhận đơn'
-                : 'Gạt công tắc để bắt đầu nhận đơn';
-    final gpsLabel = gpsReady
-        ? 'GPS sẵn sàng'
-        : locationIssue == 'service'
-            ? 'GPS đang tắt'
-            : locationIssue == 'background_permission'
-                ? 'GPS chưa được phép chạy nền'
-                : 'Chưa cấp quyền GPS';
-
     return Container(
+      clipBehavior: Clip.antiAlias,
       decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
-        boxShadow: [
-          BoxShadow(
-              color: Color(0x181B1411), blurRadius: 24, offset: Offset(0, 8)),
+        color: AppColors.primarySoft,
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+        border: Border(bottom: BorderSide(color: Color(0xFFFFC9B3))),
+      ),
+      padding: EdgeInsets.fromLTRB(AppSpacing.lg,
+          MediaQuery.paddingOf(context).top + 10, AppSpacing.lg, AppSpacing.md),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          const Positioned(
+            right: -54,
+            top: -70,
+            child: _HeaderBubble(size: 150, opacity: .34),
+          ),
+          const Positioned(
+            left: -42,
+            bottom: -70,
+            child: _HeaderBubble(size: 112, opacity: .22),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text.rich(_greeting(user?.name),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.screenTitle.copyWith(
+                            fontSize: AppFontSize.lg,
+                            color: AppColors.textPrimary,
+                          )),
+                      const SizedBox(height: AppSpacing.xs),
+                      Row(children: [
+                        const Icon(Icons.insights_rounded,
+                            size: 14, color: AppColors.primary),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            '$todayOrders đơn · ${Fmt.currency(todayEarnings)} hôm nay',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ]),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                _OnlineButton(
+                  isOnline: isOnline,
+                  toggling: toggling,
+                  cooldownSeconds: toggleCooldownSeconds,
+                  locked: locked,
+                  color: statusColor,
+                  onTap: onToggle,
+                ),
+              ]),
+              const OfflineBudgetBanner(compact: true),
+            ],
+          ),
         ],
       ),
-      padding: EdgeInsets.fromLTRB(
-          AppSpacing.lg,
-          MediaQuery.paddingOf(context).top + AppSpacing.md,
-          AppSpacing.lg,
-          AppSpacing.lg),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Row(children: [
-          // Avatar có viền màu theo trạng thái + chấm online.
-          Stack(clipBehavior: Clip.none, children: [
-            Container(
-              width: 50,
-              height: 50,
-              padding: const EdgeInsets.all(2.5),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                    color: active ? AppColors.success : AppColors.divider,
-                    width: 2),
-              ),
-              child: ClipOval(
-                child: ColoredBox(
-                  color: AppColors.primarySoft,
-                  child: user?.profilePhotoUrl != null
-                      ? Image.network(user!.profilePhotoUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _Initials(initials))
-                      : _Initials(initials),
-                ),
-              ),
-            ),
-            Positioned(
-              right: 0,
-              bottom: 0,
-              child: Container(
-                width: 14,
-                height: 14,
-                decoration: BoxDecoration(
-                  color: statusColor,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2.5),
-                ),
-              ),
-            ),
-          ]),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                Text(_greeting(),
-                    style: AppTextStyles.label
-                        .copyWith(color: AppColors.textSecondary)),
-                const SizedBox(height: 1),
-                Text(user?.name ?? 'Tài xế',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.sectionTitle
-                        .copyWith(fontSize: AppFontSize.lg)),
-                const SizedBox(height: 4),
-                Row(children: [
-                  Icon(
-                      isCar
-                          ? Icons.directions_car_filled_outlined
-                          : Icons.two_wheeler_rounded,
-                      size: 15,
-                      color: AppColors.textSecondary),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(vehicleInfo,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.label
-                            .copyWith(color: AppColors.textSecondary)),
-                  ),
-                ]),
-              ])),
-          const SizedBox(width: AppSpacing.sm),
-          Tooltip(
-            message: gpsLabel,
-            child: Semantics(
-              label: gpsLabel,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color:
-                      gpsReady ? AppColors.successSoft : AppColors.warningSoft,
-                  borderRadius: BorderRadius.circular(AppRadius.full),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(
-                      gpsReady
-                          ? Icons.gps_fixed_rounded
-                          : Icons.location_off_rounded,
-                      size: 15,
-                      color: gpsReady ? AppColors.success : AppColors.warning),
-                  const SizedBox(width: 4),
-                  Text('GPS',
-                      style: AppTextStyles.label.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: gpsReady
-                              ? AppColors.success
-                              : AppColors.warning)),
-                ]),
-              ),
-            ),
-          ),
-        ]),
-        const SizedBox(height: AppSpacing.lg),
-        // Thẻ trạng thái nhận đơn — toàn bộ thẻ là vùng chạm lớn.
-        AnimatedContainer(
-          duration: AppDuration.normal,
-          decoration: BoxDecoration(
-            color: statusBg,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            border: Border.all(color: statusColor.withValues(alpha: 0.22)),
-          ),
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: (toggling || locked) ? null : onToggle,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-                child: Row(children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.85),
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                    ),
-                    child: Icon(
-                      locked
-                          ? Icons.lock_rounded
-                          : isOnline
-                              ? Icons.wifi_tethering_rounded
-                              : Icons.power_settings_new_rounded,
-                      size: 24,
-                      color: statusColor,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(statusTitle,
-                            style: AppTextStyles.sectionTitle
-                                .copyWith(color: statusColor)),
-                        const SizedBox(height: AppSpacing.xxs),
-                        Text(statusLabel,
-                            style: AppTextStyles.label.copyWith(
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w500)),
-                      ],
-                    ),
-                  ),
-                  if (toggling)
-                    const SizedBox.square(
-                      dimension: 28,
-                      child: CircularProgressIndicator(strokeWidth: 3),
-                    )
-                  else
-                    Switch(
-                      value: active,
-                      activeThumbColor: Colors.white,
-                      activeTrackColor: AppColors.success,
-                      onChanged:
-                          (toggling || locked) ? null : (_) => onToggle(),
-                    ),
-                ]),
-              ),
-            ),
-          ),
-        ),
-      ]),
     );
+  }
+
+  TextSpan _greeting(String? name) {
+    final hour = DateTime.now().hour;
+    final greeting = hour < 11
+        ? 'Chào buổi sáng'
+        : hour < 18
+            ? 'Chào buổi chiều'
+            : 'Chào buổi tối';
+    final trimmed = name?.trim() ?? '';
+    final shortName =
+        trimmed.isEmpty ? 'tài xế' : trimmed.split(RegExp(r'\s+')).last;
+    return TextSpan(children: [
+      TextSpan(text: '$greeting, '),
+      TextSpan(
+        text: shortName,
+        style: const TextStyle(color: AppColors.primary),
+      ),
+    ]);
   }
 }
 
-class _Initials extends StatelessWidget {
-  final String text;
-  const _Initials(this.text);
+class _HeaderBubble extends StatelessWidget {
+  final double size;
+  final double opacity;
+
+  const _HeaderBubble({required this.size, required this.opacity});
+
   @override
-  Widget build(BuildContext context) => Center(
-        child: Text(text,
-            style: AppTextStyles.screenTitle
-                .copyWith(color: AppColors.primary, fontSize: AppFontSize.lg)),
+  Widget build(BuildContext context) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: opacity),
+        ),
       );
+}
+
+class _OnlineButton extends StatelessWidget {
+  final bool isOnline;
+  final bool toggling;
+  final int cooldownSeconds;
+  final bool locked;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _OnlineButton({
+    required this.isOnline,
+    required this.toggling,
+    required this.cooldownSeconds,
+    required this.locked,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final coolingDown = cooldownSeconds > 0;
+    final enabled = !toggling && !coolingDown && !locked;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: locked
+          ? 'Tài khoản tạm khóa'
+          : coolingDown
+              ? 'Có thể đổi trạng thái sau $cooldownSeconds giây'
+              : isOnline
+                  ? 'Đang Online, chạm để Offline'
+                  : 'Đang Offline, chạm để Online',
+      child: AnimatedContainer(
+        duration: AppDuration.normal,
+        width: 88,
+        height: 40,
+        decoration: BoxDecoration(
+          color: locked
+              ? AppColors.dangerSoft
+              : isOnline
+                  ? AppColors.successSoft
+                  : Colors.white.withValues(alpha: .82),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: color.withValues(alpha: .18)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: enabled ? onTap : null,
+            child: Center(
+              child: toggling
+                  ? SizedBox.square(
+                      dimension: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.3,
+                        color: color,
+                      ),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          locked
+                              ? Icons.lock_rounded
+                              : coolingDown
+                                  ? Icons.hourglass_top_rounded
+                                  : isOnline
+                                      ? Icons.bolt_rounded
+                                      : Icons.power_settings_new_rounded,
+                          size: 18,
+                          color: color,
+                        ),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            locked
+                                ? 'Đã khóa'
+                                : coolingDown
+                                    ? '${cooldownSeconds}s'
+                                    : (isOnline ? 'Online' : 'Offline'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.label.copyWith(
+                              color: color,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

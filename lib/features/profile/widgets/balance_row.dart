@@ -28,14 +28,16 @@ class BalanceRow extends StatelessWidget {
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md, vertical: AppSpacing.md - 2),
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.md,
+          ),
           child: Row(children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 42,
+              height: 42,
               decoration: BoxDecoration(
                 color: AppColors.primarySoft,
-                borderRadius: BorderRadius.circular(AppRadius.sm + 2),
+                borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: const Icon(Icons.account_balance_wallet_rounded,
                   size: 20, color: AppColors.primary),
@@ -45,19 +47,37 @@ class BalanceRow extends StatelessWidget {
               child: Text('Số dư ví',
                   style: TextStyle(
                       fontSize: 14,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w500,
                       color: AppColors.textPrimary)),
             ),
-            Text(
-              _fmt(amt),
-              style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary),
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Text(
+                  _fmt(amt),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(width: 6),
-            const Icon(Icons.chevron_right_rounded,
-                color: Color(0xFFD0D0D5), size: 20),
+            const SizedBox(width: AppSpacing.sm),
+            Container(
+              width: 28,
+              height: 28,
+              decoration: const BoxDecoration(
+                color: AppColors.surfaceAlt,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textTertiary,
+                size: 19,
+              ),
+            ),
           ]),
         ),
       ),

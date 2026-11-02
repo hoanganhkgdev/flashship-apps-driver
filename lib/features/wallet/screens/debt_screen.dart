@@ -17,15 +17,15 @@ class DebtScreen extends ConsumerWidget {
     final wallet = ref.watch(walletProvider);
     final total = wallet.debts.fold(0, (s, d) => s + d.remaining);
     final overdue = wallet.debts.where((d) => d.isOverdue).length;
-    final urgentCount = wallet.debts.where((d) => d.isScorePenalty).length;
+    final urgentCount = wallet.debts.where((d) => d.isPenalty).length;
 
     // Sắp theo mức khẩn cấp — không sort thẳng wallet.debts để tránh mutate
     // in-place list gốc trong provider state (nhiều widget khác cũng đọc nó).
     final debts = [...wallet.debts]..sort((a, b) {
-        if (a.isScorePenalty != b.isScorePenalty) {
-          return a.isScorePenalty ? -1 : 1;
+        if (a.isPenalty != b.isPenalty) {
+          return a.isPenalty ? -1 : 1;
         }
-        if (a.isScorePenalty) {
+        if (a.isPenalty) {
           // Cùng là phạt điểm — sắp gần hết hạn 24h nhất lên trước.
           return a.timeUntilDue.compareTo(b.timeUntilDue);
         }
@@ -38,7 +38,10 @@ class DebtScreen extends ConsumerWidget {
       value: SystemUiOverlayStyle.dark,
       child: Scaffold(
         backgroundColor: AppColors.background,
-        appBar: const AppScreenHeader(title: 'Công nợ'),
+        appBar: const AppScreenHeader(
+          title: 'Công nợ',
+          backgroundColor: AppColors.primarySoft,
+        ),
         body: RefreshIndicator(
           color: AppColors.primary,
           onRefresh: () => ref.read(walletProvider.notifier).fetch(),
@@ -55,13 +58,58 @@ class DebtScreen extends ConsumerWidget {
                     count: debts.length,
                     overdue: overdue,
                     urgent: urgentCount,
-                    loading: wallet.loading,
+                    loading: wallet.loading && debts.isEmpty,
                   ),
                 ),
               ),
 
+              if (debts.isNotEmpty)
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    0,
+                    AppSpacing.lg,
+                    AppSpacing.md,
+                  ),
+                  sliver: SliverToBoxAdapter(
+                    child: Row(children: [
+                      Container(
+                        width: 4,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(AppRadius.full),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Chi tiết công nợ',
+                              style: AppTextStyles.sectionTitle.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Ưu tiên thanh toán khoản quá hạn và khẩn cấp',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ]),
+                  ),
+                ),
+
               // ── Body ───────────────────────────────────────────────────
-              if (wallet.loading)
+              if (wallet.loading && debts.isEmpty)
                 const SliverFillRemaining(
                   child: Center(
                       child: CircularProgressIndicator(
@@ -138,26 +186,16 @@ class _Header extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFC92A32), Color(0xFFE5483F), Color(0xFFF06A45)],
-        ),
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFC92A32).withValues(alpha: 0.28),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.danger.withValues(alpha: .20)),
       ),
       child: loading
           ? Container(
               height: 42,
               width: 180,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
+                color: AppColors.dangerSoft,
                 borderRadius: BorderRadius.circular(AppRadius.xs),
               ),
             )
@@ -169,34 +207,39 @@ class _Header extends StatelessWidget {
                     width: 42,
                     height: 42,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.22),
+                      color: AppColors.dangerSoft,
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                     child: const Icon(
                       Icons.receipt_long_rounded,
-                      color: Colors.white,
+                      color: AppColors.danger,
                       size: 20,
                     ),
                   ),
                   const SizedBox(width: AppSpacing.md),
-                  const Text(
-                    'Tổng công nợ',
-                    style: TextStyle(
-                      fontSize: AppFontSize.base,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                  Expanded(
+                    child: Text(
+                      'Tổng công nợ',
+                      style: AppTextStyles.bodyStrong.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ]),
                 const SizedBox(height: AppSpacing.xl),
-                Text(
-                  Fmt.currency(total),
-                  style: const TextStyle(
-                    fontSize: 42,
-                    height: 1.05,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                    letterSpacing: -0.8,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    Fmt.currency(total),
+                    style: const TextStyle(
+                      fontSize: 36,
+                      height: 1.05,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.danger,
+                      letterSpacing: -0.6,
+                    ),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -217,7 +260,6 @@ class _Header extends StatelessWidget {
                       _HeroChip(
                         icon: Icons.bolt_rounded,
                         label: '$urgent khẩn cấp',
-                        emphasized: true,
                       ),
                   ],
                 ),
@@ -230,28 +272,24 @@ class _Header extends StatelessWidget {
 class _HeroChip extends StatelessWidget {
   final IconData icon;
   final String label;
-  final bool emphasized;
 
-  const _HeroChip(
-      {required this.icon, required this.label, this.emphasized = false});
+  const _HeroChip({required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color:
-              emphasized ? Colors.white : Colors.white.withValues(alpha: 0.24),
+          color: AppColors.dangerSoft,
           borderRadius: BorderRadius.circular(AppRadius.full),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon,
-              size: 14, color: emphasized ? AppColors.danger : Colors.white),
+          Icon(icon, size: 14, color: AppColors.danger),
           const SizedBox(width: 6),
           Text(label,
               style: TextStyle(
                 fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: emphasized ? AppColors.danger : Colors.white,
+                fontWeight: FontWeight.w600,
+                color: AppColors.danger,
               )),
         ]),
       );
@@ -289,7 +327,7 @@ class _DebtCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isPenalty = debt.isScorePenalty;
+    final isPenalty = debt.isPenalty;
     final isOverdue = debt.isOverdue;
     final statusColor = isOverdue ? AppColors.danger : AppColors.warning;
 
@@ -299,9 +337,9 @@ class _DebtCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.card),
-        boxShadow: AppShadows.soft,
+        border: Border.all(color: AppColors.divider),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(children: [
@@ -311,59 +349,54 @@ class _DebtCard extends StatelessWidget {
           width: double.infinity,
           color: tint,
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Expanded(
-              child: Wrap(spacing: 6, runSpacing: 6, children: [
-                // Type tag
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: isPenalty ? AppColors.danger : Colors.white,
-                    borderRadius: BorderRadius.circular(AppRadius.full),
-                  ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(
-                      isPenalty
-                          ? Icons.bolt_rounded
-                          : Icons.receipt_long_rounded,
-                      size: 13,
-                      color: isPenalty ? Colors.white : AppColors.primary,
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      isPenalty ? 'Phạt điểm tuần' : 'Phí tuần',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: isPenalty ? Colors.white : AppColors.primary,
-                      ),
-                    ),
-                  ]),
+          child: Wrap(spacing: 6, runSpacing: 6, children: [
+            // Type tag
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: isPenalty ? AppColors.danger : Colors.white,
+                borderRadius: BorderRadius.circular(AppRadius.full),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(
+                  isPenalty ? Icons.bolt_rounded : Icons.receipt_long_rounded,
+                  size: 13,
+                  color: isPenalty ? Colors.white : AppColors.primary,
                 ),
-                // Period chip
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    borderRadius: BorderRadius.circular(AppRadius.full),
+                const SizedBox(width: 5),
+                Text(
+                  isPenalty
+                      ? (debt.isShiftOfflinePenalty
+                          ? 'Phạt Offline'
+                          : 'Phạt điểm')
+                      : 'Phí tuần',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isPenalty ? Colors.white : AppColors.primary,
                   ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.calendar_today_rounded,
-                        size: 12, color: AppColors.textSecondary),
-                    const SizedBox(width: 5),
-                    Text(_periodLabel,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
-                        )),
-                  ]),
                 ),
               ]),
             ),
-            const SizedBox(width: 8),
+            // Period chip
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(AppRadius.full),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.calendar_today_rounded,
+                    size: 12, color: AppColors.textSecondary),
+                const SizedBox(width: 5),
+                Text(_periodLabel,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    )),
+              ]),
+            ),
             // Status badge
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -382,7 +415,7 @@ class _DebtCard extends StatelessWidget {
                   _statusLabel(isPenalty, isOverdue),
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                     color: statusColor,
                   ),
                 ),
@@ -393,14 +426,17 @@ class _DebtCard extends StatelessWidget {
 
         // Note
         if (debt.note != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-            child: Text(debt.note!,
-                style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                    height: 1.4)),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              child: Text(debt.note!,
+                  style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary,
+                      height: 1.4)),
+            ),
           ),
 
         const SizedBox(height: 16),
@@ -433,13 +469,20 @@ class _DebtCard extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text('Tiến độ thanh toán',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF6A605C))),
+            Row(children: [
+              const Expanded(
+                child: Text(
+                  'Tiến độ thanh toán',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 12, color: Color(0xFF6A605C)),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
               Text('${(_progress * 100).toStringAsFixed(0)}%',
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                     color: _progress >= 1
                         ? AppColors.success
                         : AppColors.textSecondary,
@@ -474,7 +517,7 @@ class _DebtCard extends StatelessWidget {
                 'Thanh toán qua PayOS',
                 style: TextStyle(
                     fontSize: 14,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                     color: Colors.white),
               ),
               style: FilledButton.styleFrom(
@@ -508,12 +551,16 @@ class _AmountCol extends StatelessWidget {
                   color: AppColors.textSecondary,
                 )),
             const SizedBox(height: 5),
-            Text(value,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: color,
-                )),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(value,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  )),
+            ),
           ]),
         ),
       );

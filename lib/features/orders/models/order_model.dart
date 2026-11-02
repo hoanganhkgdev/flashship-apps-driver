@@ -27,6 +27,7 @@ class OrderModel {
   final bool isBatch;
   final int stopsCount;
   final List<Map<String, dynamic>> stops;
+  final double? distance;
   final int shippingFee;
   final int bonusFee;
   final int nightSurcharge;
@@ -76,6 +77,7 @@ class OrderModel {
     this.isBatch = false,
     this.stopsCount = 0,
     this.stops = const [],
+    this.distance,
     required this.shippingFee,
     this.bonusFee = 0,
     this.nightSurcharge = 0,
@@ -132,6 +134,7 @@ class OrderModel {
         isBatch: j['is_batch'] as bool? ?? false,
         stopsCount: (j['stops_count'] as num?)?.toInt() ?? 0,
         stops: (j['stops'] as List? ?? []).cast<Map<String, dynamic>>(),
+        distance: double.tryParse(j['distance']?.toString() ?? ''),
         shippingFee: (j['shipping_fee'] as num?)?.toInt() ?? 0,
         bonusFee: (j['bonus_fee'] as num?)?.toInt() ?? 0,
         nightSurcharge: (j['night_surcharge'] as num?)?.toInt() ?? 0,
@@ -168,12 +171,69 @@ class OrderModel {
   bool get isActive => ['assigned', 'processing'].contains(status);
   bool get isShopOrder => platform == 'shop_app';
   bool get isCallCenter => platform == 'call_center';
+  bool get isCustomerApp => platform == 'customer_app';
   bool get isCompleted => status == 'completed';
   bool get isCancelled => status == 'cancelled';
   bool get hasDiscount => discountAmount > 0;
+  int get shoppingStopCount {
+    if (serviceType != 'shopping') return 0;
+    final count = RegExp(
+      r'={2,}\s*Điểm\s+\d+\s*:',
+      caseSensitive: false,
+      unicode: true,
+    ).allMatches(orderNote ?? '').length;
+    return count > 0 ? count : 1;
+  }
 
-  // shipping_fee backend đã trừ discount rồi, nên earning = fee net + bonus
-  int get driverEarning => shippingFee + bonusFee;
+  bool get hasMultipleShoppingStops => shoppingStopCount > 1;
+
+  // shipping_fee đã gồm phụ phí đêm và đã trừ discount. Thưởng mưa
+  // là khoản nền tảng trả riêng sau khi hoàn thành nên cộng thêm ở đây.
+  int get driverEarning =>
+      shippingFee +
+      bonusFee +
+      (rainBonusEligible ? rainBonusConfirmedAmount : 0);
+
+  /// Phí vận chuyển hiển thị riêng với tài xế. Phụ phí đêm và các khoản
+  /// thưởng do công ty trả được trình bày tách biệt để tránh thu nhầm khách.
+  int get baseShippingFee {
+    final fee = shippingFee - nightSurcharge;
+    return fee < 0 ? 0 : fee;
+  }
+
+  /// Tiền tài xế cần chuẩn bị để trả shop. App khách hiện lưu câu chuẩn này
+  /// trong ghi chú; `cod_amount` chỉ là trường tương thích dữ liệu cũ.
+  int get shopPaymentAmount {
+    // Đơn app shop: cod_amount là tiền THU HỘ người nhận, không phải tiền trả shop.
+    if (serviceType == 'topup' || isShopOrder) return 0;
+    if ((codAmount ?? 0) > 0) return codAmount!;
+    final note = orderNote;
+    if (note == null || note.isEmpty) return 0;
+    final match = RegExp(
+      r'tài\s*xế\s*chuẩn\s*bị\s*([\d.,]+)\s*(?:đ|₫)?\s*để\s*trả\s*shop',
+      caseSensitive: false,
+      unicode: true,
+    ).firstMatch(note);
+    if (match == null) return 0;
+    return int.tryParse(match.group(1)!.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+  }
+
+  int get topupAmount => serviceType == 'topup' ? (codAmount ?? 0) : 0;
+
+  String get statusLabel => switch (status) {
+        'pending' => 'Chờ tài xế',
+        'assigned' => 'Đã nhận',
+        'processing' => switch (serviceType) {
+            'shopping' => 'Đã mua xong',
+            'topup' => 'Đã đến nơi nạp',
+            'bike' => 'Đã đón khách',
+            'motor' || 'car' => 'Đã đến xe',
+            _ => 'Đã lấy hàng',
+          },
+        'completed' => 'Hoàn thành',
+        'cancelled' => 'Đã hủy',
+        _ => status,
+      };
 
   // Tổng tiền cần thu khách: phí giao sau giảm giá (đã gồm phụ phí đêm)
   // cộng tiền hàng/COD. Bonus do hệ thống trả nên không tính vào đây.

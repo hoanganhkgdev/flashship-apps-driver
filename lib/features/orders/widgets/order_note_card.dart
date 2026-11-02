@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_surface_card.dart';
-import 'phone_link_text.dart';
+import 'formatted_note.dart';
 
 /// Card ghi chú đơn hàng, dùng chung cho active_order_screen và
-/// order_offer_screen — trước đây là 2 widget gần như y hệt (_NoteCard/
+/// các màn đơn — trước đây là 2 widget gần như y hệt (_NoteCard/
 /// _NoteRow) chỉ khác padding/border/shadow do trôi dạt copy-paste, không
 /// phải khác biệt thiết kế thật. Style ở đây lấy theo bản active_order
 /// (đầy đủ hơn: có boxShadow, guard canLaunchUrl trước khi gọi).
@@ -32,8 +32,8 @@ class OrderNoteCard extends StatelessWidget {
                     style: AppTextStyles.caption
                         .copyWith(color: AppColors.warning, letterSpacing: .5)),
                 const SizedBox(height: AppSpacing.xs),
-                PhoneLinkText(
-                  text: note,
+                FormattedNote(
+                  note: note,
                   style:
                       AppTextStyles.body.copyWith(color: AppColors.textPrimary),
                 ),

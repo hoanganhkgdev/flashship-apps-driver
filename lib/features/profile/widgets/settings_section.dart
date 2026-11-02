@@ -9,37 +9,49 @@ class SettingsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      if (header != null)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.xl,
-            AppSpacing.xs,
-            AppSpacing.xl,
-            AppSpacing.sm,
-          ),
-          child: Text(
-            header!.toUpperCase(),
-            style: AppTextStyles.caption.copyWith(
-              color: AppColors.textTertiary,
-              fontWeight: FontWeight.w800,
-              letterSpacing: .8,
-            ),
-          ),
-        ),
-      Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(AppRadius.card),
-          boxShadow: AppShadows.soft,
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(AppRadius.card),
-          child: Column(children: children),
-        ),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.divider),
       ),
-    ]);
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        child: Column(children: [
+          if (header != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.lg,
+                AppSpacing.lg,
+                AppSpacing.xs,
+              ),
+              child: Row(children: [
+                Container(
+                  width: 4,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(AppRadius.full),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    header!,
+                    style: AppTextStyles.sectionTitle.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ]),
+            ),
+          ...children,
+        ]),
+      ),
+    );
   }
 }
 
@@ -73,7 +85,7 @@ class SettingsRow extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.md,
-              vertical: AppSpacing.md - 2,
+              vertical: 11,
             ),
             child: Row(children: [
               Container(
@@ -81,7 +93,7 @@ class SettingsRow extends StatelessWidget {
                 height: 40,
                 decoration: BoxDecoration(
                   color: iconBg ?? AppColors.primarySoft,
-                  borderRadius: BorderRadius.circular(AppRadius.sm + 2),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child:
                     Icon(icon, size: 20, color: iconColor ?? AppColors.primary),
@@ -89,14 +101,27 @@ class SettingsRow extends StatelessWidget {
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Text(label,
-                    style: AppTextStyles.bodyStrong
-                        .copyWith(color: labelColor ?? AppColors.textPrimary)),
+                    style: AppTextStyles.body.copyWith(
+                      color: labelColor ?? AppColors.textPrimary,
+                      fontWeight: FontWeight.w500,
+                    )),
               ),
               if (trailing != null)
-                trailing!
+                Flexible(child: trailing!)
               else if (showChevron)
-                const Icon(Icons.chevron_right_rounded,
-                    color: AppColors.iconMuted, size: 20),
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: const BoxDecoration(
+                    color: AppColors.surfaceAlt,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.textTertiary,
+                    size: 19,
+                  ),
+                ),
             ]),
           ),
         ),

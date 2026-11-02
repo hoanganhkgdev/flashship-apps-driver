@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 
 /// Timeline điểm lấy/giao gọn (không có nút gọi/dẫn đường như RouteCard) —
-/// dùng trong order_offer_screen.
+/// dùng trong màn hình đơn.
 class RouteBlock extends StatelessWidget {
   final String pickupLabel;
   final String pickupAddress;

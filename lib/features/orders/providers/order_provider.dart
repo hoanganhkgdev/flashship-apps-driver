@@ -1,8 +1,6 @@
 import 'dart:convert';
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../core/services/location_push_service.dart';
 import '../../../core/utils/api_error.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../models/order_model.dart';
@@ -112,8 +110,12 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
         'delivery_address': o.deliveryAddress,
         'delivery_phone': o.deliveryPhone,
         'order_note': o.orderNote,
+        'distance': o.distance,
         'shipping_fee': o.shippingFee,
         'bonus_fee': o.bonusFee,
+        'night_surcharge': o.nightSurcharge,
+        'rain_bonus_eligible': o.rainBonusEligible,
+        'rain_bonus_amount': o.rainBonusConfirmedAmount,
         'discount_amount': o.discountAmount,
         'voucher_code': o.voucherCode,
         'payment_method': o.paymentMethod,
@@ -172,7 +174,7 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
   }
 
   /// Áp dụng ngay đơn đã được backend xác nhận giao cho tài xế. Dùng cho
-  /// Chợ đơn để một lỗi refresh xảy ra sau khi claim thành công không làm
+  /// danh sách Đơn mới để một lỗi refresh xảy ra sau khi claim thành công không làm
   /// app báo thất bại hoặc để màn hình thiếu đơn vừa nhận.
   Future<bool> upsertAssignedPayload(Map<String, dynamic> payload) async {
     try {
@@ -192,94 +194,10 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
     }
   }
 
-  Future<String?> accept(int orderId, {OrderModel? fallback}) async {
-    _stateRevision++;
-    try {
-      final res =
-          await _ref.read(apiClientProvider).post('/orders/$orderId/accept');
-      final data = (res.data['data'] ?? res.data) as Map<String, dynamic>?;
-
-      OrderModel? newOrder;
-      if (data?['order'] != null) {
-        newOrder = OrderModel.fromJson(data!['order'] as Map<String, dynamic>);
-        if (newOrder.id != orderId) {
-          await fetch();
-          return 'Dữ liệu đơn hàng không khớp. Danh sách đã được làm mới.';
-        }
-      } else if (fallback != null) {
-        newOrder = OrderModel(
-          id: fallback.id,
-          code: fallback.code,
-          serviceType: fallback.serviceType,
-          status: 'assigned',
-          platform: fallback.platform,
-          shopServiceType: fallback.shopServiceType,
-          pickupName: fallback.pickupName,
-          pickupAddress: fallback.pickupAddress,
-          pickupPhone: fallback.pickupPhone,
-          deliveryAddress: fallback.deliveryAddress,
-          deliveryPhone: fallback.deliveryPhone,
-          orderNote: fallback.orderNote,
-          shippingFee: fallback.shippingFee,
-          bonusFee: fallback.bonusFee,
-          discountAmount: fallback.discountAmount,
-          voucherCode: fallback.voucherCode,
-          paymentMethod: fallback.paymentMethod,
-          codAmount: fallback.codAmount,
-          createdAt: fallback.createdAt,
-          completedAt: fallback.completedAt,
-          customerName: fallback.customerName,
-          customerPhone: fallback.customerPhone,
-          pickupLat: fallback.pickupLat,
-          pickupLng: fallback.pickupLng,
-          deliveryLat: fallback.deliveryLat,
-          deliveryLng: fallback.deliveryLng,
-          storeName: fallback.storeName,
-          pickupPlaceName: fallback.pickupPlaceName,
-        );
-      }
-
-      if (newOrder != null) {
-        _stateRevision++;
-        // Thêm vào danh sách, tránh duplicate
-        final existing =
-            state.orders.where((o) => o.id != newOrder!.id).toList();
-        final updated = [...existing, newOrder];
-        state = ActiveOrderState(orders: updated, isRestored: true);
-        await _persist(updated);
-      }
-      return null;
-    } on DioException catch (e) {
-      // data có thể không phải Map (HTML lỗi 502/503) — truy cập thẳng
-      // data?['message'] sẽ ném NoSuchMethodError, thoát khỏi catch này và
-      // làm accept() không bao giờ trả về, kẹt nút "Đang xử lý..." vĩnh viễn.
-      final data = e.response?.data;
-      final msg = data is Map ? data['message'] as String? : null;
-      return msg ?? 'Không thể nhận đơn. Vui lòng thử lại.';
-    } catch (_) {
-      return 'Không thể nhận đơn. Vui lòng thử lại.';
-    }
-  }
-
-  Future<bool> decline(int orderId) async {
-    _stateRevision++;
-    try {
-      await _ref.read(apiClientProvider).post('/orders/$orderId/decline');
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
   /// `null` là thành công; ngược lại trả về đúng lý do để màn hình hiển thị.
   Future<String?> complete(int orderId) async {
     _stateRevision++;
-    String? locationError;
     try {
-      // Backend kiểm tra vị trí trong Firebase. Chủ động ghi một GPS fix mới
-      // trước request để không dùng nhầm heartbeat cũ khi tài xế vừa tới nơi.
-      locationError =
-          await LocationPushService.instance.refreshForProximityCheck();
       await _ref.read(apiClientProvider).post('/orders/$orderId/complete');
       _stateRevision++;
       // Xóa đơn vừa hoàn thành khỏi danh sách
@@ -290,8 +208,7 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
     } catch (e) {
       return parseApiError(
         e,
-        fallback:
-            locationError ?? 'Không thể hoàn thành đơn. Vui lòng thử lại.',
+        fallback: 'Không thể hoàn thành đơn. Vui lòng thử lại.',
       );
     }
   }
@@ -318,8 +235,11 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
       pickupLat: o.pickupLat, pickupLng: o.pickupLng,
       deliveryAddress: o.deliveryAddress, deliveryPhone: o.deliveryPhone,
       deliveryLat: o.deliveryLat, deliveryLng: o.deliveryLng,
-      orderNote: o.orderNote, shippingFee: o.shippingFee,
+      orderNote: o.orderNote, distance: o.distance, shippingFee: o.shippingFee,
       bonusFee: o.bonusFee, discountAmount: o.discountAmount,
+      rainBonusEligible: o.rainBonusEligible,
+      rainBonusAmount: o.rainBonusAmount,
+      rainBonusConfirmedAmount: o.rainBonusConfirmedAmount,
       paymentMethod: o.paymentMethod, codAmount: o.codAmount,
       createdAt: o.createdAt, completedAt: o.completedAt,
       customerName: o.customerName, customerPhone: o.customerPhone,

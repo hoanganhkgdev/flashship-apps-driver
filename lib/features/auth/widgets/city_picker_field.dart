@@ -59,10 +59,17 @@ class CityPickerField extends StatelessWidget {
                                 strokeWidth: 1.5, color: Colors.grey.shade400),
                           ),
                           const SizedBox(width: 8),
-                          const Text('Đang tải...',
+                          const Expanded(
+                            child: Text(
+                              'Đang tải khu vực...',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                  fontSize: 18,
-                                  color: AppColors.textSecondary)),
+                                fontSize: 16,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
                         ])
                       : Text(
                           loadFailed
@@ -79,6 +86,8 @@ class CityPickerField extends StatelessWidget {
                                     ? const Color(0xFF1B1411)
                                     : const Color(0xFFA99F9A),
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                 ),
                 if (!loadFailed)

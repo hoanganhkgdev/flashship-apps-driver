@@ -31,161 +31,257 @@ class ProfileHeader extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.fromLTRB(
           AppSpacing.lg,
-          AppSpacing.lg,
+          AppSpacing.md,
           AppSpacing.lg,
           0,
         ),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(AppRadius.xl),
-            boxShadow: AppShadows.soft,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: .20),
           ),
-          child: Column(children: [
-            GestureDetector(
-              onTap: onAvatarTap,
-              child: Stack(clipBehavior: Clip.none, children: [
-                Container(
-                  width: 92,
-                  height: 92,
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.primary, width: 2.5),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _Avatar(
+                    user: user,
+                    photoUrl: photoUrl,
+                    uploading: uploadingAvatar,
+                    onTap: onAvatarTap,
                   ),
-                  child: ClipOval(
-                    child: ColoredBox(
-                      color: AppColors.primarySoft,
-                      child: uploadingAvatar
-                          ? const Center(
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                user?.name ?? 'Tài xế',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTextStyles.screenTitle.copyWith(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            if (!nameLocked) ...[
+                              const SizedBox(width: AppSpacing.xs),
+                              Material(
+                                color: AppColors.primarySoft,
+                                shape: const CircleBorder(),
+                                child: InkWell(
+                                  onTap: () => onEditName(user?.name ?? ''),
+                                  customBorder: const CircleBorder(),
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(6),
+                                    child: Icon(
+                                      Icons.edit_rounded,
+                                      size: 15,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.phone_outlined,
+                              size: 15,
+                              color: AppColors.primary,
+                            ),
+                            const SizedBox(width: AppSpacing.xs),
+                            Flexible(
+                              child: Text(
+                                '${user?.phone ?? 'Chưa có số điện thoại'} · ${cityName ?? 'Chưa cập nhật khu vực'}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTextStyles.label.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primarySoft,
+                            borderRadius: BorderRadius.circular(AppRadius.full),
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: .15),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.delivery_dining_rounded,
+                                size: 13,
                                 color: AppColors.primary,
                               ),
-                            )
-                          : photoUrl != null
-                              ? Image.network(
-                                  photoUrl!,
-                                  width: 86,
-                                  height: 86,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) =>
-                                      _Initials(user: user),
-                                )
-                              : _Initials(user: user),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  'Tài xế FlashShip',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTextStyles.caption.copyWith(
+                                    color: AppColors.primaryDark,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 3),
-                    ),
-                    child: const Icon(Icons.camera_alt_rounded,
-                        size: 14, color: Colors.white),
-                  ),
-                ),
-              ]),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Flexible(
-                child: Text(
-                  user?.name ?? 'Tài xế',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.sectionTitle
-                      .copyWith(fontSize: AppFontSize.xl),
-                ),
+                ],
               ),
-              if (!nameLocked) ...[
-                const SizedBox(width: AppSpacing.xs),
-                InkWell(
-                  onTap: () => onEditName(user?.name ?? ''),
-                  borderRadius: BorderRadius.circular(AppRadius.full),
-                  child: const Padding(
-                    padding: EdgeInsets.all(AppSpacing.xs),
-                    child: Icon(Icons.edit_rounded,
-                        size: 17, color: AppColors.primary),
+              if (hasStats) ...[
+                const SizedBox(height: AppSpacing.lg),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.md,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceAlt,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(
+                      color: AppColors.divider,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _Stat(
+                          value:
+                              acceptanceRate == null ? '—' : '$acceptanceRate%',
+                          label: 'Tỷ lệ nhận',
+                          icon: Icons.touch_app_rounded,
+                        ),
+                      ),
+                      const _StatDivider(),
+                      Expanded(
+                        child: _Stat(
+                          value:
+                              completionRate == null ? '—' : '$completionRate%',
+                          label: 'Hoàn thành',
+                          icon: Icons.task_alt_rounded,
+                        ),
+                      ),
+                      const _StatDivider(),
+                      Expanded(
+                        child: _Stat(
+                          value: rating?.toStringAsFixed(1) ?? '—',
+                          label: 'Đánh giá',
+                          icon: Icons.star_rounded,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
-            ]),
-            const SizedBox(height: AppSpacing.xs),
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              const Icon(Icons.location_on_outlined,
-                  size: 15, color: AppColors.textSecondary),
-              const SizedBox(width: AppSpacing.xs),
-              Flexible(
-                child: Text(
-                  cityName ?? 'TP. Hồ Chí Minh',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.label
-                      .copyWith(color: AppColors.textSecondary),
-                ),
-              ),
-            ]),
-            const SizedBox(height: AppSpacing.sm),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md, vertical: AppSpacing.xs),
-              decoration: BoxDecoration(
-                color: AppColors.successSoft,
-                borderRadius: BorderRadius.circular(AppRadius.full),
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.verified_rounded,
-                    size: 14, color: AppColors.success),
-                const SizedBox(width: 4),
-                Text('Tài khoản tài xế',
-                    style: AppTextStyles.caption.copyWith(
-                        color: AppColors.success, fontWeight: FontWeight.w800)),
-              ]),
-            ),
-            if (hasStats) ...[
-              const SizedBox(height: AppSpacing.lg),
-              Row(children: [
-                Expanded(
-                  child: _Stat(
-                    value: acceptanceRate == null ? '—' : '$acceptanceRate%',
-                    label: 'Tỷ lệ nhận',
-                    icon: Icons.touch_app_rounded,
-                    color: AppColors.success,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: _Stat(
-                    value: completionRate == null ? '—' : '$completionRate%',
-                    label: 'Hoàn thành',
-                    icon: Icons.task_alt_rounded,
-                    color: AppColors.secondary,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: _Stat(
-                    value: rating?.toStringAsFixed(1) ?? '—',
-                    label: 'Đánh giá',
-                    icon: Icons.star_rounded,
-                    color: AppColors.warning,
-                  ),
-                ),
-              ]),
             ],
-          ]),
+          ),
+        ),
+      );
+}
+
+class _Avatar extends StatelessWidget {
+  final dynamic user;
+  final String? photoUrl;
+  final bool uploading;
+  final VoidCallback onTap;
+
+  const _Avatar({
+    required this.user,
+    required this.photoUrl,
+    required this.uploading,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: 82,
+              height: 82,
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: .35),
+                  width: 1.5,
+                ),
+              ),
+              child: ClipOval(
+                child: ColoredBox(
+                  color: Colors.white,
+                  child: uploading
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primary,
+                          ),
+                        )
+                      : photoUrl != null
+                          ? Image.network(
+                              photoUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  _Initials(user: user),
+                            )
+                          : _Initials(user: user),
+                ),
+              ),
+            ),
+            Positioned(
+              right: -1,
+              bottom: -1,
+              child: Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.primary, width: 2),
+                ),
+                child: const Icon(
+                  Icons.camera_alt_rounded,
+                  size: 14,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ],
         ),
       );
 }
@@ -200,8 +296,8 @@ class _Initials extends StatelessWidget {
           user?.initials ?? 'D',
           style: const TextStyle(
             color: AppColors.primary,
-            fontSize: AppFontSize.xl3,
-            fontWeight: FontWeight.w800,
+            fontSize: AppFontSize.xl2,
+            fontWeight: FontWeight.w700,
           ),
         ),
       );
@@ -211,33 +307,56 @@ class _Stat extends StatelessWidget {
   final String value;
   final String label;
   final IconData icon;
-  final Color color;
 
   const _Stat({
     required this.value,
     required this.label,
     required this.icon,
-    required this.color,
   });
 
   @override
+  Widget build(BuildContext context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 14, color: AppColors.primary),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyStrong.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+              fontSize: 9,
+            ),
+          ),
+        ],
+      );
+}
+
+class _StatDivider extends StatelessWidget {
+  const _StatDivider();
+
+  @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(
-            vertical: AppSpacing.md, horizontal: AppSpacing.sm),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(AppRadius.md),
-        ),
-        child: Column(children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(height: 6),
-          Text(value, style: AppTextStyles.sectionTitle.copyWith(color: color)),
-          const SizedBox(height: 2),
-          Text(label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.caption
-                  .copyWith(color: AppColors.textSecondary)),
-        ]),
+        width: 1,
+        height: 34,
+        color: AppColors.divider,
       );
 }

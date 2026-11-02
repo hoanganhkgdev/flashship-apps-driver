@@ -71,45 +71,51 @@ class _OtpInputRowState extends State<OtpInputRow> {
                 ),
               ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: List.generate(6, (i) {
-                final code = widget.controller.text;
-                final filled = i < code.length;
-                final active = i == code.length;
-                return AnimatedScale(
-                  duration: const Duration(milliseconds: 150),
-                  scale: active ? 1.04 : 1.0,
-                  child: AnimatedContainer(
+            LayoutBuilder(builder: (context, constraints) {
+              const gap = 6.0;
+              final boxWidth =
+                  ((constraints.maxWidth - gap * 5) / 6).clamp(36.0, 47.0);
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: List.generate(6, (i) {
+                  final code = widget.controller.text;
+                  final filled = i < code.length;
+                  final active = i == code.length;
+                  return AnimatedScale(
                     duration: const Duration(milliseconds: 150),
-                    width: 47,
-                    height: 59,
-                    decoration: BoxDecoration(
-                      color: filled
-                          ? const Color(0xFFFCF6F3)
-                          : const Color(0xFFFCF6F3),
-                      borderRadius: BorderRadius.circular(14),
-                      border: active
-                          ? Border.all(color: const Color(0xFFFF6035), width: 1)
-                          : filled
-                              ? Border.all(
-                                  color: const Color(0xFFE5DDD9), width: 1)
-                              : Border.all(color: const Color(0xFFE5DDD9)),
-                    ),
-                    child: Center(
-                      child: Text(
-                        filled ? code[i] : '',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF1B1411),
+                    scale: active ? 1.04 : 1.0,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      width: boxWidth,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: filled
+                            ? const Color(0xFFFCF6F3)
+                            : const Color(0xFFFCF6F3),
+                        borderRadius: BorderRadius.circular(14),
+                        border: active
+                            ? Border.all(
+                                color: const Color(0xFFFF6035), width: 1)
+                            : filled
+                                ? Border.all(
+                                    color: const Color(0xFFE5DDD9), width: 1)
+                                : Border.all(color: const Color(0xFFE5DDD9)),
+                      ),
+                      child: Center(
+                        child: Text(
+                          filled ? code[i] : '',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1B1411),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                );
-              }),
-            ),
+                  );
+                }),
+              );
+            }),
           ],
         ),
       ),

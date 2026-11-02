@@ -99,6 +99,46 @@ class Fmt {
         _ => AppColors.primary,
       };
 
+  static String pickupLabel(String type) => switch (type) {
+        'shopping' => 'ĐIỂM MUA',
+        'bike' => 'ĐIỂM RƯỚC',
+        'motor' => 'VỊ TRÍ XE MÁY',
+        'car' => 'VỊ TRÍ Ô TÔ',
+        'topup' => 'ĐIỂM NẠP',
+        _ => 'ĐIỂM LẤY',
+      };
+
+  static String deliveryLabel(String type) => switch (type) {
+        'bike' || 'motor' || 'car' => 'ĐIỂM ĐẾN',
+        'topup' => '',
+        _ => 'ĐIỂM GIAO',
+      };
+
+  static String pickupDistanceLabel(String type) => switch (type) {
+        'bike' => 'TỚI ĐIỂM RƯỚC',
+        'motor' || 'car' => 'TỚI VỊ TRÍ XE',
+        'topup' => 'TỚI ĐIỂM NẠP',
+        _ => 'TỚI ĐIỂM LẤY',
+      };
+
+  static String customerFeeLabel(String type, {bool completed = false}) {
+    final prefix = completed ? 'KHÁCH ĐÃ TRẢ' : 'KHÁCH TRẢ';
+    return switch (type) {
+      'bike' || 'motor' || 'car' => '$prefix TIỀN CUỐC',
+      'topup' => '$prefix PHÍ DỊCH VỤ',
+      _ => '$prefix PHÍ SHIP',
+    };
+  }
+
+  static bool showsDeliveryPoint(String type) => type != 'topup';
+
+  static bool showsRouteDistance(String type) => type != 'topup';
+
+  static String claimNoun(String type) => switch (type) {
+        'bike' || 'motor' || 'car' => 'cuốc',
+        _ => 'đơn',
+      };
+
   // Khoảng cách đường chim bay (haversine) — chỉ ước lượng để hiện trên card
   // danh sách đơn, KHÔNG phải khoảng cách định tuyến thật (app chưa tích hợp
   // OSRM/routing API nào). null nếu thiếu toạ độ.

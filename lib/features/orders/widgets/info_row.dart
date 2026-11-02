@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 
-/// Icon + label + value dùng cho _TopupBody trong order_offer_screen.
+/// Icon + label + value dùng cho _TopupBody trong màn hình đơn.
 class InfoRow extends StatelessWidget {
   final IconData icon;
   final Color iconColor;

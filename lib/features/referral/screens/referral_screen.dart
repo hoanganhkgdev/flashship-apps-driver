@@ -17,7 +17,10 @@ class ReferralScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: const AppScreenHeader(title: 'Giới thiệu cửa hàng'),
+      appBar: const AppScreenHeader(
+        title: 'Giới thiệu cửa hàng',
+        backgroundColor: AppColors.primarySoft,
+      ),
       body: async.when(
         loading: () => const Center(
             child: CircularProgressIndicator(
@@ -43,24 +46,17 @@ class ReferralScreen extends ConsumerWidget {
               const SizedBox(height: AppSpacing.lg),
               _HowItWorks(info: info),
               const SizedBox(height: AppSpacing.xl),
-              Row(children: [
-                const Expanded(
-                  child: Text('Cửa hàng đã giới thiệu',
-                      style: TextStyle(
-                          fontSize: AppFontSize.md,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary)),
-                ),
-                if (info.shops.isNotEmpty)
-                  Text('${info.shops.length} cửa hàng',
-                      style: AppTextStyles.label
-                          .copyWith(color: AppColors.textSecondary)),
-              ]),
+              _SectionHeading(
+                title: 'Cửa hàng đã giới thiệu',
+                subtitle: 'Theo dõi tiến độ và phần thưởng',
+                count: info.shops.isEmpty ? null : info.shops.length,
+              ),
               const SizedBox(height: AppSpacing.md),
               if (info.shops.isEmpty)
                 AppSurfaceCard(
-                  color: Colors.white,
-                  showBorder: false,
+                  color: AppColors.surface,
+                  showBorder: true,
+                  showShadow: false,
                   padding: const EdgeInsets.symmetric(
                       vertical: AppSpacing.xl2, horizontal: AppSpacing.lg),
                   child: Column(children: [
@@ -78,7 +74,7 @@ class ReferralScreen extends ConsumerWidget {
                     const Text('Chưa có cửa hàng nào',
                         style: TextStyle(
                             fontSize: AppFontSize.md,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary)),
                     const SizedBox(height: 4),
                     const Text(
@@ -99,6 +95,72 @@ class ReferralScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _SectionHeading extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final int? count;
+
+  const _SectionHeading({
+    required this.title,
+    required this.subtitle,
+    this.count,
+  });
+
+  @override
+  Widget build(BuildContext context) => Row(children: [
+        Container(
+          width: 4,
+          height: 36,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(AppRadius.full),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.sectionTitle.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (count != null) ...[
+          const SizedBox(width: AppSpacing.sm),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.primarySoft,
+              borderRadius: BorderRadius.circular(AppRadius.full),
+            ),
+            child: Text(
+              '$count',
+              style: AppTextStyles.label.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ]);
 }
 
 class _CodeCard extends StatelessWidget {
@@ -123,41 +185,56 @@ class _CodeCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, Color(0xFFFF8A3D)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.3),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.primary.withValues(alpha: .22)),
       ),
-      child: Column(children: [
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          const Icon(Icons.card_giftcard_rounded,
-              size: 18, color: Colors.white),
-          const SizedBox(width: 6),
-          Text('MÃ GIỚI THIỆU CỦA BẠN',
-              style: AppTextStyles.caption.copyWith(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  letterSpacing: .8,
-                  fontWeight: FontWeight.w800)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.primarySoft,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: const Icon(Icons.card_giftcard_rounded,
+                size: 22, color: AppColors.primary),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Mã giới thiệu của bạn',
+                  style: AppTextStyles.bodyStrong.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _reward,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.label.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ]),
-        const SizedBox(height: AppSpacing.md),
+        const SizedBox(height: AppSpacing.lg),
         // Ô mã: bấm để sao chép nhanh.
         Material(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
+          color: AppColors.primarySoft,
+          borderRadius: BorderRadius.circular(AppRadius.md),
           child: InkWell(
             onTap: hasCode
                 ? () => _copy(context, info.code, 'Đã sao chép mã giới thiệu')
                 : null,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
+            borderRadius: BorderRadius.circular(AppRadius.md),
             child: Padding(
               padding: const EdgeInsets.symmetric(
                   vertical: AppSpacing.lg, horizontal: AppSpacing.xl),
@@ -168,9 +245,9 @@ class _CodeCard extends StatelessWidget {
                     fit: BoxFit.scaleDown,
                     child: Text(hasCode ? info.code : '—',
                         style: const TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 8,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 6,
                             color: AppColors.primary)),
                   ),
                 ),
@@ -182,12 +259,6 @@ class _CodeCard extends StatelessWidget {
               ]),
             ),
           ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Text(
-          _reward,
-          textAlign: TextAlign.center,
-          style: AppTextStyles.bodyStrong.copyWith(color: Colors.white),
         ),
         const SizedBox(height: AppSpacing.lg),
         SizedBox(
@@ -201,16 +272,16 @@ class _CodeCard extends StatelessWidget {
                     'Đã sao chép, dán gửi cho chủ shop')
                 : null,
             style: FilledButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: AppColors.primaryDark,
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppRadius.md)),
             ),
             icon: const Icon(Icons.send_rounded, size: 18),
             label: Text('Sao chép lời mời',
-                style: AppTextStyles.sectionTitle
-                    .copyWith(color: AppColors.primaryDark)),
+                style: AppTextStyles.sectionTitle.copyWith(
+                    color: Colors.white, fontWeight: FontWeight.w600)),
           ),
         ),
       ]),
@@ -258,8 +329,10 @@ class _Stat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AppSurfaceCard(
-        color: Colors.white,
-        showBorder: false,
+        color: AppColors.surface,
+        showBorder: true,
+        showShadow: false,
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Row(children: [
           Container(
             width: 40,
@@ -312,15 +385,15 @@ class _HowItWorks extends StatelessWidget {
       ),
     ];
     return AppSurfaceCard(
-      color: Colors.white,
-      showBorder: false,
+      color: AppColors.surface,
+      showBorder: true,
+      showShadow: false,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Cách nhận thưởng',
-            style: TextStyle(
-                fontSize: AppFontSize.md,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary)),
-        const SizedBox(height: AppSpacing.md),
+        const _SectionHeading(
+          title: 'Cách nhận thưởng',
+          subtitle: 'Hoàn thành 3 bước đơn giản',
+        ),
+        const SizedBox(height: AppSpacing.lg),
         for (var i = 0; i < steps.length; i++)
           Padding(
             padding: EdgeInsets.only(
@@ -344,8 +417,10 @@ class _HowItWorks extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(steps[i].$1,
-                          style: AppTextStyles.bodyStrong
-                              .copyWith(color: AppColors.textPrimary)),
+                          style: AppTextStyles.bodyStrong.copyWith(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w600,
+                          )),
                       const SizedBox(height: 1),
                       Text(steps[i].$2,
                           style: AppTextStyles.label
@@ -388,8 +463,10 @@ class _ShopTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: AppSurfaceCard(
-        color: Colors.white,
-        showBorder: false,
+        color: AppColors.surface,
+        showBorder: true,
+        showShadow: false,
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Row(children: [
           Container(
             width: 44,
@@ -412,7 +489,7 @@ class _ShopTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                       fontSize: AppFontSize.base,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary)),
               if (date != null)
                 Padding(
@@ -435,7 +512,7 @@ class _ShopTile extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                       fontSize: AppFontSize.xs,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                       color: fg)),
             ),
           ),

@@ -8,17 +8,13 @@ import '../../features/auth/screens/otp_screen.dart';
 import '../../features/auth/screens/pending_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/home/screens/home_screen.dart';
-import '../../features/orders/models/order_model.dart';
 import '../../features/orders/providers/order_provider.dart';
-import '../../features/orders/screens/order_offer_screen.dart';
-import '../../features/orders/screens/active_order_screen.dart';
-import '../../features/orders/screens/completed_order_detail_screen.dart';
 import '../../features/wallet/screens/wallet_screen.dart';
 import '../../features/wallet/screens/bank_account_screen.dart';
-import '../../features/score/screens/score_screen.dart';
 import '../../features/referral/screens/referral_screen.dart';
 import '../../features/profile/screens/kyc_screen.dart';
 import '../../features/shifts/screens/shift_registration_screen.dart';
+import '../../features/shifts/screens/leave_request_screen.dart';
 import '../../features/version/providers/app_version_provider.dart';
 import '../../features/version/screens/splash_screen.dart';
 
@@ -36,6 +32,7 @@ class _RouterListenable extends ChangeNotifier {
         activeOrderProvider, (_, __) => notifyListeners());
     ref.listen<AppVersionState>(
         appVersionProvider, (_, __) => notifyListeners());
+    ref.listen<bool>(splashReadyProvider, (_, __) => notifyListeners());
   }
 }
 
@@ -46,7 +43,19 @@ final routerProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
     initialLocation: '/splash',
     refreshListenable: listenable,
+    // Firebase Phone Auth (reCAPTCHA/APNs) mở lại app bằng deep link
+    // `<scheme>://firebaseauth/link...`; plugin tự xử lý, router bỏ qua để
+    // không hiện "Page Not Found" giữa lúc đang xác minh số.
+    onException: (context, state, router) {
+      if (state.uri.host == 'firebaseauth') return;
+      router.go('/splash');
+    },
     redirect: (context, state) {
+      // Deep link của Firebase Phone Auth (reCAPTCHA) không phải một trang của
+      // app: để nguyên cho onException bỏ qua, nếu không các nhánh bên dưới sẽ
+      // đẩy người dùng về /login và mất màn nhập OTP.
+      if (state.uri.host == 'firebaseauth') return null;
+
       final auth = ref.read(authProvider);
       final orderState = ref.read(activeOrderProvider);
       final location = state.matchedLocation;
@@ -56,6 +65,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       final version = ref.read(appVersionProvider);
+
+      // Giữ Splash đủ lâu để logo/loading hiển thị và chờ kiểm tra phiên bản.
+      // Nếu bỏ chốt này, auth + đơn khôi phục rất nhanh sẽ khiến router chuyển
+      // trang ngay trong frame đầu tiên, người dùng chỉ thấy một màn nháy trắng.
+      if (!version.isChecked || !ref.read(splashReadyProvider)) {
+        return location == '/splash' ? null : '/splash';
+      }
 
       // Wait for both auth and active order to finish restoring from prefs
       if (!auth.isInitialized || !orderState.isRestored) {
@@ -115,60 +131,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/pending', builder: (_, __) => const PendingScreen()),
       GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
       GoRoute(
-        path: '/order/offer/:id',
-        builder: (_, state) {
-          final extra = state.extra as Map<String, dynamic>?;
-          final orderId = int.parse(state.pathParameters['id']!);
-          return OrderOfferScreen(
-            // go_router tính pageKey theo pattern route (`/order/offer/:id`),
-            // không theo giá trị :id thật, nên 2 đơn offer khác nhau sẽ bị
-            // Navigator coi là "cùng 1 page" nếu không có Key riêng — Flutter
-            // tái dùng State cũ (chỉ gọi didUpdateWidget, không initState),
-            // khiến `_order` hiển thị vẫn là đơn CŨ dù widget.orderId đã đổi
-            // sang đơn MỚI → bấm "Nhận đơn" accept nhầm đơn khác với đơn đang
-            // hiện trên màn hình.
-            key: ValueKey(orderId),
-            orderId: orderId,
-            orderData: extra ?? {},
-          );
-        },
-      ),
-      GoRoute(
-        path: '/order/active',
-        builder: (_, state) {
-          final extra = state.extra;
-          final orderId =
-              extra is Map ? (extra['orderId'] as num?)?.toInt() : null;
-          return ActiveOrderScreen(
-            key: ValueKey(orderId),
-            orderId: orderId,
-          );
-        },
-      ),
-      GoRoute(
-        path: '/order/completed',
-        // `extra` chỉ sống trong bộ nhớ. Nó có thể bị mất khi hot restart hoặc
-        // khi router refresh vì trạng thái đăng nhập thay đổi. Không ép kiểu
-        // trực tiếp để tránh crash `Null is not a subtype of OrderModel`.
-        redirect: (_, state) => state.extra is OrderModel ? null : '/home',
-        builder: (_, state) {
-          final order = state.extra;
-          return order is OrderModel
-              ? CompletedOrderDetailScreen(order: order)
-              : const HomeScreen();
-        },
-      ),
-      GoRoute(
         path: '/wallet',
         builder: (_, __) => const WalletScreen(),
       ),
       GoRoute(
         path: '/bank-account',
         builder: (_, __) => const BankAccountScreen(),
-      ),
-      GoRoute(
-        path: '/score',
-        builder: (_, __) => const ScoreScreen(),
       ),
       GoRoute(
         path: '/referral',
@@ -181,6 +149,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/shifts',
         builder: (_, __) => const ShiftRegistrationScreen(),
+      ),
+      GoRoute(
+        path: '/leave-request',
+        builder: (_, __) => const LeaveRequestScreen(),
       ),
     ],
   );

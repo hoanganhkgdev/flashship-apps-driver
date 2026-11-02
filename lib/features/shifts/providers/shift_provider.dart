@@ -25,9 +25,9 @@ class ShiftState {
   // biệt với trường hợp khu vực THẬT SỰ chưa có ca nào được thiết lập
   // (2 trường hợp trước đây trả về cùng 1 danh sách rỗng, hiện y hệt nhau).
   final bool loadError;
-  final int currentShiftOnlineSeconds;
-  final DateTime? onlineMeasuredAt;
-  final DateTime? currentShiftEndAt;
+
+  /// Offline đã dùng / còn lại trong ca đang diễn ra; null khi không có ca.
+  final ShiftOfflineStatus? offlineStatus;
 
   const ShiftState({
     this.shifts = const [],
@@ -37,9 +37,7 @@ class ShiftState {
     this.submitting = false,
     this.hasLoadedOnce = false,
     this.loadError = false,
-    this.currentShiftOnlineSeconds = 0,
-    this.onlineMeasuredAt,
-    this.currentShiftEndAt,
+    this.offlineStatus,
   });
 
   bool get isRegistered => currentShiftIds.isNotEmpty;
@@ -54,10 +52,8 @@ class ShiftState {
     bool? submitting,
     bool? hasLoadedOnce,
     bool? loadError,
-    int? currentShiftOnlineSeconds,
-    DateTime? onlineMeasuredAt,
-    DateTime? currentShiftEndAt,
-    bool clearCurrentShiftOnline = false,
+    ShiftOfflineStatus? offlineStatus,
+    bool clearOfflineStatus = false,
   }) =>
       ShiftState(
         shifts: shifts ?? this.shifts,
@@ -68,15 +64,8 @@ class ShiftState {
         submitting: submitting ?? this.submitting,
         hasLoadedOnce: hasLoadedOnce ?? this.hasLoadedOnce,
         loadError: loadError ?? this.loadError,
-        currentShiftOnlineSeconds: clearCurrentShiftOnline
-            ? 0
-            : (currentShiftOnlineSeconds ?? this.currentShiftOnlineSeconds),
-        onlineMeasuredAt: clearCurrentShiftOnline
-            ? null
-            : (onlineMeasuredAt ?? this.onlineMeasuredAt),
-        currentShiftEndAt: clearCurrentShiftOnline
-            ? null
-            : (currentShiftEndAt ?? this.currentShiftEndAt),
+        offlineStatus:
+            clearOfflineStatus ? null : (offlineStatus ?? this.offlineStatus),
       );
 }
 
@@ -94,23 +83,17 @@ class ShiftNotifier extends StateNotifier<ShiftState> {
               ?.map((e) => (e as num).toInt())
               .toList() ??
           [];
-      final currentOnline =
-          res.data['current_shift_online'] as Map<String, dynamic>?;
+      final offline =
+          res.data['current_shift_offline'] as Map<String, dynamic>?;
       state = state.copyWith(
         shifts: list.map(ShiftModel.fromJson).toList(),
         currentShiftIds: ids,
         loading: false,
         hasLoadedOnce: true,
         loadError: false,
-        currentShiftOnlineSeconds:
-            (currentOnline?['online_seconds'] as num?)?.toInt(),
-        onlineMeasuredAt: currentOnline?['measured_at'] != null
-            ? DateTime.tryParse(currentOnline!['measured_at'] as String)
-            : null,
-        currentShiftEndAt: currentOnline?['shift_end_at'] != null
-            ? DateTime.tryParse(currentOnline!['shift_end_at'] as String)
-            : null,
-        clearCurrentShiftOnline: currentOnline == null,
+        offlineStatus:
+            offline == null ? null : ShiftOfflineStatus.fromJson(offline),
+        clearOfflineStatus: offline == null,
       );
     } catch (_) {
       state =

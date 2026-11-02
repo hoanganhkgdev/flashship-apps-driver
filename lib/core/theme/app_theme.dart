@@ -3,24 +3,25 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 abstract final class AppColors {
-  static const primary = Color(0xFFFF6035);
-  static const primaryDark = Color(0xFFD83A05);
-  static const primarySoft = Color(0xFFFFEAE3);
-  static const primaryGradientStart = Color(0xFFCC5A08);
-  static const primaryGradientMiddle = Color(0xFFE8720C);
-  static const primaryGradientEnd = Color(0xFFF59E30);
+  // Cùng hệ màu với Customer: nền kem ấm, cam san hô và chữ nâu đen.
+  static const primary = Color(0xFFF56333);
+  static const primaryDark = Color(0xFFC74007);
+  static const primarySoft = Color(0xFFFFE5D9);
+  static const primaryGradientStart = Color(0xFFF8C8B4);
+  static const primaryGradientMiddle = Color(0xFFFFDDD0);
+  static const primaryGradientEnd = Color(0xFFFFEDE5);
 
-  static const secondary = Color(0xFF008F92);
-  static const secondarySoft = Color(0xFFE3F5F4);
+  static const secondary = Color(0xFF00B3B5);
+  static const secondarySoft = Color(0xFFD1F3F2);
 
-  static const background = Color(0xFFF2F3F5);
-  static const surface = Color(0xFFFFFEFD);
-  static const surfaceAlt = Color(0xFFF5F5F5);
+  static const background = Color(0xFFFBF5F1);
+  static const surface = Color(0xFFFFFDFB);
+  static const surfaceAlt = Color(0xFFF5EDE8);
 
-  static const textPrimary = Color(0xFF1B1411);
-  static const textSecondary = Color(0xFF6A605C);
-  static const textTertiary = Color(0xFFA99F9A);
-  static const divider = Color(0xFFE5DDD9);
+  static const textPrimary = Color(0xFF1C1410);
+  static const textSecondary = Color(0xFF5F5651);
+  static const textTertiary = Color(0xFF938A86);
+  static const divider = Color(0xFFE5DCD7);
 
   static const success = Color(0xFF229650);
   static const successSoft = Color(0xFFE7F8F1);
@@ -101,24 +102,24 @@ abstract final class AppTextStyles {
   static const screenTitle = TextStyle(
       fontSize: AppFontSize.xl, height: 1.2, fontWeight: FontWeight.w600);
   static const sectionTitle = TextStyle(
-      fontSize: AppFontSize.md, height: 1.25, fontWeight: FontWeight.w800);
+      fontSize: AppFontSize.md, height: 1.25, fontWeight: FontWeight.w700);
   static const body = TextStyle(
-      fontSize: AppFontSize.base, height: 1.4, fontWeight: FontWeight.w500);
+      fontSize: AppFontSize.base, height: 1.4, fontWeight: FontWeight.w400);
   static const bodyStrong = TextStyle(
-      fontSize: AppFontSize.base, height: 1.35, fontWeight: FontWeight.w700);
+      fontSize: AppFontSize.base, height: 1.35, fontWeight: FontWeight.w600);
   static const label = TextStyle(
-      fontSize: AppFontSize.sm, height: 1.3, fontWeight: FontWeight.w600);
+      fontSize: AppFontSize.sm, height: 1.3, fontWeight: FontWeight.w500);
   static const caption = TextStyle(
-      fontSize: AppFontSize.xs, height: 1.3, fontWeight: FontWeight.w600);
+      fontSize: AppFontSize.xs, height: 1.3, fontWeight: FontWeight.w400);
   static const metric = TextStyle(
       fontSize: AppFontSize.xl,
       height: 1.1,
-      fontWeight: FontWeight.w900,
+      fontWeight: FontWeight.w700,
       letterSpacing: -0.2);
   static const metricLarge = TextStyle(
       fontSize: AppFontSize.xl4,
       height: 1.05,
-      fontWeight: FontWeight.w900,
+      fontWeight: FontWeight.w700,
       letterSpacing: -0.6);
 }
 
@@ -169,8 +170,8 @@ class AppTheme {
         toolbarHeight: 60,
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
-        elevation: 2,
-        scrolledUnderElevation: 2,
+        elevation: 0,
+        scrolledUnderElevation: 0.5,
         surfaceTintColor: Colors.transparent,
         shadowColor: const Color(0x261B1411),
         centerTitle: false,
@@ -187,12 +188,13 @@ class AppTheme {
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),
       cardTheme: CardThemeData(
-        elevation: 2,
-        shadowColor: const Color(0x1A1B1411),
+        elevation: 0,
         color: AppColors.surface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.card)),
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          side: const BorderSide(color: AppColors.divider),
+        ),
         margin: EdgeInsets.zero,
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -262,10 +264,12 @@ class AppTheme {
       ),
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: AppColors.surface,
+        modalBackgroundColor: AppColors.surface,
         surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        modalElevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
         ),
       ),
       snackBarTheme: SnackBarThemeData(

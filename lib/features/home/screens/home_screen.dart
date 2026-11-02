@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/location_push_service.dart';
-import '../../../core/services/offer_listener_service.dart';
 import '../../../core/services/session_guard_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
@@ -17,10 +16,8 @@ import '../widgets/dashboard_banners.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../orders/providers/order_provider.dart';
 import '../../wallet/providers/wallet_provider.dart';
-import '../../orders/screens/history_screen.dart';
 import '../../wallet/screens/earnings_screen.dart';
 import '../../profile/screens/profile_screen.dart';
-import '../../order_market/screens/order_market_screen.dart';
 import '../../order_market/providers/order_market_provider.dart';
 import 'dashboard_page.dart';
 
@@ -123,7 +120,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final uid = ref.read(authProvider).user?.id;
     if (uid == null) return;
 
-    // logout() tự dừng LocationService/OfferListenerService + dọn Firebase —
+    // logout() tự dừng LocationService + dọn Firebase —
     // xem auth_provider.dart, gom về 1 chỗ cho mọi đường gọi logout.
     SessionGuardService.instance.onForceLogout = () async {
       await ref.read(authProvider.notifier).logout();
@@ -181,7 +178,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final user = ref.read(authProvider).user;
     if (user?.isOnline != true) {
       LocationPushService.instance.stop();
-      OfferListenerService.instance.stop();
       return;
     }
 
@@ -196,8 +192,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     // chết. Việc stop/start toàn bộ mỗi lần resume tạo ra khe hở mất GPS.
     await LocationPushService.instance.resume(user!.id);
     if (!mounted || ref.read(authProvider).user?.isOnline != true) return;
-    OfferListenerService.instance.start(user.id);
-    await NotificationService.reconcileOffer(ref, user.id);
   }
 
   Future<void> _fetchServiceLabels() => Fmt.ensureLabelsLoaded();
@@ -251,43 +245,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final tab = ref.watch(homeTabProvider);
-    final marketTabRequested = ref.watch(orderMarketTabRequestedProvider);
-    final marketEnabled =
-        ref.watch(orderMarketProvider.select((s) => s.enabled));
-    ref.listen<bool>(orderMarketProvider.select((s) => s.enabled),
-        (previous, next) {
-      if (previous != null && previous != next) {
-        if (next && ref.read(orderMarketTabRequestedProvider)) {
-          ref.read(homeTabProvider.notifier).state = 1;
-          ref.read(orderMarketTabRequestedProvider.notifier).state = false;
-        } else {
-          ref.read(homeTabProvider.notifier).state = 0;
-        }
-      }
-    });
+    final newOrderCount =
+        ref.watch(orderMarketProvider.select((s) => s.orders.length));
+    final isOnline =
+        ref.watch(authProvider.select((s) => s.user?.isOnline ?? false));
     final pages = <Widget>[
-      DashboardPage(
-          onGoToWallet: () =>
-              ref.read(homeTabProvider.notifier).state = marketEnabled ? 3 : 2),
-      if (marketEnabled) const OrderMarketScreen(),
-      const HistoryScreen(),
+      const DashboardPage(),
       const EarningsScreen(),
       const ProfileScreen(),
     ];
-    // Trường hợp app đã biết marketEnabled trước khi HomeScreen được dựng
-    // (ví dụ bấm notification lúc app đang ở nền), mở đúng Chợ đơn ngay ở
-    // frame đầu và đồng bộ lại state sau frame để không ghi provider trong
-    // build.
-    final effectiveTab = marketTabRequested && marketEnabled
-        ? 1
-        : (tab < pages.length ? tab : 0);
-    if (marketTabRequested && marketEnabled) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ref.read(homeTabProvider.notifier).state = 1;
-        ref.read(orderMarketTabRequestedProvider.notifier).state = false;
-      });
-    }
+    final effectiveTab = tab < pages.length ? tab : 0;
 
     return PopScope(
       canPop: false,
@@ -295,11 +262,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         if (!didPop) _handleRootBack();
       },
       child: Scaffold(
+        extendBody: true,
         backgroundColor: AppColors.background,
         body: IndexedStack(index: effectiveTab, children: pages),
         bottomNavigationBar: BottomNav(
           currentIndex: effectiveTab,
-          showOrderMarket: marketEnabled,
+          newOrderCount: isOnline ? newOrderCount : 0,
           onTap: (i) => ref.read(homeTabProvider.notifier).state = i,
         ),
       ),

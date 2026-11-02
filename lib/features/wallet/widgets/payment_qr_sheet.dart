@@ -149,20 +149,42 @@ class _PaymentQrSheetState extends ConsumerState<PaymentQrSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-          20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+    return AppBottomSheetBody(
+      bottomPadding: 24,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          AppBottomSheetHeader(title: widget.label),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            Fmt.currency(widget.amount),
-            style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFFFF6035)),
+          AppBottomSheetHeader(
+            title: widget.label,
+            subtitle: 'Quét QR bằng ứng dụng ngân hàng',
+            icon: Icons.qr_code_2_rounded,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+            decoration: BoxDecoration(
+              color: AppColors.primarySoft,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Column(children: [
+              Text(
+                'Số tiền thanh toán',
+                style: AppTextStyles.label.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                Fmt.currency(widget.amount),
+                style: const TextStyle(
+                  fontSize: AppFontSize.xl3,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
+              ),
+            ]),
           ),
 
           const SizedBox(height: 20),
@@ -216,7 +238,7 @@ class _PaymentQrSheetState extends ConsumerState<PaymentQrSheet> {
                     borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text('Đóng',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             ),
           ),
         ],
@@ -232,41 +254,43 @@ class _QrView extends StatelessWidget {
   const _QrView({required this.qrData, this.onOpenUrl});
 
   @override
-  Widget build(BuildContext context) => Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.divider),
-            ),
-            child: QrImageView(
-              data: qrData,
-              version: QrVersions.auto,
-              size: 220,
-              eyeStyle: const QrEyeStyle(
-                  eyeShape: QrEyeShape.square, color: Colors.black),
-              dataModuleStyle: const QrDataModuleStyle(
-                  dataModuleShape: QrDataModuleShape.square,
-                  color: Colors.black),
+  Widget build(BuildContext context) {
+    final qrSize = (MediaQuery.sizeOf(context).width - 88).clamp(176.0, 220.0);
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: QrImageView(
+            data: qrData,
+            version: QrVersions.auto,
+            size: qrSize,
+            eyeStyle: const QrEyeStyle(
+                eyeShape: QrEyeShape.square, color: Colors.black),
+            dataModuleStyle: const QrDataModuleStyle(
+                dataModuleShape: QrDataModuleShape.square, color: Colors.black),
+          ),
+        ),
+        if (onOpenUrl != null) ...[
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: onOpenUrl,
+            child: Text(
+              'Hoặc mở trang thanh toán →',
+              style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 14,
+                  decoration: TextDecoration.underline),
             ),
           ),
-          if (onOpenUrl != null) ...[
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: onOpenUrl,
-              child: Text(
-                'Hoặc mở trang thanh toán →',
-                style: TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 14,
-                    decoration: TextDecoration.underline),
-              ),
-            ),
-          ],
         ],
-      );
+      ],
+    );
+  }
 }
 
 class _ErrorView extends StatelessWidget {
@@ -276,17 +300,24 @@ class _ErrorView extends StatelessWidget {
   const _ErrorView({required this.message, required this.onRetry});
 
   @override
-  Widget build(BuildContext context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: AppColors.dangerSoft,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
           const Icon(Icons.error_outline_rounded,
-              color: AppColors.danger, size: 40),
-          const SizedBox(height: 10),
-          Text(message,
-              style: const TextStyle(color: AppColors.danger, fontSize: 12),
-              textAlign: TextAlign.center),
-          const SizedBox(height: 12),
+              color: AppColors.danger, size: 36),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            message,
+            style: AppTextStyles.caption.copyWith(color: AppColors.danger),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.sm),
           TextButton(onPressed: onRetry, child: const Text('Thử lại')),
-        ],
+        ]),
       );
 }

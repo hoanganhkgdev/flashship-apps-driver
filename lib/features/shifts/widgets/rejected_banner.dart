@@ -14,6 +14,7 @@ class RejectedBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.dangerSoft,
         borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.danger.withValues(alpha: .18)),
       ),
       child: Row(children: [
         Container(
@@ -33,7 +34,7 @@ class RejectedBanner extends StatelessWidget {
             const Text('Yêu cầu đổi ca gần nhất đã bị từ chối',
                 style: TextStyle(
                     fontSize: AppFontSize.base,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary)),
             if (request.adminNote != null && request.adminNote!.isNotEmpty) ...[
               const SizedBox(height: 3),

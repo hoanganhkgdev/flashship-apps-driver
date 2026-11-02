@@ -97,3 +97,7 @@ final appVersionProvider =
     StateNotifierProvider<AppVersionNotifier, AppVersionState>(
   (ref) => AppVersionNotifier(),
 );
+
+/// Chỉ cho router rời Splash sau khi giao diện thương hiệu đã kịp hiển thị
+/// và bước kiểm tra phiên bản hoàn tất.
+final splashReadyProvider = StateProvider<bool>((ref) => false);

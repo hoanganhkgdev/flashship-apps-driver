@@ -36,8 +36,20 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutBack));
     _ctrl.forward();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(appVersionProvider.notifier).check();
+      _initialize();
     });
+  }
+
+  Future<void> _initialize() async {
+    await Future.wait([
+      ref.read(appVersionProvider.notifier).check(),
+      Future<void>.delayed(const Duration(milliseconds: 1600)),
+    ]);
+    if (!mounted) return;
+    final version = ref.read(appVersionProvider);
+    if (!version.needsForceUpdate) {
+      ref.read(splashReadyProvider.notifier).state = true;
+    }
   }
 
   @override
@@ -86,103 +98,99 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.dark,
         statusBarBrightness: Brightness.light,
-        systemNavigationBarColor: Colors.white,
+        systemNavigationBarColor: AppColors.primarySoft,
         systemNavigationBarIconBrightness: Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: Colors.white,
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.white, Color(0xFFFFF3EA)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
+        backgroundColor: AppColors.primarySoft,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            const Positioned(
+              top: -100,
+              right: -72,
+              child: _DecorativeCircle(
+                size: 240,
+                color: AppColors.primary,
+                opacity: .08,
+              ),
             ),
-          ),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              const Positioned(
-                top: -120,
-                right: -110,
-                child: _SplashGlow(size: 340, color: Color(0xFFFFB347)),
+            const Positioned(
+              top: 118,
+              right: 32,
+              child: _DecorativeCircle(
+                size: 26,
+                color: AppColors.success,
+                opacity: .15,
               ),
-              const Positioned(
-                bottom: -150,
-                left: -130,
-                child: _SplashGlow(size: 380, color: Color(0xFF3FAE5A)),
+            ),
+            const Positioned(
+              bottom: 64,
+              left: -68,
+              child: _DecorativeCircle(
+                size: 176,
+                color: AppColors.primary,
+                opacity: .07,
               ),
-              SafeArea(
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: Center(
-                        child: FadeTransition(
-                          opacity: _fade,
-                          child: ScaleTransition(
-                            scale: _scale,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Image.asset(
-                                  'assets/images/logo-vertical.png',
-                                  width: 280,
-                                  fit: BoxFit.contain,
-                                ),
-                                const SizedBox(height: AppSpacing.sm),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: AppSpacing.lg,
-                                      vertical: AppSpacing.xs + 2),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primarySoft,
-                                    borderRadius:
-                                        BorderRadius.circular(AppRadius.full),
-                                  ),
-                                  child: const Text(
-                                    'DÀNH CHO TÀI XẾ',
-                                    style: TextStyle(
-                                      color: AppColors.primaryDark,
-                                      fontSize: AppFontSize.sm,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 1.2,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    FadeTransition(
-                      opacity: _fade,
-                      child: const Padding(
-                        padding: EdgeInsets.only(bottom: AppSpacing.xl3),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
+            ),
+            SafeArea(
+              left: false,
+              right: false,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final compact = constraints.maxHeight < 650;
+                  return SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
+                    child: SizedBox(
+                      height: constraints.maxHeight,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Stack(
+                          alignment: Alignment.center,
                           children: [
-                            _LoadingBar(),
-                            SizedBox(height: AppSpacing.md),
-                            Text(
-                              'Đang khởi động ứng dụng',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: AppFontSize.sm,
-                                fontWeight: FontWeight.w600,
+                            Positioned(
+                              top: compact ? 18 : 28,
+                              left: 0,
+                              right: 0,
+                              child: const Align(
+                                alignment: Alignment.topCenter,
+                                child: _DriverBadge(),
                               ),
                             ),
-                            SizedBox(height: AppSpacing.xs),
-                            _VersionLabel(),
+                            FadeTransition(
+                              opacity: _fade,
+                              child: Transform.translate(
+                                offset: Offset(0, compact ? -12 : -24),
+                                child: ScaleTransition(
+                                  scale: _scale,
+                                  child: _SplashBrand(
+                                    key: const ValueKey('splash-brand'),
+                                    compact: compact,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              bottom: compact ? 16 : 26,
+                              child: FadeTransition(
+                                opacity: _fade,
+                                child: const Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: _SplashLoadingStatus(),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -208,11 +216,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               borderRadius: BorderRadius.circular(AppRadius.xl)),
           title: const Row(children: [
             Icon(Icons.system_update_rounded,
-                color: AppColors.primaryGradientMiddle, size: 22),
+                color: AppColors.primary, size: 22),
             SizedBox(width: 10),
             Text('Cập nhật bắt buộc',
                 style: TextStyle(
-                    fontSize: AppFontSize.md, fontWeight: FontWeight.w800)),
+                    fontSize: AppFontSize.md, fontWeight: FontWeight.w600)),
           ]),
           content: Text(v.message,
               style: const TextStyle(
@@ -225,7 +233,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               child: FilledButton(
                 onPressed: () => _openStore(v.storeUrl),
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primaryGradientMiddle,
+                  backgroundColor: AppColors.primary,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md)),
                 ),
@@ -250,12 +258,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.xl)),
         title: const Row(children: [
-          Icon(Icons.new_releases_rounded,
-              color: AppColors.primaryGradientMiddle, size: 22),
+          Icon(Icons.new_releases_rounded, color: AppColors.primary, size: 22),
           SizedBox(width: 10),
           Text('Có phiên bản mới',
               style: TextStyle(
-                  fontSize: AppFontSize.md, fontWeight: FontWeight.w800)),
+                  fontSize: AppFontSize.md, fontWeight: FontWeight.w600)),
         ]),
         content: const Text(
             'Có phiên bản mới của ứng dụng tài xế. Cập nhật để trải nghiệm tốt hơn!',
@@ -272,7 +279,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
           FilledButton(
             onPressed: () => _openStore(v.storeUrl),
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primaryGradientMiddle,
+              backgroundColor: AppColors.primary,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppRadius.md)),
             ),
@@ -285,11 +292,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 }
 
-class _SplashGlow extends StatelessWidget {
+class _DecorativeCircle extends StatelessWidget {
   final double size;
   final Color color;
+  final double opacity;
 
-  const _SplashGlow({required this.size, required this.color});
+  const _DecorativeCircle({
+    required this.size,
+    required this.color,
+    required this.opacity,
+  });
 
   @override
   Widget build(BuildContext context) => Container(
@@ -297,9 +309,197 @@ class _SplashGlow extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [color.withValues(alpha: 0.28), color.withValues(alpha: 0)],
+          color: color.withValues(alpha: opacity),
+        ),
+      );
+}
+
+class _DriverBadge extends StatelessWidget {
+  const _DriverBadge();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        constraints: const BoxConstraints(maxWidth: 280),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: .72),
+          borderRadius: BorderRadius.circular(AppRadius.full),
+          border: Border.all(color: Colors.white),
+        ),
+        child:
+            const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(Icons.delivery_dining_rounded,
+              size: 17, color: AppColors.primary),
+          SizedBox(width: 7),
+          Flexible(
+            child: Text(
+              'ỨNG DỤNG TÀI XẾ',
+              maxLines: 2,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: AppFontSize.sm,
+                fontWeight: FontWeight.w700,
+                letterSpacing: .8,
+                color: AppColors.textPrimary,
+              ),
+            ),
           ),
+        ]),
+      );
+}
+
+class _SplashBrand extends StatelessWidget {
+  final bool compact;
+
+  const _SplashBrand({super.key, required this.compact});
+
+  @override
+  Widget build(BuildContext context) {
+    final logoSize = compact ? 100.0 : 116.0;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 420),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: logoSize,
+            height: logoSize,
+            padding: EdgeInsets.all(compact ? 13 : 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(compact ? 30 : 36),
+              border: Border.all(color: Colors.white, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: .12),
+                  blurRadius: 28,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Transform.scale(
+              scale: 1.24,
+              child: Image.asset(
+                'assets/images/logo.png',
+                fit: BoxFit.contain,
+                semanticLabel: 'FlashShip',
+              ),
+            ),
+          ),
+          SizedBox(height: compact ? AppSpacing.lg : AppSpacing.xl),
+          Text.rich(
+            TextSpan(children: [
+              TextSpan(
+                text: 'FLASH',
+                style: TextStyle(
+                  color: AppColors.success,
+                  fontSize: compact ? 31 : 36,
+                ),
+              ),
+              TextSpan(
+                text: 'SHIP',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: compact ? 31 : 36,
+                ),
+              ),
+            ]),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              height: 1,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -1.2,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          const Text(
+            'Đồng hành trên mọi hành trình',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: AppFontSize.md,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          const Wrap(
+            alignment: WrapAlignment.center,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              _DriverBenefit(
+                  icon: Icons.receipt_long_outlined, label: 'Nhận đơn'),
+              _DriverBenefit(icon: Icons.route_outlined, label: 'Giao nhanh'),
+              _DriverBenefit(
+                  icon: Icons.trending_up_rounded, label: 'Tăng thu nhập'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DriverBenefit extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _DriverBenefit({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: .7),
+          borderRadius: BorderRadius.circular(AppRadius.full),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 15, color: AppColors.primary),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: AppFontSize.sm,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ]),
+      );
+}
+
+class _SplashLoadingStatus extends StatelessWidget {
+  const _SplashLoadingStatus();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        constraints: const BoxConstraints(maxWidth: 360),
+        padding: const EdgeInsets.fromLTRB(18, 14, 18, 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: .68),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: Colors.white),
+        ),
+        child: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _LoadingBar(),
+            SizedBox(height: AppSpacing.sm),
+            Text(
+              'Đang chuẩn bị hành trình của bạn...',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: AppFontSize.sm,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(height: AppSpacing.xs),
+            _VersionLabel(),
+          ],
         ),
       );
 }

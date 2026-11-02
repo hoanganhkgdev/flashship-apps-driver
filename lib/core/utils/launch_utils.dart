@@ -15,6 +15,19 @@ Future<void> launchPhoneCall(String phone) async {
   await launchUrl(uri, mode: LaunchMode.externalApplication);
 }
 
+/// Mở một đường dẫn trong ghi chú (vd. link Google Maps) bằng app/trình duyệt
+/// ngoài — link Google Maps sẽ mở thẳng app Google Maps nếu máy có cài.
+Future<void> launchLink(String raw) async {
+  var url = raw.trim().replaceAll(RegExp(r'[.,;:!?)\]]+$'), '');
+  if (url.isEmpty) return;
+  if (!RegExp(r'^[a-zA-Z][a-zA-Z0-9+.-]*://').hasMatch(url)) {
+    url = 'https://$url';
+  }
+  final uri = Uri.tryParse(url);
+  if (uri == null) return;
+  await launchUrl(uri, mode: LaunchMode.externalApplication);
+}
+
 Future<void> launchNavigation({
   double? lat,
   double? lng,

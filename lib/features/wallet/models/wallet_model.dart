@@ -124,13 +124,21 @@ class DriverDebt {
   bool get isPaid => status == 'paid';
   bool get isOverdue => status == 'overdue';
 
-  // Khớp điều kiện lọc trong MarkOverdueDebtsCommand: nợ phạt điểm tuần luôn
-  // có ref_id dạng 'score_penalty_<...>', nợ phí tuần thường thì ref_id null.
-  bool get isScorePenalty =>
-      refId != null && refId!.startsWith('score_penalty_');
+  // Khớp điều kiện lọc trong MarkOverdueDebtsCommand: nợ phạt có ref_id dạng
+  // 'shift_offline_<...>' (Offline quá giờ) hoặc 'score_penalty_<...>' (phạt
+  // điểm tuần cũ), nợ phí tuần thường thì ref_id null.
+  bool get isShiftOfflinePenalty =>
+      refId != null && refId!.startsWith('shift_offline_');
+  bool get isPenalty =>
+      isShiftOfflinePenalty ||
+      (refId != null && refId!.startsWith('score_penalty_'));
   bool get isWeeklyFee => refId == null;
 
-  // Nợ phạt điểm quá hạn sau 24h kể từ lúc tạo (theo MarkOverdueDebtsCommand).
+  /// Tên hiển thị của khoản phạt.
+  String get penaltyTitle =>
+      isShiftOfflinePenalty ? 'Phạt Offline quá giờ ca' : 'Phạt điểm tuần';
+
+  // Nợ phạt quá hạn sau 24h kể từ lúc tạo (theo MarkOverdueDebtsCommand).
   Duration get timeUntilDue =>
       createdAt.add(const Duration(hours: 24)).difference(DateTime.now());
 }

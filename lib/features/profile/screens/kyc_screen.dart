@@ -50,19 +50,17 @@ class _KycScreenState extends ConsumerState<KycScreen> {
           _licenseStatus = data['license_status'] as String?;
           _licenseImageUrl = data['license_image_url'] as String?;
           _licenseRejectionReason = data['license_rejection_reason'] as String?;
-          _loading = false;
         });
       }
     } catch (_) {
+      // Giữ dữ liệu gần nhất nếu refresh thất bại.
+    } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   int get _completedSteps {
-    int n = 0;
-    if (_cccdStatus == 'approved') n++;
-    if (_licenseStatus == 'approved') n++;
-    return n;
+    return _cccdStatus == 'approved' ? 1 : 0;
   }
 
   // ── Uploads ──────────────────────────────────────────────────────────────────
@@ -74,41 +72,39 @@ class _KycScreenState extends ConsumerState<KycScreen> {
   }) {
     showAppBottomSheet(
       context: context,
-      builder: (ctx) => SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            AppBottomSheetHeader(
-              title: title,
-              subtitle: 'Ảnh rõ nét, đủ ánh sáng, không bị mờ',
-              icon: Icons.add_a_photo_outlined,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            AppSheetOption(
-              icon: Icons.camera_alt_outlined,
-              label: 'Chụp ảnh',
-              subtitle: 'Dùng máy ảnh ngay bây giờ',
-              showChevron: true,
-              onTap: () {
-                Navigator.pop(ctx);
-                onCamera();
-              },
-            ),
-            AppSheetOption(
-              icon: Icons.photo_library_outlined,
-              iconBackground: AppColors.infoSoft,
-              iconColor: AppColors.info,
-              label: 'Chọn từ thư viện',
-              subtitle: 'Lấy ảnh có sẵn trong máy',
-              showChevron: true,
-              onTap: () {
-                Navigator.pop(ctx);
-                onGallery();
-              },
-            ),
-          ]),
-        ),
+      builder: (ctx) => AppBottomSheetBody(
+        bottomPadding: 16,
+        keyboardAware: false,
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          AppBottomSheetHeader(
+            title: title,
+            subtitle: 'Ảnh rõ nét, đủ ánh sáng, không bị mờ',
+            icon: Icons.add_a_photo_outlined,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppSheetOption(
+            icon: Icons.camera_alt_outlined,
+            label: 'Chụp ảnh',
+            subtitle: 'Dùng máy ảnh ngay bây giờ',
+            showChevron: true,
+            onTap: () {
+              Navigator.pop(ctx);
+              onCamera();
+            },
+          ),
+          AppSheetOption(
+            icon: Icons.photo_library_outlined,
+            iconBackground: AppColors.infoSoft,
+            iconColor: AppColors.info,
+            label: 'Chọn từ thư viện',
+            subtitle: 'Lấy ảnh có sẵn trong máy',
+            showChevron: true,
+            onTap: () {
+              Navigator.pop(ctx);
+              onGallery();
+            },
+          ),
+        ]),
       ),
     );
   }
@@ -207,7 +203,10 @@ class _KycScreenState extends ConsumerState<KycScreen> {
       ),
       child: Scaffold(
         backgroundColor: AppColors.background,
-        appBar: const AppScreenHeader(title: 'Hồ sơ tài xế'),
+        appBar: const AppScreenHeader(
+          title: 'Xác minh tài khoản',
+          backgroundColor: AppColors.primarySoft,
+        ),
         body: RefreshIndicator(
           color: AppColors.primary,
           onRefresh: _loadData,
@@ -219,7 +218,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
                   children: [
                     _buildHeader(steps),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.md),
 
                     // ── Giấy tờ ─────────────────────────────────────────────
                     Padding(
@@ -227,7 +226,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
                       child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _sectionLabel('GIẤY TỜ TÙY THÂN'),
+                            _sectionLabel(),
                             const SizedBox(height: AppSpacing.md),
                             _buildDocsCard(),
                           ]),
@@ -244,10 +243,9 @@ class _KycScreenState extends ConsumerState<KycScreen> {
   // ── Header ────────────────────────────────────────────────────────────────────
 
   Widget _buildHeader(int steps) {
-    final isDone = steps == 2;
-    final colors = isDone
-        ? const [Color(0xFF1F8A4C), Color(0xFF34B368)]
-        : const [AppColors.primary, Color(0xFFFF8A3D)];
+    final isDone = steps == 1;
+    final accent = isDone ? AppColors.success : AppColors.primary;
+    final accentSoft = isDone ? AppColors.successSoft : AppColors.primarySoft;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,
@@ -256,66 +254,78 @@ class _KycScreenState extends ConsumerState<KycScreen> {
         0,
       ),
       child: Container(
-        padding: const EdgeInsets.all(AppSpacing.xl),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: colors,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(AppRadius.xl),
-          boxShadow: [
-            BoxShadow(
-              color: colors.first.withValues(alpha: .28),
-              blurRadius: 24,
-              offset: const Offset(0, 10),
-            ),
-          ],
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          border: Border.all(color: accent.withValues(alpha: .18)),
         ),
-        child: Row(children: [
-          // Vòng tiến độ x/2
-          SizedBox(
-            width: 76,
-            height: 76,
-            child: Stack(alignment: Alignment.center, children: [
-              SizedBox.expand(
-                child: CircularProgressIndicator(
-                  value: steps / 2,
-                  strokeWidth: 7,
-                  strokeCap: StrokeCap.round,
-                  color: Colors.white,
-                  backgroundColor: Colors.white.withValues(alpha: .25),
+        child: Column(children: [
+          Row(children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: accentSoft,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Icon(
+                isDone ? Icons.verified_user_rounded : Icons.shield_outlined,
+                color: accent,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isDone ? 'Tài khoản đã xác minh' : 'Xác minh tài khoản',
+                    style: AppTextStyles.sectionTitle.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    isDone
+                        ? 'Bạn đã hoàn tất giấy tờ cần thiết'
+                        : 'Hoàn tất giấy tờ để sẵn sàng nhận đơn',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.label.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: accentSoft,
+                borderRadius: BorderRadius.circular(AppRadius.full),
+              ),
+              child: Text(
+                '$steps/1',
+                style: AppTextStyles.label.copyWith(
+                  color: accent,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              Text('$steps/2',
-                  style: AppTextStyles.metric
-                      .copyWith(color: Colors.white, fontSize: 22)),
-            ]),
-          ),
-          const SizedBox(width: AppSpacing.lg),
-          Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(
-                isDone ? 'Hồ sơ hoàn thiện' : 'Hoàn thiện hồ sơ',
-                style: AppTextStyles.sectionTitle
-                    .copyWith(color: Colors.white, fontSize: AppFontSize.lg),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                isDone
-                    ? 'Bạn có thể nhận tất cả loại đơn hàng'
-                    : 'Điền đủ thông tin để nhận nhiều đơn hơn',
-                style: AppTextStyles.label
-                    .copyWith(color: Colors.white.withValues(alpha: .9)),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Wrap(spacing: AppSpacing.sm, runSpacing: 6, children: [
-                _StepStatus(label: 'CCCD', done: _cccdStatus == 'approved'),
-                _StepStatus(
-                    label: 'Bằng lái', done: _licenseStatus == 'approved'),
-              ]),
-            ]),
+            ),
+          ]),
+          const SizedBox(height: AppSpacing.md),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            child: LinearProgressIndicator(
+              value: steps.toDouble(),
+              minHeight: 5,
+              backgroundColor: AppColors.surfaceAlt,
+              valueColor: AlwaysStoppedAnimation<Color>(accent),
+            ),
           ),
         ]),
       ),
@@ -329,6 +339,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
       _DocCard(
         icon: Icons.badge_rounded,
         label: 'CCCD / CMND',
+        requirementLabel: 'Bắt buộc',
         status: _cccdStatus,
         imageUrl: _cccdImageUrl,
         rejectionReason: _cccdRejectionReason,
@@ -342,13 +353,15 @@ class _KycScreenState extends ConsumerState<KycScreen> {
       const SizedBox(height: AppSpacing.md),
       _DocCard(
         icon: Icons.drive_eta_rounded,
-        label: 'Bằng lái xe',
+        label: 'Bằng lái ô tô',
+        requirementLabel: 'Tùy chọn',
+        unlocksCarOrders: true,
         status: _licenseStatus,
         imageUrl: _licenseImageUrl,
         rejectionReason: _licenseRejectionReason,
         isUploading: _uploadingLicense,
         onTap: () => _showUploadSheet(
-          title: 'Tải lên bằng lái xe',
+          title: 'Tải lên bằng lái ô tô',
           onCamera: () => _pickAndUploadLicense(ImageSource.camera),
           onGallery: () => _pickAndUploadLicense(ImageSource.gallery),
         ),
@@ -356,42 +369,38 @@ class _KycScreenState extends ConsumerState<KycScreen> {
     ]);
   }
 
-  Widget _sectionLabel(String text) => Text(
-        text,
-        style: AppTextStyles.caption.copyWith(
-          color: AppColors.textTertiary,
-          fontWeight: FontWeight.w800,
-          letterSpacing: .8,
-        ),
-      );
-}
-
-// ── Step status ───────────────────────────────────────────────────────────────
-
-class _StepStatus extends StatelessWidget {
-  final String label;
-  final bool done;
-  const _StepStatus({required this.label, required this.done});
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: done ? .28 : .16),
-          borderRadius: BorderRadius.circular(AppRadius.full),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(
-            done ? Icons.check_circle_rounded : Icons.circle_outlined,
-            size: 14,
-            color: Colors.white,
+  Widget _sectionLabel() => Row(children: [
+        Container(
+          width: 4,
+          height: 36,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(AppRadius.full),
           ),
-          const SizedBox(width: 5),
-          Text(label,
-              style: AppTextStyles.caption
-                  .copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
-        ]),
-      );
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(
+              'Giấy tờ xác minh',
+              style: AppTextStyles.sectionTitle.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'CCCD bắt buộc · Bằng lái ô tô tùy chọn',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ]),
+        ),
+      ]);
 }
 
 // ── Doc card ──────────────────────────────────────────────────────────────────
@@ -399,6 +408,8 @@ class _StepStatus extends StatelessWidget {
 class _DocCard extends StatelessWidget {
   final IconData icon;
   final String label;
+  final String requirementLabel;
+  final bool unlocksCarOrders;
   final String? status;
   final String? imageUrl;
   final String? rejectionReason;
@@ -408,6 +419,8 @@ class _DocCard extends StatelessWidget {
   const _DocCard({
     required this.icon,
     required this.label,
+    required this.requirementLabel,
+    this.unlocksCarOrders = false,
     this.status,
     this.imageUrl,
     this.rejectionReason,
@@ -429,123 +442,178 @@ class _DocCard extends StatelessWidget {
     };
     // Chặn bấm lần nữa trong lúc đang upload — tránh gửi nhiều request cùng lúc.
     final bool canUpload = status != 'approved' && !isUploading;
+    final description = unlocksCarOrders
+        ? switch (status) {
+            'approved' => 'Đã đủ điều kiện nhận đơn lái hộ ô tô',
+            'rejected' => 'Cập nhật lại để đăng ký nhận đơn ô tô',
+            'pending' => 'Duyệt xong sẽ mở đơn lái hộ ô tô',
+            _ => 'Tải lên để đăng ký nhận đơn lái hộ ô tô',
+          }
+        : switch (status) {
+            'approved' => 'Thông tin đã được xác nhận',
+            'rejected' => 'Vui lòng cập nhật lại ảnh giấy tờ',
+            'pending' => 'Hồ sơ đang được kiểm tra',
+            _ => 'Chưa có ảnh giấy tờ',
+          };
 
     return AppSurfaceCard(
-      color: Colors.white,
-      showBorder: false,
-      padding: EdgeInsets.zero,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Ảnh / khung icon, trạng thái nổi ở góc trên phải.
-          Stack(children: [
-            imageUrl != null
-                ? Image.network(imageUrl!,
-                    height: 150,
-                    width: double.infinity,
+      color: AppColors.surface,
+      showBorder: true,
+      showShadow: false,
+      padding: const EdgeInsets.all(14),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            child: imageUrl != null
+                ? Image.network(
+                    imageUrl!,
+                    width: 64,
+                    height: 64,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _iconArea(icon, color))
+                    errorBuilder: (_, __, ___) => _iconArea(icon, color),
+                  )
                 : _iconArea(icon, color),
-            Positioned(
-              top: AppSpacing.md,
-              right: AppSpacing.md,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(AppRadius.full),
-                  boxShadow: AppShadows.soft,
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(statusIcon, size: 14, color: color),
-                  const SizedBox(width: 5),
-                  Text(statusLabel,
-                      style: AppTextStyles.caption
-                          .copyWith(color: color, fontWeight: FontWeight.w800)),
-                ]),
-              ),
-            ),
-          ]),
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(label,
-                  style: AppTextStyles.sectionTitle
-                      .copyWith(color: AppColors.textPrimary)),
-              if (status == 'rejected' &&
-                  (rejectionReason?.isNotEmpty ?? false)) ...[
-                const SizedBox(height: AppSpacing.sm),
+              Row(children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodyStrong.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
                 Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(AppSpacing.md),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                   decoration: BoxDecoration(
-                    color: AppColors.dangerSoft,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    color: requirementLabel == 'Bắt buộc'
+                        ? AppColors.primarySoft
+                        : AppColors.surfaceAlt,
+                    borderRadius: BorderRadius.circular(AppRadius.full),
                   ),
-                  child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.error_outline_rounded,
-                            size: 16, color: AppColors.danger),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: Text(rejectionReason!,
-                              style: AppTextStyles.label.copyWith(
-                                  color: AppColors.danger, height: 1.4)),
-                        ),
-                      ]),
-                ),
-              ],
-              if (status != 'approved') ...[
-                const SizedBox(height: AppSpacing.md),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: FilledButton.icon(
-                    onPressed: canUpload ? onTap : null,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      disabledBackgroundColor:
-                          AppColors.primary.withValues(alpha: 0.5),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.md)),
-                    ),
-                    icon: isUploading
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Icon(Icons.upload_rounded,
-                            size: 18, color: Colors.white),
-                    label: Text(
-                      isUploading
-                          ? 'Đang tải lên...'
-                          : (status == null ? 'Tải lên' : 'Cập nhật'),
-                      style: const TextStyle(
-                          fontSize: AppFontSize.md,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white),
+                  child: Text(
+                    requirementLabel,
+                    style: AppTextStyles.caption.copyWith(
+                      color: requirementLabel == 'Bắt buộc'
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-              ],
+              ]),
+              const SizedBox(height: 5),
+              Row(children: [
+                Icon(statusIcon, size: 14, color: color),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: Text(
+                    statusLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.label.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 3),
+              Text(
+                description,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
             ]),
           ),
         ]),
-      ),
+        if (status == 'rejected' && (rejectionReason?.isNotEmpty ?? false)) ...[
+          const SizedBox(height: AppSpacing.md),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: AppColors.dangerSoft,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Icon(Icons.error_outline_rounded,
+                  size: 16, color: AppColors.danger),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  rejectionReason!,
+                  style: AppTextStyles.label.copyWith(
+                    color: AppColors.danger,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ]),
+          ),
+        ],
+        if (status != 'approved') ...[
+          const SizedBox(height: AppSpacing.md),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: FilledButton.icon(
+              onPressed: canUpload ? onTap : null,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                disabledBackgroundColor:
+                    AppColors.primary.withValues(alpha: 0.5),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+              ),
+              icon: isUploading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.upload_rounded,
+                      size: 18, color: Colors.white),
+              label: Text(
+                isUploading
+                    ? 'Đang tải lên...'
+                    : (status == null ? 'Tải ảnh giấy tờ' : 'Cập nhật ảnh'),
+                style: const TextStyle(
+                  fontSize: AppFontSize.base,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ]),
     );
   }
 
   Widget _iconArea(IconData icon, Color color) => Container(
-        height: 150,
-        width: double.infinity,
+        width: 64,
+        height: 64,
         color: color.withValues(alpha: 0.08),
-        child: Center(
-            child: Icon(icon, size: 52, color: color.withValues(alpha: 0.5))),
+        child: Icon(icon, size: 28, color: color.withValues(alpha: 0.65)),
       );
 }

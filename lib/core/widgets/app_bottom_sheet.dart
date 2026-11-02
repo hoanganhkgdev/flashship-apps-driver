@@ -11,15 +11,56 @@ Future<T?> showAppBottomSheet<T>({
       context: context,
       isScrollControlled: isScrollControlled,
       useSafeArea: true,
-      backgroundColor: Colors.white,
-      barrierColor: Colors.black.withValues(alpha: .45),
+      backgroundColor: AppColors.surface,
+      barrierColor: AppColors.textPrimary.withValues(alpha: .48),
       elevation: 0,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
       clipBehavior: Clip.antiAlias,
       builder: builder,
     );
+
+/// Khung nội dung chuẩn cho các sheet dạng form/action. Tự chừa safe-area,
+/// cuộn trên màn hình thấp và dịch nội dung lên khi bàn phím xuất hiện.
+class AppBottomSheetBody extends StatelessWidget {
+  final Widget child;
+  final double horizontalPadding;
+  final double topPadding;
+  final double bottomPadding;
+  final bool keyboardAware;
+
+  const AppBottomSheetBody({
+    super.key,
+    required this.child,
+    this.horizontalPadding = 20,
+    this.topPadding = 12,
+    this.bottomPadding = 20,
+    this.keyboardAware = true,
+  });
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+        top: false,
+        child: AnimatedPadding(
+          duration: AppDuration.fast,
+          curve: Curves.easeOut,
+          padding: EdgeInsets.only(
+            bottom: keyboardAware ? MediaQuery.viewInsetsOf(context).bottom : 0,
+          ),
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: EdgeInsets.fromLTRB(
+              horizontalPadding,
+              topPadding,
+              horizontalPadding,
+              bottomPadding,
+            ),
+            child: child,
+          ),
+        ),
+      );
+}
 
 /// Đầu sheet: tay nắm kéo, (icon) + tiêu đề + phụ đề, nút đóng bên phải.
 class AppBottomSheetHeader extends StatelessWidget {
@@ -42,7 +83,7 @@ class AppBottomSheetHeader extends StatelessWidget {
         children: [
           Center(
             child: Container(
-              width: 40,
+              width: 36,
               height: 4,
               decoration: BoxDecoration(
                 color: AppColors.divider,
@@ -50,17 +91,17 @@ class AppBottomSheetHeader extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: 14),
           Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
             if (icon != null) ...[
               Container(
-                width: 44,
-                height: 44,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: AppColors.primarySoft,
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-                child: Icon(icon, size: 22, color: AppColors.primary),
+                child: Icon(icon, size: 20, color: AppColors.primary),
               ),
               const SizedBox(width: AppSpacing.md),
             ],
@@ -70,14 +111,15 @@ class AppBottomSheetHeader extends StatelessWidget {
                 children: [
                   Text(title,
                       style: AppTextStyles.screenTitle.copyWith(
-                          fontWeight: FontWeight.w800,
+                          fontSize: AppFontSize.lg,
+                          fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary)),
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
                     Text(
                       subtitle!,
-                      style: AppTextStyles.body
-                          .copyWith(color: AppColors.textSecondary),
+                      style: AppTextStyles.label.copyWith(
+                          color: AppColors.textSecondary, height: 1.4),
                     ),
                   ],
                 ],
@@ -88,17 +130,17 @@ class AppBottomSheetHeader extends StatelessWidget {
               Semantics(
                 button: true,
                 label: 'Đóng',
-                child: GestureDetector(
-                  onTap: () => Navigator.maybePop(context),
-                  child: Container(
-                    width: 34,
-                    height: 34,
-                    decoration: const BoxDecoration(
-                      color: AppColors.surfaceAlt,
-                      shape: BoxShape.circle,
+                child: Material(
+                  color: AppColors.surfaceAlt,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    onTap: () => Navigator.maybePop(context),
+                    customBorder: const CircleBorder(),
+                    child: const SizedBox.square(
+                      dimension: 38,
+                      child: Icon(Icons.close_rounded,
+                          size: 18, color: AppColors.textSecondary),
                     ),
-                    child: const Icon(Icons.close_rounded,
-                        size: 18, color: AppColors.textSecondary),
                   ),
                 ),
               ),
@@ -194,6 +236,55 @@ class AppSheetSearchField extends StatelessWidget {
       );
 }
 
+class AppSheetEmptyState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+
+  const AppSheetEmptyState({
+    super.key,
+    required this.icon,
+    required this.title,
+    this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl2),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceAlt,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Icon(icon, size: 24, color: AppColors.textTertiary),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodyStrong.copyWith(
+                color: AppColors.textPrimary,
+              ),
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                subtitle!,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ]),
+        ),
+      );
+}
+
 /// Một dòng lựa chọn: icon (hoặc [leading]) + nhãn + phụ đề. Khi [selected]
 /// dòng được tô cam nhạt và hiện dấu tick.
 class AppSheetOption extends StatelessWidget {
@@ -222,16 +313,23 @@ class AppSheetOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
+        padding: const EdgeInsets.symmetric(vertical: 3),
         child: Material(
-          color: selected ? AppColors.primarySoft : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.md),
+          color: selected ? AppColors.primarySoft : AppColors.surfaceAlt,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            side: BorderSide(
+              color: selected
+                  ? AppColors.primary.withValues(alpha: .28)
+                  : AppColors.divider,
+            ),
+          ),
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(AppRadius.md),
             child: Padding(
               padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md, vertical: AppSpacing.md),
+                  horizontal: AppSpacing.md, vertical: 11),
               child: Row(children: [
                 leading ??
                     Container(
@@ -253,7 +351,7 @@ class AppSheetOption extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                               fontSize: AppFontSize.md,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w600,
                               color: selected
                                   ? AppColors.primaryDark
                                   : AppColors.textPrimary)),
@@ -316,7 +414,7 @@ class AppSheetButton extends StatelessWidget {
               : Text(label,
                   style: const TextStyle(
                       fontSize: AppFontSize.md,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                       color: Colors.white)),
         ),
       );

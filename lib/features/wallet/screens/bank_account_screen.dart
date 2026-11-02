@@ -106,8 +106,11 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
       if (_formEdited || next.bankAccount.isEmpty) return;
       final accountChanged =
           previous?.bankAccount.bankCode != next.bankAccount.bankCode ||
+              previous?.bankAccount.bankName != next.bankAccount.bankName ||
               previous?.bankAccount.accountNumber !=
                   next.bankAccount.accountNumber ||
+              previous?.bankAccount.accountHolder !=
+                  next.bankAccount.accountHolder ||
               previous?.bankList.length != next.bankList.length;
       if (accountChanged) _hydrateBankForm(next);
     });
@@ -122,8 +125,10 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
         backgroundColor: AppColors.background,
         appBar: AppScreenHeader(
           title: hasBank ? 'Tài khoản ngân hàng' : 'Thêm ngân hàng',
+          backgroundColor: AppColors.primarySoft,
         ),
         body: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.fromLTRB(
               AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xl3),
           child:
@@ -140,21 +145,15 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
             ),
             const SizedBox(height: AppSpacing.lg),
             AppSurfaceCard(
-              color: Colors.white,
-              showBorder: false,
+              color: AppColors.surface,
+              showBorder: true,
+              showShadow: false,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Thông tin nhận tiền',
-                      style: AppTextStyles.sectionTitle),
-                  const SizedBox(height: AppSpacing.xs),
-                  const Text(
-                    'Kiểm tra chính xác trước khi lưu để tránh chuyển tiền nhầm.',
-                    style: TextStyle(
-                      fontSize: AppFontSize.sm,
-                      height: 1.4,
-                      color: AppColors.textSecondary,
-                    ),
+                  const _SectionHeading(
+                    title: 'Thông tin nhận tiền',
+                    subtitle: 'Kiểm tra kỹ trước khi lưu tài khoản',
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   const Text('Ngân hàng', style: AppTextStyles.bodyStrong),
@@ -205,12 +204,14 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: _selectedBank != null
-                                  ? FontWeight.w700
+                                  ? FontWeight.w600
                                   : FontWeight.w500,
                               color: _selectedBank != null
                                   ? AppColors.textPrimary
                                   : AppColors.textTertiary,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const Icon(Icons.keyboard_arrow_down_rounded,
@@ -227,7 +228,7 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
                     keyboardType: TextInputType.number,
                     style: const TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary),
                     decoration:
                         _inputDeco('Nhập số tài khoản', Icons.tag_rounded),
@@ -242,7 +243,7 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
                     textCapitalization: TextCapitalization.characters,
                     style: const TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary),
                     decoration: _inputDeco(
                         'VD: NGUYEN VAN A', Icons.person_outline_rounded),
@@ -294,7 +295,7 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
                           : Text(hasBank ? 'Cập nhật' : 'Lưu tài khoản',
                               style: const TextStyle(
                                   fontSize: 16,
-                                  fontWeight: FontWeight.w800,
+                                  fontWeight: FontWeight.w700,
                                   color: Colors.white)),
                     ),
                   ),
@@ -323,7 +324,16 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
       final code = account.bankCode;
       if (code != null) {
         final matches = wallet.bankList.where((bank) => bank.code == code);
-        if (matches.isNotEmpty) _selectedBank = matches.first;
+        if (matches.isNotEmpty) {
+          _selectedBank = matches.first;
+        } else if (account.bankName != null) {
+          // Vẫn hiển thị đúng tài khoản đã lưu khi danh sách ngân hàng tải
+          // chậm hơn thông tin hồ sơ.
+          _selectedBank = BankListItem(
+            code: code,
+            name: account.bankName!,
+          );
+        }
       }
     }
 
@@ -333,6 +343,48 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
       apply();
     }
   }
+}
+
+class _SectionHeading extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _SectionHeading({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) => Row(children: [
+        Container(
+          width: 4,
+          height: 36,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(AppRadius.full),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: AppTextStyles.sectionTitle.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ]);
 }
 
 /// Thẻ ngân hàng xem trước: cập nhật trực tiếp khi tài xế chọn ngân hàng và
@@ -370,28 +422,18 @@ class _BankPreviewCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF2B2320), Color(0xFF4A3A33)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1B1411).withValues(alpha: 0.28),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.primary.withValues(alpha: .22)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(AppRadius.sm + 2),
+              color: AppColors.primarySoft,
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             alignment: Alignment.center,
             child: bank?.logoUrl != null
@@ -403,66 +445,114 @@ class _BankPreviewCard extends StatelessWidget {
                         fit: BoxFit.contain,
                         errorBuilder: (_, __, ___) => const Icon(
                             Icons.account_balance_rounded,
-                            size: 20,
-                            color: Colors.white)),
+                            size: 21,
+                            color: AppColors.primary)),
                   )
                 : const Icon(Icons.account_balance_rounded,
-                    size: 20, color: Colors.white),
+                    size: 21, color: AppColors.primary),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
-            child: Text(bank?.name ?? 'Chưa chọn ngân hàng',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.bodyStrong.copyWith(color: Colors.white)),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: (hasBank ? AppColors.success : AppColors.warning)
-                  .withValues(alpha: 0.9),
-              borderRadius: BorderRadius.circular(AppRadius.full),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(bank?.name ?? 'Chưa chọn ngân hàng',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodyStrong.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    )),
+                const SizedBox(height: 5),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color:
+                        hasBank ? AppColors.successSoft : AppColors.warningSoft,
+                    borderRadius: BorderRadius.circular(AppRadius.full),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(
+                        hasBank
+                            ? Icons.check_circle_rounded
+                            : Icons.info_outline_rounded,
+                        size: 13,
+                        color: hasBank ? AppColors.success : AppColors.warning),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(hasBank ? 'Đã liên kết' : 'Chưa liên kết',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.caption.copyWith(
+                            color:
+                                hasBank ? AppColors.success : AppColors.warning,
+                            fontWeight: FontWeight.w600,
+                          )),
+                    ),
+                  ]),
+                ),
+              ],
             ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(
-                  hasBank
-                      ? Icons.check_circle_rounded
-                      : Icons.info_outline_rounded,
-                  size: 13,
-                  color: Colors.white),
-              const SizedBox(width: 4),
-              Text(hasBank ? 'Đã liên kết' : 'Chưa liên kết',
-                  style: AppTextStyles.caption.copyWith(
-                      color: Colors.white, fontWeight: FontWeight.w800)),
-            ]),
           ),
         ]),
         const SizedBox(height: AppSpacing.xl2),
-        Text(_numberLabel,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            _numberLabel,
             maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             style: AppTextStyles.metricLarge.copyWith(
-                color: Colors.white, fontSize: 24, letterSpacing: 1.5)),
+              color: accountNumber.trim().isEmpty
+                  ? AppColors.textTertiary
+                  : AppColors.textPrimary,
+              fontSize: 24,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ),
         const SizedBox(height: AppSpacing.lg),
         Text('CHỦ TÀI KHOẢN',
-            style: AppTextStyles.caption.copyWith(
-                color: Colors.white.withValues(alpha: 0.6), letterSpacing: .8)),
+            style: AppTextStyles.caption
+                .copyWith(color: AppColors.textTertiary, letterSpacing: .8)),
         const SizedBox(height: 2),
         Text(holderLabel,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppTextStyles.bodyStrong.copyWith(
                 color: holder.trim().isEmpty
-                    ? Colors.white.withValues(alpha: 0.4)
-                    : Colors.white,
-                letterSpacing: 0.6)),
-        const SizedBox(height: AppSpacing.md),
-        Text(
-          hasBank
-              ? 'Tài khoản này được dùng để nhận tiền rút từ ví.'
-              : 'Thêm tài khoản để có thể rút số dư trong ví.',
-          style: AppTextStyles.label
-              .copyWith(color: Colors.white.withValues(alpha: 0.7)),
+                    ? AppColors.textTertiary
+                    : AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.4)),
+        const SizedBox(height: AppSpacing.lg),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: hasBank ? AppColors.successSoft : AppColors.primarySoft,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(
+              hasBank ? Icons.verified_user_rounded : Icons.wallet_rounded,
+              size: 17,
+              color: hasBank ? AppColors.success : AppColors.primary,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                hasBank
+                    ? 'Tài khoản này được dùng để nhận tiền rút từ ví.'
+                    : 'Thêm tài khoản để có thể rút số dư trong ví.',
+                style: AppTextStyles.label.copyWith(
+                  color: AppColors.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ]),
         ),
       ]),
     );
@@ -517,11 +607,11 @@ class _BankPickerSheetState extends State<_BankPickerSheet> {
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.7,
       child: Column(children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
           child: AppBottomSheetHeader(
             title: 'Chọn ngân hàng',
-            subtitle: 'Ngân hàng nhận tiền rút',
+            subtitle: '${widget.banks.length} ngân hàng được hỗ trợ',
             icon: Icons.account_balance_rounded,
           ),
         ),
@@ -536,11 +626,10 @@ class _BankPickerSheetState extends State<_BankPickerSheet> {
         const SizedBox(height: AppSpacing.sm),
         Expanded(
           child: _filtered.isEmpty
-              ? const Center(
-                  child: Text('Không tìm thấy ngân hàng',
-                      style: TextStyle(
-                          fontSize: AppFontSize.base,
-                          color: AppColors.textSecondary)),
+              ? const AppSheetEmptyState(
+                  icon: Icons.search_off_rounded,
+                  title: 'Không tìm thấy ngân hàng',
+                  subtitle: 'Kiểm tra lại tên hoặc mã ngân hàng.',
                 )
               : ListView.builder(
                   padding: EdgeInsets.fromLTRB(12, 4, 12, bottom + 16),
@@ -592,7 +681,7 @@ class _BankMark extends StatelessWidget {
         maxLines: 1,
         style: TextStyle(
           fontSize: mark.length > 3 ? 10 : 12,
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w700,
           color: palette.$2,
         ),
       ),

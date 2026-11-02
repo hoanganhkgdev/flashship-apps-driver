@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/utils/launch_utils.dart';
 
-/// Text hiển thị số điện thoại trong nội dung dạng link bấm gọi được —
-/// dùng chung bởi OrderNoteCard (trước đây là 2 bản logic gần như y hệt
+/// Text hiển thị số điện thoại (bấm để gọi) và đường dẫn, kể cả link Google
+/// Maps (bấm để mở) trong nội dung — dùng chung bởi OrderNoteCard (trước đây là 2 bản logic gần như y hệt
 /// trong _NoteCard/_NoteRow, chỉ khác style bao quanh).
 class PhoneLinkText extends StatelessWidget {
   final String text;
@@ -11,11 +11,15 @@ class PhoneLinkText extends StatelessWidget {
 
   const PhoneLinkText({super.key, required this.text, required this.style});
 
-  static final _phoneRegex = RegExp(r'(0\d{8,10})');
+  // Link (http/https hoặc link Google Maps rút gọn không có http) hoặc số điện thoại.
+  static final _linkOrPhoneRegex = RegExp(
+    r'(https?://[^\s]+|(?:www\.)?(?:maps\.app\.goo\.gl|goo\.gl/maps|maps\.google\.[a-z.]+|google\.[a-z.]+/maps)[^\s]*|0\d{8,10})',
+    caseSensitive: false,
+  );
 
   @override
   Widget build(BuildContext context) {
-    final matches = _phoneRegex.allMatches(text).toList();
+    final matches = _linkOrPhoneRegex.allMatches(text).toList();
     if (matches.isEmpty) {
       return Text(text, style: style);
     }
@@ -26,12 +30,13 @@ class PhoneLinkText extends StatelessWidget {
       if (m.start > lastEnd) {
         spans.add(TextSpan(text: text.substring(lastEnd, m.start)));
       }
-      final phone = m.group(0)!;
+      final token = m.group(0)!;
+      final isPhone = RegExp(r'^0\d{8,10}$').hasMatch(token);
       spans.add(WidgetSpan(
         alignment: PlaceholderAlignment.middle,
         child: GestureDetector(
-          onTap: () => launchPhoneCall(phone),
-          child: Text(phone,
+          onTap: () => isPhone ? launchPhoneCall(token) : launchLink(token),
+          child: Text(isPhone ? token : 'Mở liên kết',
               style: style.copyWith(
                 color: Colors.blue,
                 decoration: TextDecoration.underline,

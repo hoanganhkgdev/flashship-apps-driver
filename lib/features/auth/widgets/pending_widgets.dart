@@ -9,21 +9,18 @@ class PendingIllustration extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
         child: Container(
-          width: 108,
-          height: 108,
+          width: 76,
+          height: 76,
           decoration: BoxDecoration(
             color: const Color(0xFFFFF1EA),
             shape: BoxShape.circle,
-            border: Border.all(
-              color: const Color(0xFFFFD1C2),
-              width: 4,
-            ),
+            border: Border.all(color: const Color(0xFFFFC4AF), width: 2),
           ),
           child: const Center(
             child: Icon(
               Icons.hourglass_empty_rounded,
-              size: 42,
-              color: Color(0xFF17110F),
+              size: 31,
+              color: AppColors.primary,
             ),
           ),
         ),
@@ -51,30 +48,29 @@ class StepCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: done
-            ? const Color(0xFFFAFDFB)
+            ? AppColors.successSoft
             : isActive
-                ? Colors.white
-                : const Color(0xFFFCF8F6),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
+                ? AppColors.primarySoft
+                : AppColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(
           color: done
               ? const Color(0xFFBFE2CB)
               : isActive
                   ? const Color(0xFFFFB8A2)
-                  : const Color(0xFFE5DDD9),
-          width: isActive ? 1.5 : 1,
+                  : AppColors.divider,
+          width: 1,
         ),
-        boxShadow: AppShadows.soft,
       ),
       child: Row(
         children: [
           // Step Icon
           Container(
-            width: 40,
-            height: 40,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: done
                   ? color.withValues(alpha: 0.12)
@@ -113,7 +109,7 @@ class StepCard extends StatelessWidget {
                 Text(
                   title,
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w600,
                     fontSize: 14,
                     color: done
                         ? AppColors.textPrimary
@@ -138,12 +134,22 @@ class StepCard extends StatelessWidget {
               ],
             ),
           ),
-          if (done)
-            const Icon(
-              Icons.check_circle_rounded,
-              color: AppColors.success,
-              size: 20,
+          Text(
+            done
+                ? 'Xong'
+                : isActive
+                    ? 'Đang xử lý'
+                    : 'Tiếp theo',
+            style: TextStyle(
+              fontSize: AppFontSize.xs,
+              fontWeight: FontWeight.w600,
+              color: done
+                  ? AppColors.success
+                  : isActive
+                      ? AppColors.primary
+                      : AppColors.textTertiary,
             ),
+          ),
         ],
       ),
     );
@@ -155,13 +161,11 @@ class PendingSupportCard extends StatelessWidget {
   const PendingSupportCard({super.key, required this.onCallSupport});
 
   @override
-  Widget build(BuildContext context) => Card(
-        elevation: 2,
-        shadowColor: const Color(0x1A1B1411),
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.xl),
-          side: const BorderSide(color: Color(0xFFE5DDD9), width: 1),
+  Widget build(BuildContext context) => Container(
+        decoration: BoxDecoration(
+          color: AppColors.surfaceAlt,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.divider),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -195,7 +199,7 @@ class PendingSupportCard extends StatelessWidget {
                     ),
                     SizedBox(height: 2),
                     Text(
-                      'Liên hệ ngay để được duyệt nhanh',
+                      'Liên hệ nếu cần cập nhật hồ sơ',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -207,6 +211,7 @@ class PendingSupportCard extends StatelessWidget {
               Container(
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFE9E1),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
                 child: TextButton(
                   onPressed: onCallSupport,
@@ -235,20 +240,24 @@ class PendingSupportCard extends StatelessWidget {
 class PendingActionButton extends StatelessWidget {
   final bool approved;
   final bool loggingIn;
+  final bool checking;
   final VoidCallback onLogin;
+  final VoidCallback onCheck;
 
   const PendingActionButton({
     super.key,
     required this.approved,
     required this.loggingIn,
+    required this.checking,
     required this.onLogin,
+    required this.onCheck,
   });
 
   @override
   Widget build(BuildContext context) => AuthPrimaryButton(
-        label: approved ? 'Đăng nhập' : 'Chờ admin duyệt...',
-        loading: loggingIn,
-        onPressed: approved ? onLogin : null,
+        label: approved ? 'Bắt đầu sử dụng' : 'Kiểm tra trạng thái',
+        loading: loggingIn || checking,
+        onPressed: approved ? onLogin : onCheck,
         height: 52,
         borderRadius: AppRadius.md,
         color: approved ? AppColors.success : AppColors.primary,

@@ -72,9 +72,8 @@ class _EditNameSheetState extends State<EditNameSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-          20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+    return AppBottomSheetBody(
+      bottomPadding: 24,
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         const AppBottomSheetHeader(
           title: 'Chỉnh sửa tên',
@@ -87,8 +86,8 @@ class _EditNameSheetState extends State<EditNameSheet> {
           child: const Text('Họ và tên',
               style: TextStyle(
                   fontSize: AppFontSize.base,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textSecondary)),
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary)),
         ),
         const SizedBox(height: AppSpacing.sm),
         TextField(
@@ -96,7 +95,7 @@ class _EditNameSheetState extends State<EditNameSheet> {
           textCapitalization: TextCapitalization.words,
           style: const TextStyle(
               fontSize: AppFontSize.md,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
               color: AppColors.textPrimary),
           decoration: appSheetInputDecoration(
             hint: 'Nguyễn Văn An',

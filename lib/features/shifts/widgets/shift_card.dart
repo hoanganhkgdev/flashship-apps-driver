@@ -28,11 +28,10 @@ class ShiftCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(
-          color: selected ? AppColors.primary : Colors.transparent,
-          width: 2,
+          color: selected ? AppColors.primary : AppColors.divider,
+          width: selected ? 1.5 : 1,
         ),
-        color: selected ? AppColors.primarySoft : Colors.white,
-        boxShadow: selected ? null : AppShadows.soft,
+        color: selected ? AppColors.primarySoft : AppColors.surface,
       ),
       child: Material(
         color: Colors.transparent,
@@ -43,42 +42,45 @@ class ShiftCard extends StatelessWidget {
           child: Opacity(
             opacity: enabled ? 1 : 0.6,
             child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
+              padding: const EdgeInsets.all(14),
               child: Row(children: [
                 Container(
-                  width: 52,
-                  height: 52,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
-                  child: Icon(icon, color: color, size: 26),
+                  child: Icon(icon, color: color, size: 22),
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(shift.name, style: AppTextStyles.sectionTitle),
-                        const SizedBox(height: AppSpacing.xs),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color:
-                                selected ? Colors.white : AppColors.surfaceAlt,
-                            borderRadius: BorderRadius.circular(AppRadius.full),
+                        Text(
+                          shift.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.bodyStrong.copyWith(
+                            fontWeight: FontWeight.w600,
                           ),
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            const Icon(Icons.schedule_rounded,
-                                size: 14, color: AppColors.textSecondary),
-                            const SizedBox(width: 5),
-                            Text(shift.timeRange,
-                                style: AppTextStyles.label.copyWith(
-                                    color: AppColors.textPrimary,
-                                    fontWeight: FontWeight.w700)),
-                          ]),
                         ),
+                        const SizedBox(height: 3),
+                        Row(children: [
+                          const Icon(Icons.schedule_rounded,
+                              size: 14, color: AppColors.textSecondary),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(shift.timeRange,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTextStyles.label.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w500,
+                                )),
+                          ),
+                        ]),
                       ]),
                 ),
                 AnimatedContainer(

@@ -1,15 +1,39 @@
 {
   "rules": {
-    "locations": {
-      "$driverKey": {
-        ".write": "auth != null && auth.uid == ($driverKey + '_' + root.child('dispatch/' + $driverKey + '/session_device').val())"
-      }
-    },
     "order_market": {
       "$cityKey": {
-        ".read": "auth != null && auth.uid.beginsWith('driver_')",
+        ".read": "auth != null && auth.uid.beginsWith('driver_') && (auth.token.driver_id == null || ($cityKey == 'city_' + auth.token.city_id && auth.uid == 'driver_' + auth.token.driver_id + '_' + root.child('dispatch').child('driver_' + auth.token.driver_id).child('session_device').val() && root.child('dispatch').child('driver_' + auth.token.driver_id).child('account_locked').val() != true))",
         ".write": false
       }
+    },
+    "orders": {
+      "$code": {
+        ".read": true,
+        ".write": false
+      }
+    },
+    "dispatch": {
+      "$driverId": {
+        ".read": true,
+        ".write": false
+      }
+    },
+    "locations": {
+      ".read": "auth != null && auth.token.admin == true",
+      "$driverId": {
+        ".read": true,
+        ".write": "auth != null && auth.uid == ($driverId + '_' + root.child('dispatch/' + $driverId + '/session_device').val())"
+      }
+    },
+    "customer_notifications": {
+      "$userId": {
+        ".read": true,
+        ".write": false
+      }
+    },
+    "$other": {
+      ".read": false,
+      ".write": false
     }
   }
 }

@@ -10,6 +10,7 @@ import '../../features/auth/providers/auth_provider.dart';
 import '../../features/home/providers/home_providers.dart';
 import '../../features/order_market/providers/order_market_provider.dart';
 import '../../features/orders/providers/order_provider.dart';
+import '../../features/shifts/providers/shift_provider.dart';
 import '../../features/wallet/providers/wallet_provider.dart';
 import '../providers/app_container.dart';
 import '../router/app_router.dart';
@@ -33,35 +34,82 @@ Future<void> _routeNotificationTap(Map<String, dynamic> data) async {
   if (router == null) return;
   // Chưa đăng nhập: chỉ mở app, để router tự đưa về màn đăng nhập.
   if (!ref.read(authProvider).isAuthenticated) return;
+  // Làm mới đúng dữ liệu của thông báo trước khi mở màn (bấm từ nền thì app
+  // có thể đang giữ dữ liệu cũ).
+  await _refreshFor(type);
+
+  // Tài khoản chờ duyệt chỉ có màn "Chờ duyệt" (router chặn mọi màn khác).
+  if (ref.read(authProvider).isPending) {
+    router.go('/pending');
+    return;
+  }
+
   switch (type) {
-    case 'debt_overdue':
-      router.go('/wallet');
-      break;
     case 'order_assigned_direct':
     case 'delivery_reminder':
-      await ref.read(activeOrderProvider.notifier).fetch();
-      final orders = ref.read(activeOrderProvider).orders;
-      if (orders.isNotEmpty) {
-        ref.read(homeTabProvider.notifier).state = 0;
-        ref.read(homeOrdersTabProvider.notifier).state = 1;
-        router.go('/home');
-      } else {
-        router.go('/home');
-      }
-      break;
     case 'order_status':
-      await ref.read(activeOrderProvider.notifier).fetch();
+    case 'order_updated':
+      // Đơn đang chạy (vừa giao, đổi địa chỉ, nhắc hoàn thành…).
+      ref.read(homeTabProvider.notifier).state = 0;
+      if (ref.read(activeOrderProvider).orders.isNotEmpty) {
+        ref.read(homeOrdersTabProvider.notifier).state = 1;
+      }
       router.go('/home');
       break;
     case 'order_market':
       ref.read(homeTabProvider.notifier).state = 0;
       ref.read(homeOrdersTabProvider.notifier).state = 0;
       router.go('/home');
-      unawaited(ref.read(orderMarketProvider.notifier).fetch(silent: true));
       break;
     default:
+      final screen = _screenFor[type];
       router.go('/home');
+      if (screen != null) router.push(screen);
   }
+}
+
+/// Màn mở khi bấm thông báo (mở chồng lên trang chủ để Back quay về).
+const _screenFor = <String, String>{
+  'debt_overdue': '/wallet',
+  'withdraw_processed': '/wallet',
+  'bank_changed': '/bank-account',
+  'referral_reward': '/referral',
+  'referral': '/referral',
+  'kyc_reviewed': '/kyc',
+  'shift_change_processed': '/shifts',
+  'leave_recorded': '/leave-request',
+  'leave_approved': '/leave-request',
+  'leave_rejected': '/leave-request',
+};
+
+/// Tải lại phần dữ liệu mà loại thông báo này vừa làm thay đổi.
+Future<void> _refreshFor(String? type) async {
+  final ref = appContainer;
+  try {
+    switch (type) {
+      case 'order_market':
+        await ref.read(orderMarketProvider.notifier).fetch(silent: true);
+        return;
+      case 'order_status':
+      case 'order_assigned_direct':
+      case 'order_updated': // admin đổi địa chỉ đơn — phải hiện địa chỉ mới
+      case 'delivery_reminder':
+        await ref.read(activeOrderProvider.notifier).fetch();
+      case 'debt_overdue':
+      case 'withdraw_processed':
+      case 'bank_changed':
+      case 'referral_reward':
+        unawaited(ref.read(walletProvider.notifier).fetch());
+      case 'shift_change_processed':
+      case 'leave_recorded':
+      case 'leave_approved':
+      case 'leave_rejected':
+        unawaited(ref.read(shiftProvider.notifier).fetch());
+    }
+    // Mọi thông báo khác đơn mới có thể đi kèm việc server đổi trạng thái
+    // tài khoản/Online (nghỉ phép hôm nay, công nợ, duyệt giấy tờ…).
+    unawaited(ref.read(authProvider.notifier).refreshUser());
+  } catch (_) {}
 }
 
 /// Thông báo đơn mới có khối `notification` nên hệ điều hành tự hiện; handler nền chỉ cần khởi tạo Firebase.
@@ -193,28 +241,9 @@ class NotificationService {
       // Đã đăng xuất: không làm mới dữ liệu, không hiện thông báo của phiên cũ.
       if (!ref.read(authProvider).isAuthenticated) return;
       final type = msg.data['type'];
-      if (type == 'order_market') {
-        // RTDB chỉ mang revision. FCM là kênh dự phòng độc lập: khi nhận được
-        // push lúc foreground, tải danh sách có thẩm quyền từ API ngay để
-        // tài xế không phải chờ nhịp poll hoặc tự kéo làm mới.
-        try {
-          await ref.read(orderMarketProvider.notifier).fetch(silent: true);
-        } catch (_) {}
-      } else if (type == 'order_status' || type == 'order_assigned_direct') {
-        try {
-          ref.read(activeOrderProvider.notifier).fetch();
-        } catch (_) {}
-      } else if (type == 'debt_overdue') {
-        try {
-          ref.read(walletProvider.notifier).fetch();
-        } catch (_) {}
-      }
-      // Thông báo về tài khoản/đơn có thể đi kèm việc server đổi trạng thái
-      // Online (nghỉ phép có hiệu lực hôm nay, công nợ, admin…): làm mới hồ
-      // sơ để màn hình và GPS theo đúng server.
-      if (type != 'order_market') {
-        unawaited(ref.read(authProvider.notifier).refreshUser());
-      }
+      // App đang mở: làm mới ngay đúng dữ liệu thông báo này vừa đổi (đơn
+      // mới, đơn bị sửa địa chỉ, rút tiền đã duyệt, đổi ca, nghỉ phép…).
+      unawaited(_refreshFor(type?.toString()));
 
       // Foreground: FCM không tự hiện banner — show local notification cho
       // mọi type (delivery_reminder, order_market, order_assigned_direct, broadcast...).

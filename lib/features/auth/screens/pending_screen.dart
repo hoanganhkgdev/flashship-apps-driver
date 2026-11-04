@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../core/services/notification_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/launch_utils.dart';
@@ -27,6 +28,19 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
   void initState() {
     super.initState();
     _startPolling();
+    // Màn chính (nơi khởi tạo thông báo) không mở được khi đang chờ duyệt —
+    // phải đăng ký ở đây, nếu không tài xế không nhận "CCCD đã duyệt / bị từ
+    // chối", đúng lúc cần nhất. Chưa từng hỏi quyền thì hỏi luôn.
+    Future.microtask(_setupNotifications);
+  }
+
+  Future<void> _setupNotifications() async {
+    try {
+      final granted = await NotificationService.init();
+      if (granted == null && mounted) {
+        await NotificationService.requestPermission();
+      }
+    } catch (_) {}
   }
 
   @override

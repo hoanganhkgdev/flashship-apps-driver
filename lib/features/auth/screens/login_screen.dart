@@ -25,8 +25,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordFocus = FocusNode();
   bool _obscure = true;
   bool _loading = false;
-  bool _pendingApproval = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    // Bị đưa về đây vì phiên hết hạn (token bị thu hồi): hiện lý do.
+    _error = ref.read(authProvider).error;
+  }
 
   @override
   void dispose() {
@@ -43,7 +49,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() {
       _loading = true;
       _error = null;
-      _pendingApproval = false;
     });
 
     final result = await ref.read(authProvider.notifier).login(
@@ -56,16 +61,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       context.go('/home');
       return;
     }
-    if (result == 'pending') {
-      setState(() {
-        _loading = false;
-        _pendingApproval = true;
-      });
-      return;
-    }
     setState(() {
       _loading = false;
-      _pendingApproval = false;
       _error = ref.read(authProvider).error ?? 'Đăng nhập thất bại';
     });
   }
@@ -209,12 +206,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
           ),
-          if (_pendingApproval) ...[
-            const SizedBox(height: AppSpacing.xs),
-            _PendingApprovalBanner(
-              onCallSupport: () => launchPhoneCall(_kSupportPhone),
-            ),
-          ] else if (_error != null) ...[
+          if (_error != null) ...[
             const SizedBox(height: AppSpacing.xs),
             AuthErrorBanner(message: _error!),
             const SizedBox(height: AppSpacing.md),
@@ -511,70 +503,6 @@ class _AccountDivider extends StatelessWidget {
         const SizedBox(width: 10),
         const Expanded(child: Divider(color: AppColors.divider, height: 1)),
       ]);
-}
-
-class _PendingApprovalBanner extends StatelessWidget {
-  final VoidCallback onCallSupport;
-
-  const _PendingApprovalBanner({required this.onCallSupport});
-
-  @override
-  Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          color: AppColors.warningSoft,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: AppColors.warning.withValues(alpha: .25)),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(
-              Icons.schedule_rounded,
-              size: 21,
-              color: AppColors.warning,
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Tài khoản đang chờ duyệt',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: AppFontSize.base,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  const Text(
-                    'Liên hệ hỗ trợ nếu bạn cần được kiểm tra nhanh.',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: AppFontSize.sm,
-                      height: 1.4,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  TextButton.icon(
-                    onPressed: onCallSupport,
-                    icon: const Icon(Icons.call_rounded, size: 16),
-                    label: const Text('Gọi hỗ trợ'),
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(0, 36),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
 }
 
 class _FieldLabel extends StatelessWidget {

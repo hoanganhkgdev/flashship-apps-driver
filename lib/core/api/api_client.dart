@@ -7,6 +7,11 @@ import '../constants/app_constants.dart';
 class ApiClient {
   final Dio _dio;
 
+  /// Gọi khi server trả 401 cho một request CÓ token (token đã bị thu hồi:
+  /// đặt lại mật khẩu, đăng nhập máy khác, admin khoá…). Nhận lại đúng token
+  /// đó để nơi xử lý bỏ qua 401 của phiên cũ.
+  static void Function(String token)? onUnauthorized;
+
   ApiClient(String? token) : _dio = Dio() {
     _dio.options = BaseOptions(
       baseUrl: AppConstants.baseUrl,
@@ -20,6 +25,15 @@ class ApiClient {
     );
 
     _dio.httpClientAdapter = _buildAdapter();
+    if (token != null) {
+      _dio.interceptors.add(InterceptorsWrapper(onError: (e, handler) {
+        if (e.response?.statusCode == 401 &&
+            e.requestOptions.path != '/auth/logout') {
+          onUnauthorized?.call(token);
+        }
+        handler.next(e);
+      }));
+    }
   }
 
   IOHttpClientAdapter _buildAdapter() {

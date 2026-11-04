@@ -56,7 +56,27 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier() : super(const AuthState()) {
+    ApiClient.onUnauthorized = _handleUnauthorized;
     _restore();
+  }
+
+  bool _handlingUnauthorized = false;
+
+  /// Token bị server thu hồi (đặt lại mật khẩu, máy khác đăng nhập, bị khoá…):
+  /// trước đây app vẫn "đăng nhập", mọi API lỗi im lặng và vẫn gửi GPS. Giờ
+  /// đăng xuất hẳn (dừng GPS, dọn dữ liệu) — router tự đưa về màn đăng nhập.
+  Future<void> _handleUnauthorized(String token) async {
+    if (_handlingUnauthorized || !mounted || token != state.token) return;
+    _handlingUnauthorized = true;
+    try {
+      await logout();
+      if (mounted) {
+        state = state.copyWith(
+            error: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      }
+    } finally {
+      _handlingUnauthorized = false;
+    }
   }
 
   bool _toggleInFlight = false;
@@ -169,7 +189,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     });
   }
 
-  // Returns: 'ok' | 'pending' | 'error'
+  // Returns: 'ok' | 'error'. Tài khoản chờ duyệt vẫn đăng nhập ('ok'),
+  // router tự đưa sang màn chờ duyệt (isPending).
   Future<String> login(
       {required String phone, required String password}) async {
     state = state.copyWith(isLoading: true, error: null);
@@ -185,12 +206,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _saveSession(payload);
       return 'ok';
     } on DioException catch (e) {
-      final data = e.response?.data as Map<String, dynamic>?;
-      final code = data?['code'] as String?;
-      if (code == 'account_pending') {
-        state = state.copyWith(isLoading: false, error: null);
-        return 'pending';
-      }
       state = state.copyWith(
         isLoading: false,
         error: parseApiError(e, fallback: 'Đăng nhập thất bại'),
@@ -206,6 +221,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
   // Xác minh số điện thoại bằng Firebase Phone Auth (SMS do Firebase gửi).
   String? _verificationId;
   int? _resendToken;
+
+  // Token xác minh của lần nhập OTP thành công gần nhất. Mã OTP chỉ dùng được
+  // 1 lần: nếu bước sau lỗi (mạng, mật khẩu không hợp lệ…) mà bấm thử lại,
+  // xác minh lại sẽ báo mã sai/hết hạn — dùng lại token (backend nhận trong
+  // 10 phút) thay vì bắt xin mã mới.
+  ({
+    String verificationId,
+    String code,
+    String token,
+    DateTime at
+  })? _lastVerified;
+  static const _verifiedTokenTtl = Duration(minutes: 9);
 
   String _e164(String phone) {
     final digits = phone.replaceAll(RegExp(r'\D'), '');
@@ -279,6 +306,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(error: 'Vui lòng gửi lại mã xác minh');
       return null;
     }
+    final cached = _lastVerified;
+    if (cached != null &&
+        cached.verificationId == id &&
+        cached.code == code &&
+        DateTime.now().difference(cached.at) < _verifiedTokenTtl) {
+      state = state.copyWith(error: null);
+      return cached.token;
+    }
     state = state.copyWith(isLoading: true, error: null);
     // Tài xế đã đăng nhập (đổi mật khẩu) đang giữ phiên Firebase riêng để ghi
     // GPS; đăng nhập bằng số điện thoại sẽ thay phiên đó nên phải ký lại sau.
@@ -288,6 +323,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         PhoneAuthProvider.credential(verificationId: id, smsCode: code),
       );
       final token = await cred.user?.getIdToken();
+      if (token != null) {
+        _lastVerified =
+            (verificationId: id, code: code, token: token, at: DateTime.now());
+      }
       await FirebaseAuth.instance.signOut();
       if (hadSession) await ensureFirebaseAuthenticated();
       state = state.copyWith(isLoading: false);

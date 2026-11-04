@@ -8,6 +8,7 @@ import 'core/providers/app_container.dart';
 import 'core/router/app_router.dart';
 import 'core/services/notification_service.dart';
 import 'core/theme/app_theme.dart';
+import 'features/version/providers/app_version_provider.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -47,6 +48,8 @@ class _FlashShipDriverAppState extends ConsumerState<FlashShipDriverApp>
       // Đóng socket cũ trước — tránh request/offer bị treo do tái dùng
       // connection mà OS đã đóng băng trong lúc app ở nền lâu.
       ref.read(apiClientProvider).resetConnection();
+      // Bắt cập nhật phải có hiệu lực cả với app chạy nền nhiều ngày.
+      ref.read(appVersionProvider.notifier).recheckIfStale();
     }
   }
 

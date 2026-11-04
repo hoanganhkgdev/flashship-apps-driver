@@ -18,8 +18,10 @@ class OfferOverlay {
   static Future<bool> isXiaomi() => _call('xiaomi');
   static Future<bool> autostartSettings() => _call('autostartSettings');
   static Future<bool> batterySettings() => _call('batterySettings');
-  static Future<bool> googleMaps(String destination) =>
-      _call('googleMaps', {'destination': destination});
+  static Future<bool> googleMaps(String destination,
+          {bool twoWheeler = false}) =>
+      _call('googleMaps',
+          {'destination': destination, 'two_wheeler': twoWheeler});
   static Future<bool> locked() => _call('locked');
   static Future<bool> ring(Map<String, dynamic> data) => _call('ring', data);
   static Future<bool> settings() => _call('settings');

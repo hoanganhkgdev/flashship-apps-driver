@@ -3,6 +3,9 @@ import 'dart:io';
 import 'package:offer_overlay/offer_overlay.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../features/auth/providers/auth_provider.dart';
+import '../providers/app_container.dart';
+
 /// Gọi điện thoại — gộp lại vì logic `Uri.parse('tel:...')` + guard
 /// `canLaunchUrl` bị lặp lại ở nhiều nơi (pending_screen, active_order_screen,
 /// batch_stops_card, phone_link_text).
@@ -24,7 +27,9 @@ Future<void> launchLink(String raw) async {
     url = 'https://$url';
   }
   final uri = Uri.tryParse(url);
-  if (uri == null) return;
+  // Ghi chú do khách/shop nhập (không tin được): chỉ mở web, không mở
+  // intent://, sms:, hay đường dẫn kích hoạt app khác.
+  if (uri == null || !const {'http', 'https'}.contains(uri.scheme)) return;
   await launchUrl(uri, mode: LaunchMode.externalApplication);
 }
 
@@ -37,14 +42,19 @@ Future<void> launchNavigation({
       lat != null && lng != null ? '$lat,$lng' : address?.trim() ?? '';
   if (destination.isEmpty) return;
 
-  if (Platform.isAndroid && await OfferOverlay.googleMaps(destination)) {
+  // Tài xế xe máy dùng chỉ đường xe máy của Google Maps (đường đi, thời gian
+  // khác ô tô). Chỉ tài xế đăng ký ô tô mới dùng chế độ ô tô.
+  final twoWheeler = appContainer.read(authProvider).user?.vehicleType != 'car';
+
+  if (Platform.isAndroid &&
+      await OfferOverlay.googleMaps(destination, twoWheeler: twoWheeler)) {
     return;
   }
 
   final uri = Uri.https('www.google.com', '/maps/dir/', {
     'api': '1',
     'destination': destination,
-    'travelmode': 'driving',
+    'travelmode': twoWheeler ? 'two-wheeler' : 'driving',
   });
   await launchUrl(uri, mode: LaunchMode.externalApplication);
 }

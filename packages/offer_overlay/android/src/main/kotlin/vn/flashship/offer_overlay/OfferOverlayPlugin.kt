@@ -59,18 +59,20 @@ class OfferOverlayPlugin : FlutterPlugin {
                     }
                     "googleMaps" -> {
                         val destination = call.argument<String>("destination")?.trim().orEmpty()
+                        // two_wheeler: chỉ đường xe máy (mode=l) — tài xế xe máy đi đường khác ô tô.
+                        val twoWheeler = call.argument<Boolean>("two_wheeler") == true
                         if (destination.isBlank()) {
                             result.success(false)
                         } else {
                             val navigation = Intent(Intent.ACTION_VIEW,
-                                Uri.parse("google.navigation:q=${Uri.encode(destination)}&mode=d"))
+                                Uri.parse("google.navigation:q=${Uri.encode(destination)}&mode=${if (twoWheeler) "l" else "d"}"))
                                 .setPackage("com.google.android.apps.maps")
                                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             try {
                                 context.startActivity(navigation)
                                 result.success(true)
                             } catch (_: Exception) {
-                                val web = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${Uri.encode(destination)}&travelmode=driving")
+                                val web = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${Uri.encode(destination)}&travelmode=${if (twoWheeler) "two-wheeler" else "driving"}")
                                 try {
                                     context.startActivity(Intent(Intent.ACTION_VIEW, web)
                                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))

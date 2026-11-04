@@ -40,6 +40,11 @@ final routerProvider = Provider<GoRouter>((ref) {
   final listenable = _RouterListenable(ref);
   ref.onDispose(listenable.dispose);
 
+  // Đã qua màn splash lần đầu. Sau đó không quay lại splash chỉ vì đơn đang
+  // chạy đang được khôi phục (provider đơn dựng lại mỗi lần đổi tài xế —
+  // trước đây đăng nhập xong splash nháy lại thoáng qua).
+  var booted = false;
+
   final router = GoRouter(
     initialLocation: '/splash',
     refreshListenable: listenable,
@@ -74,9 +79,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       // Wait for both auth and active order to finish restoring from prefs
-      if (!auth.isInitialized || !orderState.isRestored) {
+      if (!auth.isInitialized || (!orderState.isRestored && !booted)) {
         return location == '/splash' ? null : '/splash';
       }
+      booted = true;
 
       // Giữ trên splash khi force update
       if (version.needsForceUpdate) return '/splash';

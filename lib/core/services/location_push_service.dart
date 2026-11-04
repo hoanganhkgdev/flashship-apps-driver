@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'location_service.dart';
 import 'session_guard_service.dart';
+import '../../features/auth/providers/auth_provider.dart';
+import '../providers/app_container.dart';
 
 /// Sở hữu TOÀN BỘ việc đẩy vị trí lên Firebase: lấy vị trí lần đầu, nhận
 /// luồng GPS, chống trùng, và đồng hồ xác minh GPS 20s/lần khi
@@ -321,23 +323,28 @@ class LocationPushService {
       // (máy khác vừa đăng nhập đè). Đây là câu trả lời CHẮC CHẮN từ máy chủ,
       // đáng tin hơn mọi phép tự kiểm tra ở client — dừng hẳn và đăng xuất.
       if (e.code == 'permission-denied') {
-        // Phân biệt 2 nguyên nhân cùng cho ra "permission-denied":
-        //  1. CHƯA đăng nhập được Firebase Auth (vd lúc login gọi
-        //     /auth/firebase-token bị lỗi mạng — chỗ đó cố tình không chặn
-        //     đăng nhập). Đây là lỗi hạ tầng, KHÔNG phải bị đăng nhập đè —
-        //     đăng xuất ở đây là đá oan tài xế ra khỏi app.
-        //  2. Có đăng nhập Firebase nhưng Rules vẫn từ chối ⇒ session_device
-        //     trên máy chủ đã đổi ⇒ đúng là máy khác vừa đăng nhập đè.
-        if (FirebaseAuth.instance.currentUser != null) {
+        // "permission-denied" có nhiều nguyên nhân; chỉ MỘT trong số đó là
+        // bị máy khác đăng nhập đè. Đăng xuất nhầm là đá oan tài xế:
+        //  - Chưa có phiên Firebase, hoặc phiên không phải của tài xế/thiết
+        //    bị này (vd. đang xác minh OTP đổi mật khẩu: app tạm đăng nhập
+        //    Firebase bằng số điện thoại vài giây) → ký lại, thử sau.
+        //  - Đúng phiên của máy này nhưng server ghi thiết bị khác → máy
+        //    khác đã đăng nhập đè → đăng xuất.
+        final replaced = await _sessionReplacedElsewhere(driverId);
+        if (gen != _generation) return;
+        if (replaced) {
           debugPrint(
               '[LocationPush] Firebase từ chối ghi — thiết bị đã bị đăng nhập đè, tự logout');
           stop();
           SessionGuardService.instance.onForceLogout?.call();
           return;
         }
-        debugPrint(
-            '[LocationPush] Bị từ chối ghi do chưa có phiên Firebase Auth '
-            '(không phải bị đăng nhập đè) — giữ nguyên đăng nhập, sẽ thử lại sau');
+        debugPrint('[LocationPush] Bị từ chối ghi nhưng không phải bị đăng '
+            'nhập đè — ký lại Firebase, giữ nguyên đăng nhập');
+        _rememberWriteFailure('firebase_permission_denied');
+        unawaited(appContainer
+            .read(authProvider.notifier)
+            .ensureFirebaseAuthenticated());
       } else {
         _rememberWriteFailure('firebase_${e.code}');
         debugPrint('[LocationPush] Firebase write failed: $e');
@@ -352,6 +359,26 @@ class LocationPushService {
     // giữ nhịp: tài xế đứng yên sẽ không bao giờ làm mới updated_at nữa, và
     // sau 10 phút bị backend coi như mất tích, không nhận được đơn nào.
     if (gen == _generation && _driverId != null) _scheduleRefresh();
+  }
+
+  /// true chỉ khi chắc chắn máy khác đã giữ phiên: Firebase đang đăng nhập
+  /// đúng tài xế + thiết bị này, mà `dispatch/driver_X/session_device` trên
+  /// server đã là thiết bị khác. Không đọc được thì coi như KHÔNG (an toàn
+  /// hơn đăng xuất nhầm; SessionGuard vẫn nghe session_device riêng).
+  Future<bool> _sessionReplacedElsewhere(int driverId) async {
+    final deviceId = _deviceId ?? await SessionGuardService.getDeviceId();
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != 'driver_${driverId}_$deviceId') return false;
+    try {
+      final snap = await FirebaseDatabase.instance
+          .ref('dispatch/driver_$driverId/session_device')
+          .get()
+          .timeout(const Duration(seconds: 5));
+      final serverDevice = snap.value?.toString();
+      return serverDevice != null && serverDevice != deviceId;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _recordDiagnostic(String status, String detail) async {

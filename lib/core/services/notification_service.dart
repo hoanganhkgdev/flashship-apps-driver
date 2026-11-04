@@ -209,6 +209,12 @@ class NotificationService {
           ref.read(walletProvider.notifier).fetch();
         } catch (_) {}
       }
+      // Thông báo về tài khoản/đơn có thể đi kèm việc server đổi trạng thái
+      // Online (nghỉ phép có hiệu lực hôm nay, công nợ, admin…): làm mới hồ
+      // sơ để màn hình và GPS theo đúng server.
+      if (type != 'order_market') {
+        unawaited(ref.read(authProvider.notifier).refreshUser());
+      }
 
       // Foreground: FCM không tự hiện banner — show local notification cho
       // mọi type (delivery_reminder, order_market, order_assigned_direct, broadcast...).

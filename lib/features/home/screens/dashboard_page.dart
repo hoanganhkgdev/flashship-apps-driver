@@ -10,6 +10,7 @@ import 'package:dio/dio.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../core/services/location_push_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/api_error.dart';
 import '../providers/home_providers.dart';
 import '../widgets/bottom_nav.dart';
 import '../widgets/dashboard_banners.dart';
@@ -374,7 +375,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Để sau')),
+                  child: const Text('Bỏ qua, vẫn Online')),
               FilledButton(
                   onPressed: () => Navigator.pop(dialogContext),
                   child: const Text('Tiếp tục Online')),
@@ -421,56 +422,60 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
               .ignore();
         }
       }
-    } on DioException catch (e) {
+    } catch (e) {
       // Request có thể đã được backend xử lý nhưng response bị mất giữa
       // đường (timeout/mạng chập chờn). Đối chiếu lại trạng thái thật trước
       // khi báo thất bại, tránh server đã online nhưng app vẫn báo lỗi.
       await ref.read(authProvider.notifier).refreshUser();
       if (!mounted) return;
       final desiredOnline = !currentlyOnline;
-      final serverOnline = ref.read(authProvider).user?.isOnline;
-      if (serverOnline == desiredOnline) {
-        final uid = ref.read(authProvider).user?.id;
-        if (uid != null) {
-          if (serverOnline == true) {
-            LocationPushService.instance.start(uid);
-          } else {
-            LocationPushService.instance.stop();
-            FirebaseDatabase.instance
-                .ref('locations/driver_$uid')
-                .remove()
-                .ignore();
-          }
+      // Không đọc được server thì giữ trạng thái cũ (= currentlyOnline).
+      final serverOnline =
+          ref.read(authProvider).user?.isOnline ?? currentlyOnline;
+      // GPS phải luôn theo đúng trạng thái server: lúc tắt Online, app đã
+      // dừng GPS trước khi gọi API — nếu server vẫn Online mà không bật lại
+      // thì tài xế "Online nhưng đứng yên" (vị trí cũ, mất khỏi bản đồ).
+      final uid = ref.read(authProvider).user?.id;
+      if (uid != null) {
+        if (serverOnline) {
+          unawaited(LocationPushService.instance.start(uid));
+        } else {
+          LocationPushService.instance.stop();
+          FirebaseDatabase.instance
+              .ref('locations/driver_$uid')
+              .remove()
+              .ignore();
         }
+      }
+      if (serverOnline == desiredOnline) {
         setState(() => _togglingOnline = false);
         return;
       }
-      if (mounted) {
-        // Body có thể không phải Map (HTML 500, string...) → cast an toàn
-        final data = e.response?.data;
-        final code = data is Map ? data['code'] as String? : null;
-        if (code == 'debt_overdue') {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: const Text(
-                'Bạn có công nợ quá hạn. Vui lòng thanh toán trước khi hoạt động.'),
-            backgroundColor: AppColors.danger,
-            action: SnackBarAction(
-              label: 'Xem công nợ',
-              textColor: Colors.white,
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const DebtScreen()),
-              ),
+      final data = e is DioException ? e.response?.data : null;
+      final code = data is Map ? data['code'] as String? : null;
+      if (code == 'debt_overdue') {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Text(
+              'Bạn có công nợ quá hạn. Vui lòng thanh toán trước khi hoạt động.'),
+          backgroundColor: AppColors.danger,
+          action: SnackBarAction(
+            label: 'Xem công nợ',
+            textColor: Colors.white,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const DebtScreen()),
             ),
-          ));
-        } else {
-          final msg = data is Map ? data['message'] as String? : null;
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(msg ?? 'Không thể đổi trạng thái'),
-            backgroundColor: AppColors.danger,
-          ));
-        }
+          ),
+        ));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(parseApiError(e,
+              fallback: desiredOnline
+                  ? 'Không bật được Online. Vui lòng thử lại.'
+                  : 'Chưa tắt được Online, bạn vẫn đang Online. Vui lòng thử lại.')),
+          backgroundColor: AppColors.danger,
+        ));
       }
-    } catch (_) {}
+    }
     if (mounted) setState(() => _togglingOnline = false);
   }
 

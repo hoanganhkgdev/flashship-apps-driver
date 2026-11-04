@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -244,6 +245,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Server có thể tự chuyển tài xế sang Offline (ghi nhận nghỉ phép hôm nay,
+    // công nợ…). Hễ trạng thái biết được là Offline thì dừng GPS ngay, dù
+    // tài xế đang ở màn nào — không tiếp tục gửi vị trí, vẽ lại node mà
+    // server vừa xoá.
+    ref.listen<bool?>(authProvider.select((s) => s.user?.isOnline),
+        (previous, next) {
+      if (previous == true && next == false) {
+        LocationPushService.instance.stop();
+        final uid = ref.read(authProvider).user?.id;
+        if (uid != null) {
+          FirebaseDatabase.instance
+              .ref('locations/driver_$uid')
+              .remove()
+              .ignore();
+        }
+      }
+    });
     final tab = ref.watch(homeTabProvider);
     final newOrderCount =
         ref.watch(orderMarketProvider.select((s) => s.orders.length));

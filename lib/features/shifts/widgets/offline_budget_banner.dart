@@ -33,15 +33,20 @@ class _OfflineBudgetBannerState extends ConsumerState<OfflineBudgetBanner> {
       _ticks++;
       final status = ref.read(shiftProvider).offlineStatus;
       final isOnline = ref.read(authProvider).user?.isOnline ?? false;
-      // Hết giờ được Offline mà server chưa ghi phạt: hỏi lại mỗi 20 giây để
-      // hiện kết quả (khoản phạt vào công nợ).
+      // Hết giờ được Offline mà server chưa ghi phạt: hỏi lại mỗi 60 giây
+      // (cron phạt chạy mỗi phút). Chỉ tải lại ví khi đã thật sự bị phạt —
+      // trước đây gọi cả 6 API ví mỗi 20 giây tới hết ca nếu không bị phạt.
       if (status != null &&
           !status.penalized &&
           !status.exempt &&
           status.remainingSeconds(isOnline: isOnline) == 0 &&
-          _ticks % 20 == 0) {
-        ref.read(shiftProvider.notifier).fetch();
-        ref.read(walletProvider.notifier).fetch();
+          _ticks % 60 == 0) {
+        ref.read(shiftProvider.notifier).fetch().then((_) {
+          if (mounted &&
+              ref.read(shiftProvider).offlineStatus?.penalized == true) {
+            ref.read(walletProvider.notifier).fetch();
+          }
+        });
       }
       setState(() {});
     });

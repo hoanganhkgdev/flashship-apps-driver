@@ -215,7 +215,7 @@ class _ShiftRegistrationScreenState
                                 request: state.changeRequest!,
                                 shifts: state.shifts),
                             const SizedBox(height: AppSpacing.lg),
-                          ] else if (state.changeRequest?.isRejected ??
+                          ] else if (state.changeRequest?.isRecentlyRejected ??
                               false) ...[
                             RejectedBanner(request: state.changeRequest!),
                             const SizedBox(height: AppSpacing.lg),

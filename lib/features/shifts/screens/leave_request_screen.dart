@@ -69,7 +69,8 @@ class _LeaveRequestScreenState extends ConsumerState<LeaveRequestScreen> {
       context: context,
       initialDate: isFrom ? _fromDate : _toDate,
       firstDate: isFrom ? today : _fromDate,
-      lastDate: today.add(const Duration(days: 365)),
+      // Backend chỉ cho xin trước tối đa 60 ngày (DriverLeaveService::MAX_AHEAD_DAYS).
+      lastDate: today.add(Duration(days: isFrom ? 60 : 73)),
       helpText: isFrom ? 'CHỌN NGÀY BẮT ĐẦU' : 'CHỌN NGÀY KẾT THÚC',
       cancelText: 'Hủy',
       confirmText: 'Chọn',

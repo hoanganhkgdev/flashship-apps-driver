@@ -61,6 +61,13 @@ class ShiftChangeRequestModel {
   bool get isPending => status == 'pending';
   bool get isApproved => status == 'approved';
   bool get isRejected => status == 'rejected';
+
+  /// Chỉ nhắc "bị từ chối" trong 7 ngày sau khi xử lý — trước đây hiện mãi
+  /// yêu cầu mới nhất, kể cả từ hàng tháng trước.
+  bool get isRecentlyRejected =>
+      isRejected &&
+      DateTime.now().difference(processedAt ?? createdAt) <
+          const Duration(days: 7);
 }
 
 /// Trạng thái Offline trong ca đang diễn ra (mỗi ca được Offline tối đa
@@ -75,7 +82,12 @@ class ShiftOfflineStatus {
   final DateTime measuredAt;
   final DateTime shiftEndAt;
 
-  const ShiftOfflineStatus({
+  /// Giờ MÁY lúc nhận số liệu. Đồng hồ đếm ngược tính từ mốc này, không so
+  /// giờ máy với [measuredAt] của server — điện thoại lệch giờ vài phút từng
+  /// làm đồng hồ sai (yên tâm Offline rồi bị phạt bất ngờ).
+  final DateTime receivedAt;
+
+  ShiftOfflineStatus({
     required this.shiftName,
     required this.limitSeconds,
     required this.offlineSeconds,
@@ -84,7 +96,8 @@ class ShiftOfflineStatus {
     required this.penaltyAmount,
     required this.measuredAt,
     required this.shiftEndAt,
-  });
+    DateTime? receivedAt,
+  }) : receivedAt = receivedAt ?? DateTime.now();
 
   factory ShiftOfflineStatus.fromJson(Map<String, dynamic> j) =>
       ShiftOfflineStatus(
@@ -105,10 +118,12 @@ class ShiftOfflineStatus {
   int remainingSeconds({required bool isOnline, DateTime? now}) {
     final t = now ?? DateTime.now();
     final extra =
-        isOnline ? 0 : t.difference(measuredAt).inSeconds.clamp(0, 86400);
+        isOnline ? 0 : t.difference(receivedAt).inSeconds.clamp(0, 86400);
     final left = limitSeconds - (offlineSeconds + extra);
     return left < 0 ? 0 : left;
   }
 
-  bool isActiveAt(DateTime now) => now.isBefore(shiftEndAt);
+  /// Còn trong ca: thời gian còn lại của ca (theo server) tính từ lúc nhận.
+  bool isActiveAt(DateTime now) =>
+      now.difference(receivedAt) < shiftEndAt.difference(measuredAt);
 }

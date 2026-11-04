@@ -73,6 +73,13 @@ class ShiftNotifier extends StateNotifier<ShiftState> {
   final Ref _ref;
   ShiftNotifier(this._ref) : super(const ShiftState());
 
+  // Provider được dựng lại khi đổi tài xế (đăng xuất/đăng nhập). Response của
+  // request bắn ra trước đó không được ghi vào notifier đã huỷ.
+  @override
+  set state(ShiftState value) {
+    if (mounted) super.state = value;
+  }
+
   Future<void> fetch() async {
     state = state.copyWith(loading: true);
     try {
@@ -167,6 +174,8 @@ class ShiftNotifier extends StateNotifier<ShiftState> {
   }
 }
 
-final shiftProvider = StateNotifierProvider<ShiftNotifier, ShiftState>(
-  (ref) => ShiftNotifier(ref),
-);
+final shiftProvider = StateNotifierProvider<ShiftNotifier, ShiftState>((ref) {
+  // Dựng lại khi đổi tài xế: không giữ dữ liệu của tài xế trước trong bộ nhớ.
+  ref.watch(authProvider.select((s) => s.user?.id));
+  return ShiftNotifier(ref);
+});

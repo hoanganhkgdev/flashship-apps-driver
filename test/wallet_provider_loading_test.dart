@@ -4,6 +4,7 @@ import 'package:flashship_driver/features/auth/providers/auth_provider.dart';
 import 'package:flashship_driver/features/wallet/providers/wallet_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeApiClient extends ApiClient {
   _FakeApiClient() : super(null);
@@ -49,6 +50,9 @@ class _FakeApiClient extends ApiClient {
 void main() {
   test('wallet loading always ends and concurrent fetches are deduplicated',
       () async {
+    // walletProvider dựng lại theo tài xế đăng nhập nên đọc authProvider;
+    // không có phiên lưu trong máy → chưa đăng nhập.
+    SharedPreferences.setMockInitialValues({});
     final api = _FakeApiClient();
     final container = ProviderContainer(
       overrides: [apiClientProvider.overrideWithValue(api)],

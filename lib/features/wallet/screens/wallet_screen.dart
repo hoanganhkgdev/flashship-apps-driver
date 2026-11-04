@@ -84,14 +84,15 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
       builder: (_) => _WithdrawSheet(
         bankAccount: wallet.bankAccount,
         onSubmit: (amount) async {
-          final ok = await ref.read(walletProvider.notifier).withdraw(amount);
+          final error =
+              await ref.read(walletProvider.notifier).withdraw(amount);
+          final ok = error == null;
           if (ok) await ref.read(walletProvider.notifier).fetch();
           messenger.showSnackBar(SnackBar(
-            content: Text(
-                ok ? 'Yêu cầu rút tiền đã được gửi' : 'Không thể gửi yêu cầu'),
+            content: Text(ok ? 'Yêu cầu rút tiền đã được gửi' : error),
             backgroundColor: ok ? AppColors.success : AppColors.danger,
           ));
-          return ok;
+          return error;
         },
       ),
     );
@@ -645,7 +646,7 @@ class _TxItem extends StatelessWidget {
 
 class _WithdrawSheet extends ConsumerStatefulWidget {
   final BankAccount bankAccount;
-  final Future<bool> Function(int amount) onSubmit;
+  final Future<String?> Function(int amount) onSubmit;
 
   const _WithdrawSheet({
     required this.bankAccount,
@@ -675,28 +676,37 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
 
   Future<void> _submit() async {
     final amount = _parsedAmount;
-    if (amount < 50000) {
-      setState(() => _error = 'Số tiền tối thiểu là 50,000 đ');
+    // Đọc số liệu mới nhất tại thời điểm bấm — không dùng snapshot lúc mở
+    // sheet, tránh validate sai nếu số dư đổi trong lúc sheet đang mở.
+    final w = ref.read(walletProvider);
+    if (amount < w.minWithdraw) {
+      setState(
+          () => _error = 'Số tiền tối thiểu là ${Fmt.currency(w.minWithdraw)}');
       return;
     }
-    // Đọc số dư mới nhất tại thời điểm bấm — không dùng snapshot lúc mở sheet,
-    // tránh validate sai nếu số dư đổi trong lúc sheet đang mở.
-    if (amount > ref.read(walletProvider).balance) {
-      setState(() => _error = 'Số tiền vượt quá số dư khả dụng');
+    if (amount > w.maxWithdraw) {
+      setState(
+          () => _error = 'Mỗi lần rút tối đa ${Fmt.currency(w.maxWithdraw)}');
+      return;
+    }
+    if (amount > w.withdrawable) {
+      setState(() => _error = w.overdueDebt > 0
+          ? 'Chỉ rút được ${Fmt.currency(w.withdrawable)} vì còn nợ quá hạn ${Fmt.currency(w.overdueDebt)}'
+          : 'Số tiền vượt quá số dư khả dụng');
       return;
     }
     setState(() {
       _loading = true;
       _error = null;
     });
-    final ok = await widget.onSubmit(amount);
+    final error = await widget.onSubmit(amount);
     if (mounted) {
-      if (ok) {
+      if (error == null) {
         Navigator.of(context).pop();
       } else {
         setState(() {
           _loading = false;
-          _error = 'Không thể gửi yêu cầu. Thử lại sau.';
+          _error = error;
         });
       }
     }
@@ -712,7 +722,10 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
   Widget build(BuildContext context) {
     final hasBank = !widget.bankAccount.isEmpty;
     // Watch trực tiếp — số dư luôn tươi kể cả khi thay đổi trong lúc sheet mở.
-    final balance = ref.watch(walletProvider).balance;
+    final wallet = ref.watch(walletProvider);
+    final balance = wallet.balance;
+    // Mức rút được ngay: trừ nợ quá hạn, không quá giới hạn mỗi lần.
+    final limit = wallet.withdrawLimit;
 
     return AppBottomSheetBody(
       topPadding: 0,
@@ -725,7 +738,9 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
               padding: const EdgeInsets.only(top: AppSpacing.md),
               child: AppBottomSheetHeader(
                 title: 'Rút tiền',
-                subtitle: 'Số dư: ${Fmt.currency(balance)}',
+                subtitle: wallet.overdueDebt > 0
+                    ? 'Số dư: ${Fmt.currency(balance)} · Rút được: ${Fmt.currency(wallet.withdrawable)}'
+                    : 'Số dư: ${Fmt.currency(balance)}',
                 icon: Icons.account_balance_wallet_outlined,
               ),
             ),
@@ -832,7 +847,7 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
               // Quick amount chips
               Wrap(spacing: 8, runSpacing: 8, children: [
                 ..._quickAmounts
-                    .where((a) => a <= balance)
+                    .where((a) => a >= wallet.minWithdraw && a <= limit)
                     .map((a) => GestureDetector(
                           onTap: () => _setAmount(a),
                           child: Container(
@@ -854,25 +869,42 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
                                         : const Color(0xFF1B1411))),
                           ),
                         )),
-                GestureDetector(
-                  onTap: () => _setAmount(balance),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: _parsedAmount == balance
-                          ? const Color(0xFFFFEAE3)
-                          : const Color(0xFFFFF0EB),
-                      borderRadius: BorderRadius.circular(AppRadius.full),
+                if (limit >= wallet.minWithdraw)
+                  GestureDetector(
+                    onTap: () => _setAmount(limit),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: _parsedAmount == limit
+                            ? const Color(0xFFFFEAE3)
+                            : const Color(0xFFFFF0EB),
+                        borderRadius: BorderRadius.circular(AppRadius.full),
+                      ),
+                      child: Text(limit < balance ? 'Tối đa' : 'Tất cả',
+                          style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFFFF6035))),
                     ),
-                    child: const Text('Tất cả',
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFFFF6035))),
+                  ),
+              ]),
+
+              if (wallet.overdueDebt > 0) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    'Còn nợ quá hạn ${Fmt.currency(wallet.overdueDebt)}: số này được giữ lại trong ví, bạn rút được tối đa ${Fmt.currency(wallet.withdrawable)}. Thanh toán nợ để rút toàn bộ.',
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.warning, height: 1.4),
                   ),
                 ),
-              ]),
+              ],
 
               const SizedBox(height: 16),
 

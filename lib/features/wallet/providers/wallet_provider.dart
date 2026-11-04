@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../features/auth/providers/auth_provider.dart';
+import '../../../core/utils/api_error.dart';
 import '../models/wallet_model.dart';
 
 class WalletState {
@@ -19,6 +20,18 @@ class WalletState {
   // true nếu lần fetch gần nhất không lấy được số dư (lỗi mạng) — để phân
   // biệt với "số dư thật sự bằng 0", tránh tài xế hiểu nhầm.
   final bool balanceError;
+  // Nợ quá hạn bị giữ lại trong ví; chỉ phần còn lại mới rút được.
+  final int overdueDebt;
+  // null = backend chưa trả (bản cũ) → coi như rút được toàn bộ số dư.
+  final int? withdrawableRaw;
+  final int minWithdraw;
+  final int maxWithdraw;
+
+  int get withdrawable => withdrawableRaw ?? balance;
+
+  /// Mức tối đa có thể rút ngay lần này.
+  int get withdrawLimit =>
+      withdrawable < maxWithdraw ? withdrawable : maxWithdraw;
 
   const WalletState({
     this.balance = 0,
@@ -35,6 +48,10 @@ class WalletState {
     this.earningsSummaryLoaded = false,
     this.loading = false,
     this.balanceError = false,
+    this.overdueDebt = 0,
+    this.withdrawableRaw,
+    this.minWithdraw = 50000,
+    this.maxWithdraw = 50000000,
   });
 
   WalletState copyWith({
@@ -52,6 +69,10 @@ class WalletState {
     bool? earningsSummaryLoaded,
     bool? loading,
     bool? balanceError,
+    int? overdueDebt,
+    int? withdrawableRaw,
+    int? minWithdraw,
+    int? maxWithdraw,
   }) =>
       WalletState(
         balance: balance ?? this.balance,
@@ -70,6 +91,10 @@ class WalletState {
             earningsSummaryLoaded ?? this.earningsSummaryLoaded,
         loading: loading ?? this.loading,
         balanceError: balanceError ?? this.balanceError,
+        overdueDebt: overdueDebt ?? this.overdueDebt,
+        withdrawableRaw: withdrawableRaw ?? this.withdrawableRaw,
+        minWithdraw: minWithdraw ?? this.minWithdraw,
+        maxWithdraw: maxWithdraw ?? this.maxWithdraw,
       );
 }
 
@@ -78,6 +103,13 @@ class WalletNotifier extends StateNotifier<WalletState> {
   Future<void>? _fetchInFlight;
 
   WalletNotifier(this._ref) : super(const WalletState());
+
+  // Provider được dựng lại khi đổi tài xế (đăng xuất/đăng nhập). Response của
+  // request bắn ra trước đó không được ghi vào notifier đã huỷ.
+  @override
+  set state(WalletState value) {
+    if (mounted) super.state = value;
+  }
 
   Future<void> fetch() {
     final inFlight = _fetchInFlight;
@@ -101,6 +133,10 @@ class WalletNotifier extends StateNotifier<WalletState> {
 
     // Chạy độc lập — 1 API lỗi không làm trắng toàn bộ ví
     int? balance;
+    int? overdueDebt;
+    int? withdrawable;
+    int? minWithdraw;
+    int? maxWithdraw;
     bool balanceFailed = false;
     List<dynamic>? txList;
     List<dynamic>? debtList;
@@ -112,6 +148,10 @@ class WalletNotifier extends StateNotifier<WalletState> {
         _ref.read(apiClientProvider).get('/wallet').then((r) {
           final d = (r.data['data'] ?? r.data) as Map<String, dynamic>;
           balance = (d['balance'] as num?)?.toInt() ?? 0;
+          overdueDebt = (d['overdue_debt'] as num?)?.toInt() ?? 0;
+          withdrawable = (d['withdrawable'] as num?)?.toInt();
+          minWithdraw = (d['min_withdraw'] as num?)?.toInt();
+          maxWithdraw = (d['max_withdraw'] as num?)?.toInt();
         }).catchError((_) {
           balanceFailed = true;
         }),
@@ -178,6 +218,10 @@ class WalletNotifier extends StateNotifier<WalletState> {
 
       state = state.copyWith(
         balance: balance,
+        overdueDebt: overdueDebt,
+        withdrawableRaw: withdrawable,
+        minWithdraw: minWithdraw,
+        maxWithdraw: maxWithdraw,
         transactions: transactions,
         debts: debts,
         bankAccount: bankAccount,
@@ -185,7 +229,7 @@ class WalletNotifier extends StateNotifier<WalletState> {
         balanceError: balanceFailed,
       );
 
-      if (balance != null) {
+      if (balance != null && mounted) {
         _ref.read(authProvider.notifier).updateBalance(balance!);
       }
     } finally {
@@ -243,18 +287,23 @@ class WalletNotifier extends StateNotifier<WalletState> {
     }
   }
 
-  Future<bool> withdraw(int amount) async {
+  /// Gửi yêu cầu rút tiền. Trả về null nếu thành công, ngược lại là lý do
+  /// backend báo (thiếu ngân hàng, dưới mức tối thiểu, còn nợ quá hạn...).
+  Future<String?> withdraw(int amount) async {
     try {
       await _ref
           .read(apiClientProvider)
           .post('/wallet/withdraw', data: {'amount': amount});
-      return true;
-    } catch (_) {
-      return false;
+      return null;
+    } catch (e) {
+      return parseApiError(e, fallback: 'Không thể gửi yêu cầu. Thử lại sau.');
     }
   }
 }
 
-final walletProvider = StateNotifierProvider<WalletNotifier, WalletState>(
-  (ref) => WalletNotifier(ref),
-);
+final walletProvider =
+    StateNotifierProvider<WalletNotifier, WalletState>((ref) {
+  // Dựng lại khi đổi tài xế: không giữ dữ liệu của tài xế trước trong bộ nhớ.
+  ref.watch(authProvider.select((s) => s.user?.id));
+  return WalletNotifier(ref);
+});

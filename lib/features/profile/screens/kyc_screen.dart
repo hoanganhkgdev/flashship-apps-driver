@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/api_error.dart';
 import '../../../core/widgets/app_screen_header.dart';
 import '../../../core/widgets/app_surface_card.dart';
 import '../../../core/widgets/app_bottom_sheet.dart';
@@ -16,7 +17,8 @@ class KycScreen extends ConsumerStatefulWidget {
   ConsumerState<KycScreen> createState() => _KycScreenState();
 }
 
-class _KycScreenState extends ConsumerState<KycScreen> {
+class _KycScreenState extends ConsumerState<KycScreen>
+    with WidgetsBindingObserver {
   bool _loading = true;
 
   // Docs
@@ -32,7 +34,25 @@ class _KycScreenState extends ConsumerState<KycScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     Future.microtask(_loadData);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Link ảnh KYC là link có chữ ký, hết hạn sau 30 phút. Quay lại app thì
+  // xin link mới để ảnh không biến thành icon.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed &&
+        !_uploadingCccd &&
+        !_uploadingLicense) {
+      _loadData();
+    }
   }
 
   Future<void> _loadData() async {
@@ -136,10 +156,10 @@ class _KycScreenState extends ConsumerState<KycScreen> {
         });
         _toast('Tải lên thành công, đang chờ xét duyệt', success: true);
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         setState(() => _uploadingCccd = false);
-        _toast('Tải lên thất bại');
+        _toast(parseApiError(e, fallback: 'Tải lên thất bại'));
       }
     }
   }
@@ -171,10 +191,10 @@ class _KycScreenState extends ConsumerState<KycScreen> {
         });
         _toast('Tải lên thành công, đang chờ xét duyệt', success: true);
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         setState(() => _uploadingLicense = false);
-        _toast('Tải lên thất bại');
+        _toast(parseApiError(e, fallback: 'Tải lên thất bại'));
       }
     }
   }

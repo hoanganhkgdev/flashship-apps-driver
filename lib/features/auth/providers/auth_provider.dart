@@ -100,9 +100,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final deviceId = await SessionGuardService.getDeviceId();
       final expectedUid = 'driver_${driverId}_$deviceId';
       // Firebase Auth tự lưu và refresh phiên giữa các lần mở app. Nếu UID
-      // hiện tại đã đúng tài xế + thiết bị thì không xin custom token mới;
-      // tránh tốn API và chạm rate limit khi hot restart/mở app liên tục.
-      if (FirebaseAuth.instance.currentUser?.uid == expectedUid) return;
+      // hiện tại đã đúng tài xế + thiết bị và token mang đúng khu vực thì
+      // không xin custom token mới; tránh tốn API và chạm rate limit khi hot
+      // restart/mở app liên tục.
+      final current = FirebaseAuth.instance.currentUser;
+      if (current?.uid == expectedUid && await _claimsMatchCity(current!)) {
+        return;
+      }
 
       final res = await ApiClient(token).post('/auth/firebase-token', data: {
         'device_id': deviceId,
@@ -114,6 +118,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
     } catch (e) {
       debugPrint('[Auth] Khôi phục Firebase Auth thất bại: $e');
+    }
+  }
+
+  /// Firebase Rules chỉ cho đọc danh sách đơn của khu vực ghi trong token
+  /// (claim `city_id`). Admin đổi khu vực thì UID không đổi nhưng claim cũ —
+  /// phải xin token mới. Token cũ chưa có claim thì coi như khớp (Rules vẫn
+  /// cho đọc kiểu cũ).
+  Future<bool> _claimsMatchCity(User firebaseUser) async {
+    final cityId = state.user?.cityId;
+    if (cityId == null) return true;
+    try {
+      final claims = (await firebaseUser.getIdTokenResult()).claims;
+      final claimed = claims?['city_id'];
+      return claimed == null || claimed.toString() == cityId.toString();
+    } catch (_) {
+      return true;
     }
   }
 
@@ -129,9 +149,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (authToken == null || id == null) return Future.value(false);
 
     final future = () async {
-      await _reauthenticateFirebase(authToken, id);
-      final deviceId = await SessionGuardService.getDeviceId();
-      return FirebaseAuth.instance.currentUser?.uid == 'driver_${id}_$deviceId';
+      // Lời gọi lúc khôi phục phiên không được await: lỗi ở đây (Firebase
+      // chưa sẵn sàng...) phải thành `false`, không thành lỗi không ai bắt.
+      try {
+        await _reauthenticateFirebase(authToken, id);
+        final deviceId = await SessionGuardService.getDeviceId();
+        return FirebaseAuth.instance.currentUser?.uid ==
+            'driver_${id}_$deviceId';
+      } catch (e) {
+        debugPrint('[Auth] ensureFirebaseAuthenticated lỗi: $e');
+        return false;
+      }
     }();
     _firebaseAuthInFlight = future;
     return future.whenComplete(() {
@@ -401,6 +429,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(AppConstants.tokenKey);
     await prefs.remove(AppConstants.userKey);
+    // Đơn đang chạy lưu trong máy có địa chỉ/SĐT khách — không để lại cho
+    // người đăng nhập kế tiếp. Ví, ca, lịch sử đơn tự dựng lại theo user id.
+    await prefs.remove(AppConstants.activeOrderKey);
     state = const AuthState(isInitialized: true);
   }
 
@@ -427,6 +458,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       status: u.status,
       deleteRequested: u.deleteRequested,
       cccdStatus: u.cccdStatus,
+      maxActiveOrders: u.maxActiveOrders,
     );
     state = state.copyWith(user: updated);
     await _persistUser(updated);
@@ -503,6 +535,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           'status': user.status,
           'delete_requested_at': user.deleteRequested ? true : null,
           'cccd_image_status': user.cccdStatus,
+          'max_active_orders': user.maxActiveOrders,
         }));
   }
 

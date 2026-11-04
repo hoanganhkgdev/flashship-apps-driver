@@ -18,6 +18,8 @@ class DriverModel {
   final bool deleteRequested;
   final String?
       cccdStatus; // null=chưa biết/chưa nộp, pending/approved/rejected
+  /// Số đơn đang chạy tối đa của khu vực (null = backend cũ chưa trả).
+  final int? maxActiveOrders;
 
   const DriverModel({
     required this.id,
@@ -38,6 +40,7 @@ class DriverModel {
     this.status = 0,
     this.deleteRequested = false,
     this.cccdStatus,
+    this.maxActiveOrders,
   });
 
   /// Backend có thể trả số dưới dạng chuỗi (ví dụ city_id vừa tạo từ form
@@ -77,6 +80,7 @@ class DriverModel {
         // nghĩa là "chưa duyệt", chỉ là "chưa biết", nơi dùng field này phải tự
         // refreshUser() để lấy dữ liệu mới trước khi kết luận).
         cccdStatus: j['cccd_image_status'] as String?,
+        maxActiveOrders: _toInt(j['max_active_orders']),
       );
 
   String get initials {
@@ -116,5 +120,6 @@ class DriverModel {
         status: status ?? this.status,
         deleteRequested: deleteRequested ?? this.deleteRequested,
         cccdStatus: cccdStatus ?? this.cccdStatus,
+        maxActiveOrders: maxActiveOrders,
       );
 }

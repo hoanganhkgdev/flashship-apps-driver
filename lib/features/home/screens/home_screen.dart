@@ -79,7 +79,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // try/finally đảm bảo location check luôn chạy dù có return sớm
       try {
-        final status = await NotificationService.init(ref);
+        final status = await NotificationService.init();
         if (status == true) {
           if (mounted) ref.read(notifDeniedProvider.notifier).state = false;
           return;
@@ -90,7 +90,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           final confirmed = await showNotifPrimingDialog(context);
           if (!mounted) return;
           if (confirmed == true) {
-            final granted = await NotificationService.requestPermission(ref);
+            final granted = await NotificationService.requestPermission();
             if (mounted) {
               ref.read(notifDeniedProvider.notifier).state = !granted;
             }
@@ -160,7 +160,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       _resumeOnlineServices();
       ref.read(activeOrderProvider.notifier).fetch();
       ref.read(walletProvider.notifier).fetch();
-      NotificationService.refreshPermissionState(ref).then((notGranted) {
+      NotificationService.refreshPermissionState().then((notGranted) {
         if (mounted) ref.read(notifDeniedProvider.notifier).state = notGranted;
       });
       _checkLocationIssue().then((issue) {

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/api_error.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../models/order_model.dart';
@@ -21,17 +22,21 @@ class ActiveOrderState {
   // Backward compat — trả về đơn đầu tiên
   OrderModel? get order => orders.isNotEmpty ? orders.first : null;
 
+  static const _unset = Object();
+
+  // `error` dùng sentinel như AuthState: không truyền thì giữ nguyên,
+  // truyền null thì xoá.
   ActiveOrderState copyWith({
     List<OrderModel>? orders,
     bool? loading,
-    String? error,
+    Object? error = _unset,
     bool? isRestored,
     bool clearOrder = false,
   }) =>
       ActiveOrderState(
         orders: clearOrder ? [] : (orders ?? this.orders),
         loading: loading ?? this.loading,
-        error: error,
+        error: identical(error, _unset) ? this.error : error as String?,
         isRestored: isRestored ?? this.isRestored,
       );
 }
@@ -46,7 +51,17 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
     _restore();
   }
 
-  static const _kActiveOrder = 'driver_active_order';
+  // Provider được dựng lại khi đổi tài xế (đăng xuất/đăng nhập). Response của
+  // request bắn ra trước đó không được ghi vào notifier đã huỷ.
+  @override
+  set state(ActiveOrderState value) {
+    if (mounted) super.state = value;
+  }
+
+  /// AuthNotifier.logout() xoá key này.
+  static const _kActiveOrder = AppConstants.activeOrderKey;
+
+  int? get _driverId => mounted ? _ref.read(authProvider).user?.id : null;
 
   // ── Persistence ─────────────────────────────────────────────────────────────
 
@@ -59,15 +74,20 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
       try {
         final decoded = jsonDecode(raw);
         List<OrderModel> orders = [];
-        if (decoded is List) {
-          orders = decoded
-              .map((e) => OrderModel.fromJson(e as Map<String, dynamic>))
-              .where((o) => o.isActive)
-              .toList();
-        } else if (decoded is Map) {
-          final o = OrderModel.fromJson(decoded as Map<String, dynamic>);
-          if (o.isActive) orders = [o];
+        if (decoded is Map && decoded.containsKey('orders')) {
+          // Định dạng mới: gắn driver_id — chỉ khôi phục đúng tài xế đang
+          // đăng nhập, không bao giờ hiện đơn (địa chỉ, SĐT khách) của tài
+          // xế trước đó dùng chung máy.
+          final owner = (decoded['driver_id'] as num?)?.toInt();
+          if (owner != null && owner == _driverId) {
+            orders = (decoded['orders'] as List)
+                .map((e) => OrderModel.fromJson(e as Map<String, dynamic>))
+                .where((o) => o.isActive)
+                .toList();
+          }
         }
+        // Định dạng cũ (không có driver_id) không biết của ai → bỏ, fetch()
+        // sẽ tải lại từ server.
         if (orders.isNotEmpty) {
           if (revisionAtStart != _stateRevision) return;
           state = ActiveOrderState(orders: orders, isRestored: true);
@@ -82,58 +102,23 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
 
   Future<void> _persist(List<OrderModel> orders) async {
     final snapshot = List<OrderModel>.from(orders);
+    final owner = _driverId;
     _persistChain = _persistChain.then((_) async {
       final prefs = await SharedPreferences.getInstance();
-      if (snapshot.isEmpty) {
+      // Đã đăng xuất (hoặc đổi tài xế) trong lúc chờ: không ghi lại đơn cũ.
+      if (snapshot.isEmpty || owner == null || owner != _driverId) {
         await prefs.remove(_kActiveOrder);
       } else {
         await prefs.setString(
-            _kActiveOrder, jsonEncode(snapshot.map(_toJson).toList()));
+            _kActiveOrder,
+            jsonEncode({
+              'driver_id': owner,
+              'orders': snapshot.map((o) => o.toJson()).toList(),
+            }));
       }
     });
     return _persistChain;
   }
-
-  static Map<String, dynamic> _toJson(OrderModel o) => {
-        'id': o.id,
-        'code': o.code,
-        'service_type': o.serviceType,
-        'status': o.status,
-        'driver_order_role': o.driverOrderRole,
-        'main_order_id': o.mainOrderId,
-        'bundle_window_expires_at': o.bundleWindowExpiresAt?.toIso8601String(),
-        'platform': o.platform,
-        'shop_service_type': o.shopServiceType,
-        'pickup_name': o.pickupName,
-        'pickup_address': o.pickupAddress,
-        'pickup_phone': o.pickupPhone,
-        'delivery_address': o.deliveryAddress,
-        'delivery_phone': o.deliveryPhone,
-        'order_note': o.orderNote,
-        'distance': o.distance,
-        'shipping_fee': o.shippingFee,
-        'bonus_fee': o.bonusFee,
-        'night_surcharge': o.nightSurcharge,
-        'rain_bonus_eligible': o.rainBonusEligible,
-        'rain_bonus_amount': o.rainBonusConfirmedAmount,
-        'discount_amount': o.discountAmount,
-        'voucher_code': o.voucherCode,
-        'payment_method': o.paymentMethod,
-        'cod_amount': o.codAmount,
-        'created_at': o.createdAt.toIso8601String(),
-        'completed_at': o.completedAt?.toIso8601String(),
-        if (o.customerName != null)
-          'customer': {'name': o.customerName, 'phone': o.customerPhone},
-        'pickup_lat': o.pickupLat,
-        'pickup_lng': o.pickupLng,
-        'delivery_lat': o.deliveryLat,
-        'delivery_lng': o.deliveryLng,
-        // Thiếu 3 field này thì restore từ local storage mất dữ liệu batch
-        // (đơn hiện như đơn thường) nếu app bị kill trước khi fetch() kịp chạy.
-        'is_batch': o.isBatch,
-        'stops_count': o.stopsCount,
-        'stops': o.stops,
-      };
 
   // ── Public API ───────────────────────────────────────────────────────────────
 
@@ -182,10 +167,12 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
       if (!order.isActive) return false;
 
       _stateRevision++;
-      final updated = [
-        ...state.orders.where((item) => item.id != order.id),
-        order,
-      ].take(3).toList();
+      // Tối đa 3 đơn, nhưng luôn giữ đơn vừa nhận: nếu máy đang giữ 3 đơn cũ
+      // chưa kịp làm mới thì bỏ đơn cũ nhất, không bỏ đơn mới.
+      final others = state.orders.where((item) => item.id != order.id).toList();
+      final keep =
+          others.length > 2 ? others.sublist(others.length - 2) : others;
+      final updated = [...keep, order];
       state = ActiveOrderState(orders: updated, isRestored: true);
       await _persist(updated);
       return true;
@@ -227,35 +214,7 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
         : state.order;
     if (o == null) return false;
 
-    final updated = OrderModel(
-      id: o.id, code: o.code, serviceType: o.serviceType,
-      status: status,
-      pickupName: o.pickupName, pickupAddress: o.pickupAddress,
-      pickupPhone: o.pickupPhone,
-      pickupLat: o.pickupLat, pickupLng: o.pickupLng,
-      deliveryAddress: o.deliveryAddress, deliveryPhone: o.deliveryPhone,
-      deliveryLat: o.deliveryLat, deliveryLng: o.deliveryLng,
-      orderNote: o.orderNote, distance: o.distance, shippingFee: o.shippingFee,
-      bonusFee: o.bonusFee, discountAmount: o.discountAmount,
-      rainBonusEligible: o.rainBonusEligible,
-      rainBonusAmount: o.rainBonusAmount,
-      rainBonusConfirmedAmount: o.rainBonusConfirmedAmount,
-      paymentMethod: o.paymentMethod, codAmount: o.codAmount,
-      createdAt: o.createdAt, completedAt: o.completedAt,
-      customerName: o.customerName, customerPhone: o.customerPhone,
-      // batch fields — phải copy để không mất stops khi optimistic update
-      storeName: o.storeName,
-      platform: o.platform,
-      shopServiceType: o.shopServiceType,
-      cargoType: o.cargoType,
-      cargoNote: o.cargoNote,
-      cargoWeight: o.cargoWeight,
-      isBatch: o.isBatch,
-      stopsCount: o.stopsCount,
-      stops: o.stops,
-      nightSurcharge: o.nightSurcharge,
-      voucherCode: o.voucherCode,
-    );
+    final updated = o.withStatus(status);
     final updatedList =
         state.orders.map((x) => x.id == o.id ? updated : x).toList();
     state = ActiveOrderState(orders: updatedList, isRestored: true);
@@ -285,9 +244,11 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
 }
 
 final activeOrderProvider =
-    StateNotifierProvider<ActiveOrderNotifier, ActiveOrderState>(
-  (ref) => ActiveOrderNotifier(ref),
-);
+    StateNotifierProvider<ActiveOrderNotifier, ActiveOrderState>((ref) {
+  // Dựng lại khi đổi tài xế: không giữ dữ liệu của tài xế trước trong bộ nhớ.
+  ref.watch(authProvider.select((s) => s.user?.id));
+  return ActiveOrderNotifier(ref);
+});
 
 class OrderHistoryState {
   final List<OrderModel> orders;
@@ -317,6 +278,13 @@ class OrderHistoryNotifier extends StateNotifier<OrderHistoryState> {
   int _requestId = 0;
 
   OrderHistoryNotifier(this._ref) : super(const OrderHistoryState());
+
+  // Provider được dựng lại khi đổi tài xế (đăng xuất/đăng nhập). Response của
+  // request bắn ra trước đó không được ghi vào notifier đã huỷ.
+  @override
+  set state(OrderHistoryState value) {
+    if (mounted) super.state = value;
+  }
 
   Future<void> fetch({bool refresh = false}) async {
     if (refresh) {
@@ -366,6 +334,8 @@ class OrderHistoryNotifier extends StateNotifier<OrderHistoryState> {
 }
 
 final orderHistoryProvider =
-    StateNotifierProvider<OrderHistoryNotifier, OrderHistoryState>(
-  (ref) => OrderHistoryNotifier(ref),
-);
+    StateNotifierProvider<OrderHistoryNotifier, OrderHistoryState>((ref) {
+  // Dựng lại khi đổi tài xế: không giữ dữ liệu của tài xế trước trong bộ nhớ.
+  ref.watch(authProvider.select((s) => s.user?.id));
+  return OrderHistoryNotifier(ref);
+});

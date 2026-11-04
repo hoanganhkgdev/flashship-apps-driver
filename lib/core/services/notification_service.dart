@@ -3,23 +3,36 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/home/providers/home_providers.dart';
 import '../../features/order_market/providers/order_market_provider.dart';
 import '../../features/orders/providers/order_provider.dart';
 import '../../features/wallet/providers/wallet_provider.dart';
+import '../providers/app_container.dart';
 import '../router/app_router.dart';
 
 final _localNotif = FlutterLocalNotificationsPlugin();
 
-Future<void> _handleNotificationTap(
-    Map<String, dynamic> data, WidgetRef ref) async {
+/// Bấm vào thông báo. Dùng [appContainer] (sống suốt vòng đời app), không
+/// dùng WidgetRef của màn hình — màn có thể đã bị huỷ (đăng xuất) khi bấm.
+Future<void> _handleNotificationTap(Map<String, dynamic> data) async {
+  try {
+    await _routeNotificationTap(data);
+  } catch (e) {
+    debugPrint('[Notif] xử lý bấm thông báo lỗi: $e');
+  }
+}
+
+Future<void> _routeNotificationTap(Map<String, dynamic> data) async {
+  final ref = appContainer;
   final type = data['type']?.toString();
   final router = appRouter;
   if (router == null) return;
+  // Chưa đăng nhập: chỉ mở app, để router tự đưa về màn đăng nhập.
+  if (!ref.read(authProvider).isAuthenticated) return;
   switch (type) {
     case 'debt_overdue':
       router.go('/wallet');
@@ -66,13 +79,20 @@ class NotificationService {
   static StreamSubscription? _onMessageSub;
   static StreamSubscription? _onMessageOpenedSub;
 
-  // Đã gửi FCM token lên backend chưa (trong phiên hiện tại) — tránh POST thừa
-  // mỗi lần resume, nhưng vẫn gửi được khi user bật quyền từ Cài đặt.
-  static bool _tokenSent = false;
+  // Đã gửi FCM token lên backend cho tài xế nào (trong phiên app hiện tại) —
+  // tránh POST thừa mỗi lần resume, nhưng vẫn gửi lại khi user bật quyền từ
+  // Cài đặt hoặc khi đăng nhập tài khoản khác trên cùng máy.
+  static int? _tokenSentFor;
+
+  static int? get _driverId => appContainer.read(authProvider).user?.id;
+
+  // Id thông báo foreground — tăng dần để 2 thông báo đến cùng giây không đè nhau.
+  static int _nextLocalId =
+      DateTime.now().millisecondsSinceEpoch ~/ 1000 % 1000000;
 
   /// Setup FCM + local notifications. KHÔNG request quyền ở đây.
   /// Trả về: true = đã được cấp, false = bị từ chối, null = chưa hỏi lần nào.
-  static Future<bool?> init(WidgetRef ref) async {
+  static Future<bool?> init() async {
     final settings = await _fcm.getNotificationSettings();
     final status = settings.authorizationStatus;
     final prefs = await SharedPreferences.getInstance();
@@ -105,7 +125,7 @@ class NotificationService {
         if (payload == null) return;
         try {
           final data = jsonDecode(payload) as Map<String, dynamic>;
-          _handleNotificationTap(data, ref);
+          _handleNotificationTap(data);
         } catch (_) {}
       },
     );
@@ -127,7 +147,7 @@ class NotificationService {
     if (localLaunch?.didNotificationLaunchApp == true && localPayload != null) {
       try {
         final data = jsonDecode(localPayload) as Map<String, dynamic>;
-        await _handleNotificationTap(data, ref);
+        await _handleNotificationTap(data);
       } catch (_) {}
     }
 
@@ -154,21 +174,24 @@ class NotificationService {
     // trị đúng 1 lần ngay sau khi app khởi động do bị tap-launch.
     final initialMessage = await _fcm.getInitialMessage();
     if (initialMessage != null) {
-      await _handleNotificationTap(initialMessage.data, ref);
+      await _handleNotificationTap(initialMessage.data);
     }
 
     // Chỉ lấy token ngay nếu đã có quyền — tránh retry APNs 10s khi chưa hỏi
-    if (granted == true) await _refreshFcmToken(ref);
+    if (granted == true) await _refreshFcmToken();
 
     // Huỷ subscription cũ trước khi đăng ký lại (tránh leak khi re-login)
     _tokenRefreshSub?.cancel();
     _onMessageSub?.cancel();
     _onMessageOpenedSub?.cancel();
 
-    _tokenRefreshSub = _fcm.onTokenRefresh.listen((_) => _refreshFcmToken(ref));
+    _tokenRefreshSub = _fcm.onTokenRefresh.listen((_) => _refreshFcmToken());
 
     // Foreground: cập nhật state theo loại thông báo.
     _onMessageSub = FirebaseMessaging.onMessage.listen((msg) async {
+      final ref = appContainer;
+      // Đã đăng xuất: không làm mới dữ liệu, không hiện thông báo của phiên cũ.
+      if (!ref.read(authProvider).isAuthenticated) return;
       final type = msg.data['type'];
       if (type == 'order_market') {
         // RTDB chỉ mang revision. FCM là kênh dự phòng độc lập: khi nhận được
@@ -193,7 +216,7 @@ class NotificationService {
         final n = msg.notification!;
         if (n.title != null || n.body != null) {
           _localNotif.show(
-            DateTime.now().millisecondsSinceEpoch ~/ 1000,
+            _nextLocalId++,
             n.title ?? '',
             n.body ?? '',
             const NotificationDetails(
@@ -215,7 +238,7 @@ class NotificationService {
     // mở lại đúng đơn — trước đây callback rỗng, bấm vào chỉ đưa app lên
     // foreground ở màn hình đang dở, không thấy đơn đâu.
     _onMessageOpenedSub = FirebaseMessaging.onMessageOpenedApp.listen((msg) {
-      _handleNotificationTap(msg.data, ref);
+      _handleNotificationTap(msg.data);
     });
 
     return granted;
@@ -223,7 +246,7 @@ class NotificationService {
 
   /// Gọi khi tài xế đã xem priming dialog và đồng ý → mới hỏi quyền hệ thống.
   /// Truyền ref để gửi FCM token ngay sau khi cấp quyền lần đầu.
-  static Future<bool> requestPermission(WidgetRef ref) async {
+  static Future<bool> requestPermission() async {
     // Ghi trước khi gọi API hệ thống: kể cả khi Activity bị
     // recreate trong lúc dialog đang hiện, app cũng không hỏi lặp.
     if (Platform.isAndroid) {
@@ -235,7 +258,7 @@ class NotificationService {
     final granted =
         settings.authorizationStatus == AuthorizationStatus.authorized ||
             settings.authorizationStatus == AuthorizationStatus.provisional;
-    if (granted) await _refreshFcmToken(ref);
+    if (granted) await _refreshFcmToken();
     return granted;
   }
 
@@ -244,7 +267,7 @@ class NotificationService {
   /// gửi FCM token lên backend — nếu không tài xế có quyền nhưng vẫn không
   /// nhận được push đơn hàng.
   /// Trả về true nếu CHƯA được cấp quyền (để hiện banner).
-  static Future<bool> refreshPermissionState(WidgetRef ref) async {
+  static Future<bool> refreshPermissionState() async {
     final settings = await _fcm.getNotificationSettings();
     final status = settings.authorizationStatus;
     var granted = status == AuthorizationStatus.authorized ||
@@ -254,11 +277,13 @@ class NotificationService {
           AndroidFlutterLocalNotificationsPlugin>();
       granted = await android?.areNotificationsEnabled() ?? granted;
     }
-    if (granted && !_tokenSent) await _refreshFcmToken(ref);
+    if (granted && _tokenSentFor != _driverId) await _refreshFcmToken();
     return !granted;
   }
 
-  static Future<void> _refreshFcmToken(WidgetRef ref) async {
+  static Future<void> _refreshFcmToken() async {
+    final driverId = _driverId;
+    if (driverId == null) return;
     try {
       if (Platform.isIOS) {
         for (var i = 0; i < 5; i++) {
@@ -269,14 +294,14 @@ class NotificationService {
       }
       final token = await _fcm.getToken();
       if (token != null) {
-        await ref.read(apiClientProvider).post(
+        await appContainer.read(apiClientProvider).post(
           '/driver/update-fcm-token',
           data: {
             'fcm_token': token,
             'platform': Platform.isIOS ? 'ios' : 'android',
           },
         );
-        _tokenSent = true;
+        _tokenSentFor = driverId;
       }
     } catch (_) {}
   }

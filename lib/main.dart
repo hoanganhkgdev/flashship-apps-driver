@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'features/auth/providers/auth_provider.dart';
+import 'core/providers/app_container.dart';
 import 'core/router/app_router.dart';
 import 'core/services/notification_service.dart';
 import 'core/theme/app_theme.dart';
@@ -13,7 +14,10 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
-  runApp(const ProviderScope(child: FlashShipDriverApp()));
+  runApp(UncontrolledProviderScope(
+    container: appContainer,
+    child: const FlashShipDriverApp(),
+  ));
 }
 
 class FlashShipDriverApp extends ConsumerStatefulWidget {

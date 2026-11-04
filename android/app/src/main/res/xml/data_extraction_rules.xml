@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+: không sao lưu lên cloud, không chuyển sang máy mới.
+     SharedPreferences chứa token đăng nhập và device_id; khôi phục sang máy
+     khác sẽ mang theo phiên đăng nhập và làm cơ chế "1 tài xế 1 thiết bị"
+     không nhận ra máy mới. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>

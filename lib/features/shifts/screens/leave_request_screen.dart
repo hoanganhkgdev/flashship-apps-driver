@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/api_error.dart';
 import '../../../core/widgets/app_bottom_sheet.dart';
 import '../../../core/widgets/app_screen_header.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -117,12 +118,8 @@ class _LeaveRequestScreenState extends ConsumerState<LeaveRequestScreen> {
       await _loadLeaves();
     } on DioException catch (error) {
       if (!mounted) return;
-      final data = error.response?.data;
       _showMessage(
-        data is Map && data['message'] is String
-            ? data['message'] as String
-            : 'Không thể gửi yêu cầu nghỉ phép.',
-      );
+          parseApiError(error, fallback: 'Không thể gửi yêu cầu nghỉ phép.'));
     } catch (_) {
       if (mounted) _showMessage('Không thể gửi yêu cầu nghỉ phép.');
     } finally {
@@ -138,7 +135,7 @@ class _LeaveRequestScreenState extends ConsumerState<LeaveRequestScreen> {
         content: Text(
           leave.isPending
               ? 'Bạn muốn rút yêu cầu nghỉ ngày ${DateFormat('dd/MM/yyyy').format(leave.date)}?'
-              : 'Bạn muốn hủy ngày nghỉ đã duyệt ${DateFormat('dd/MM/yyyy').format(leave.date)}? Bạn sẽ phải đi làm theo ca hôm đó.',
+              : 'Bạn muốn hủy ngày nghỉ đã duyệt ${DateFormat('dd/MM/yyyy').format(leave.date)}? Bạn sẽ phải đi làm theo ca hôm đó${DateUtils.isSameDay(leave.date, DateTime.now()) ? '; phạt Offline của ca hôm nay tính từ lúc hủy' : ''}.',
         ),
         actions: [
           TextButton(
@@ -167,12 +164,7 @@ class _LeaveRequestScreenState extends ConsumerState<LeaveRequestScreen> {
       await _loadLeaves();
     } on DioException catch (error) {
       if (!mounted) return;
-      final data = error.response?.data;
-      _showMessage(
-        data is Map && data['message'] is String
-            ? data['message'] as String
-            : 'Không thể hủy ngày nghỉ.',
-      );
+      _showMessage(parseApiError(error, fallback: 'Không thể hủy ngày nghỉ.'));
     } catch (_) {
       if (mounted) _showMessage('Không thể hủy ngày nghỉ.');
     } finally {

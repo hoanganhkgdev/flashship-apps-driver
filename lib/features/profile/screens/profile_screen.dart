@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../widgets/avatar_picker_sheet.dart';
 import '../widgets/edit_name_sheet.dart';
@@ -37,6 +38,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   double? _rating;
   bool _uploadingAvatar = false;
   bool _nameLocked = false;
+  String? _nameLockedReason;
   bool _avatarLocked = false;
   DateTime? _avatarNextUpdate;
 
@@ -83,7 +85,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ref.read(apiClientProvider).get('/orders/dashboard').then((r) {
         dashboardData = (r.data['data'] ?? r.data) as Map<String, dynamic>?;
       }).catchError((_) {}),
-      ref.read(apiClientProvider).get('/debts').then((r) {
+      // unpaid=1: mọi khoản chưa trả (khoản quá hạn cũ không rơi khỏi 20 khoản
+      // mới nhất như khi gọi /debts thường).
+      ref
+          .read(apiClientProvider)
+          .get('/debts', params: {'unpaid': 1}).then((r) {
         final d = r.data['data'] ?? r.data;
         debtsRaw = d is List ? d : <dynamic>[];
       }).catchError((_) {}),
@@ -102,6 +108,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           _bankAccount = p['bank_account'] as String?;
           _deleteRequested = p['delete_requested_at'] != null;
           _nameLocked = p['name_locked'] as bool? ?? false;
+          _nameLockedReason = p['name_locked_reason'] as String?;
           _avatarLocked = p['avatar_locked'] as bool? ?? false;
           final nextRaw = p['avatar_next_update_at'] as String?;
           _avatarNextUpdate =
@@ -163,6 +170,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     photoUrl: _photoUrl,
                     uploadingAvatar: _uploadingAvatar,
                     nameLocked: _nameLocked,
+                    nameLockedReason: _nameLockedReason,
                     cityName: _cityName,
                     hasStats: hasStats,
                     acceptanceRate: _acceptanceRate,
@@ -452,7 +460,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             .read(apiClientProvider)
             .post('/driver/profile/update', data: {'name': name});
         await ref.read(authProvider.notifier).refreshName(name);
-        setState(() => _nameLocked = true);
+        setState(() {
+          _nameLocked = true;
+          _nameLockedReason = 'Tên chỉ được thay đổi một lần.';
+        });
       },
       onSaved: () => _toast(context, 'Cập nhật thành công', success: true),
     );
@@ -558,6 +569,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     .read(apiClientProvider)
                     .post('/driver/delete-account/cancel');
                 await ref.read(authProvider.notifier).refreshUser();
+                // Gửi yêu cầu xoá đã xoá mã nhận thông báo trên server: gửi
+                // lại ngay, không thì không nhận thông báo tới khi mở lại app.
+                unawaited(NotificationService.resendToken());
                 if (!mounted) return;
                 setState(() => _deleteRequested = false);
                 messenger.showSnackBar(const SnackBar(

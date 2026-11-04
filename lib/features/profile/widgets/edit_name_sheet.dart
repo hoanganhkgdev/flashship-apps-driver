@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/api_error.dart';
 import '../../../core/widgets/app_bottom_sheet.dart';
 
 class EditNameSheet extends StatefulWidget {
@@ -59,11 +60,12 @@ class _EditNameSheetState extends State<EditNameSheet> {
         Navigator.pop(context);
         widget.onSaved();
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Cập nhật thất bại'),
+        // Hiện đúng lý do server trả (vd. CCCD đã xác minh nên không tự đổi tên).
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(parseApiError(e, fallback: 'Cập nhật thất bại')),
           backgroundColor: AppColors.danger,
         ));
       }

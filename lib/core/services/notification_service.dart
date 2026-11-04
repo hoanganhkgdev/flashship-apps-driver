@@ -287,6 +287,17 @@ class NotificationService {
     return !granted;
   }
 
+  /// Gửi lại FCM token lên server ngay (vd. server vừa xoá token khi tài xế
+  /// gửi yêu cầu xoá tài khoản rồi huỷ).
+  static Future<void> resendToken() async {
+    _tokenSentFor = null;
+    final settings = await _fcm.getNotificationSettings();
+    final granted =
+        settings.authorizationStatus == AuthorizationStatus.authorized ||
+            settings.authorizationStatus == AuthorizationStatus.provisional;
+    if (granted) await _refreshFcmToken();
+  }
+
   static Future<void> _refreshFcmToken() async {
     final driverId = _driverId;
     if (driverId == null) return;

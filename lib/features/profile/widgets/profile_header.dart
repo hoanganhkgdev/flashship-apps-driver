@@ -7,6 +7,10 @@ class ProfileHeader extends StatelessWidget {
   final String? photoUrl;
   final bool uploadingAvatar;
   final bool nameLocked;
+
+  /// Vì sao không đổi được tên (đã đổi 1 lần / CCCD đã xác minh) — chạm biểu
+  /// tượng khoá để xem.
+  final String? nameLockedReason;
   final String? cityName;
   final bool hasStats;
   final int? acceptanceRate;
@@ -21,6 +25,7 @@ class ProfileHeader extends StatelessWidget {
     required this.photoUrl,
     required this.uploadingAvatar,
     required this.nameLocked,
+    this.nameLockedReason,
     required this.cityName,
     required this.hasStats,
     required this.acceptanceRate,
@@ -91,6 +96,21 @@ class ProfileHeader extends StatelessWidget {
                                       size: 15,
                                       color: AppColors.primary,
                                     ),
+                                  ),
+                                ),
+                              ),
+                            ] else if (nameLockedReason != null) ...[
+                              const SizedBox(width: AppSpacing.xs),
+                              Tooltip(
+                                message: nameLockedReason!,
+                                triggerMode: TooltipTriggerMode.tap,
+                                showDuration: const Duration(seconds: 4),
+                                child: const Padding(
+                                  padding: EdgeInsets.all(6),
+                                  child: Icon(
+                                    Icons.lock_outline_rounded,
+                                    size: 15,
+                                    color: AppColors.textTertiary,
                                   ),
                                 ),
                               ),

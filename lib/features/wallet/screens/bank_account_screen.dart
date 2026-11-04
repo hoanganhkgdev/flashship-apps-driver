@@ -50,25 +50,85 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
       return;
     }
 
+    final password = await _askPassword();
+    if (password == null || !mounted) return;
+
     setState(() => _saving = true);
-    final ok = await ref.read(walletProvider.notifier).updateBank(
+    final error = await ref.read(walletProvider.notifier).updateBank(
           bankCode: _selectedBank!.code,
           bankName: _selectedBank!.name,
           accountNumber: _accountNumberCtrl.text.trim(),
           accountHolder: _accountNameCtrl.text.trim().toUpperCase(),
+          password: password,
         );
+    if (!mounted) return;
     setState(() => _saving = false);
 
-    if (!mounted) return;
-    if (ok) {
+    if (error == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Lưu tài khoản ngân hàng thành công'),
         backgroundColor: AppColors.success,
       ));
       context.pop();
     } else {
-      _showError('Không thể lưu. Thử lại sau.');
+      _showError(error);
     }
+  }
+
+  /// Xác nhận bằng mật khẩu đăng nhập trước khi đổi tài khoản nhận tiền.
+  Future<String?> _askPassword() async {
+    final ctrl = TextEditingController();
+    var obscure = true;
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setLocal) => AlertDialog(
+          title: const Text('Xác nhận đổi tài khoản'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                  'Tiền rút sẽ chuyển vào tài khoản mới. Nhập mật khẩu đăng nhập để xác nhận.'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: ctrl,
+                autofocus: true,
+                obscureText: obscure,
+                decoration: InputDecoration(
+                  labelText: 'Mật khẩu',
+                  suffixIcon: IconButton(
+                    icon: Icon(obscure
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined),
+                    onPressed: () => setLocal(() => obscure = !obscure),
+                  ),
+                ),
+                onSubmitted: (v) => Navigator.pop(dialogContext, v),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Huỷ'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, ctrl.text),
+              child: const Text('Xác nhận'),
+            ),
+          ],
+        ),
+      ),
+    );
+    // Huỷ sau khi hộp thoại đóng hẳn (animation đóng vẫn dùng controller).
+    Future.delayed(const Duration(milliseconds: 400), ctrl.dispose);
+    if (result == null) return null;
+    if (result.isEmpty) {
+      _showError('Vui lòng nhập mật khẩu');
+      return null;
+    }
+    return result;
   }
 
   void _showError(String msg) {

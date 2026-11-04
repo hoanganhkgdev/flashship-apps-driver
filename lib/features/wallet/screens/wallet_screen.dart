@@ -60,9 +60,18 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                     onTap: () => context.push('/bank-account'),
                   ),
                   const SizedBox(height: AppSpacing.md),
+                  if (wallet.withdrawRequests.isNotEmpty) ...[
+                    _WithdrawRequestsCard(requests: wallet.withdrawRequests),
+                    const SizedBox(height: AppSpacing.md),
+                  ],
                   _TransactionCard(
                     transactions: wallet.transactions,
                     loading: wallet.loading,
+                    hasMore: wallet.txHasMore,
+                    loadingMore: wallet.txLoadingMore,
+                    onLoadMore: () => ref
+                        .read(walletProvider.notifier)
+                        .loadMoreTransactions(),
                   ),
                 ],
               ),
@@ -394,11 +403,112 @@ class _BankAccountCard extends StatelessWidget {
 
 // ── Transaction card ──────────────────────────────────────────────────────────
 
+/// Các yêu cầu rút tiền gần đây và trạng thái xử lý — trước đây tài xế chỉ
+/// thấy dòng trừ tiền, không biết đang chờ, đã chuyển hay bị từ chối vì sao.
+class _WithdrawRequestsCard extends StatelessWidget {
+  final List<WithdrawRequestItem> requests;
+  const _WithdrawRequestsCard({required this.requests});
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = requests.take(5).toList();
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('Yêu cầu rút tiền',
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary)),
+          const SizedBox(height: 6),
+          for (final r in shown) _WithdrawRequestRow(request: r),
+        ],
+      ),
+    );
+  }
+}
+
+class _WithdrawRequestRow extends StatelessWidget {
+  final WithdrawRequestItem request;
+  const _WithdrawRequestRow({required this.request});
+
+  @override
+  Widget build(BuildContext context) {
+    final r = request;
+    final color = r.isApproved
+        ? AppColors.success
+        : r.isRejected
+            ? AppColors.danger
+            : AppColors.warning;
+    final d = r.createdAt;
+    String two(int v) => v.toString().padLeft(2, '0');
+    final when =
+        '${two(d.hour)}:${two(d.minute)} ${two(d.day)}/${two(d.month)}';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(Fmt.currency(r.amount),
+                style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 2),
+            Text(
+                [
+                  when,
+                  if (r.bankName?.isNotEmpty == true) r.bankName!,
+                  if (r.accountNumber?.isNotEmpty == true) r.accountNumber!,
+                ].join(' · '),
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textSecondary)),
+            if (r.isRejected && r.rejectReason?.isNotEmpty == true) ...[
+              const SizedBox(height: 4),
+              Text('Lý do: ${r.rejectReason}',
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.danger, height: 1.35)),
+            ],
+          ]),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: .1),
+            borderRadius: BorderRadius.circular(AppRadius.full),
+          ),
+          child: Text(r.statusLabel,
+              style: TextStyle(
+                  fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+        ),
+      ]),
+    );
+  }
+}
+
 class _TransactionCard extends StatelessWidget {
   final List<WalletTransaction> transactions;
   final bool loading;
+  final bool hasMore;
+  final bool loadingMore;
+  final VoidCallback onLoadMore;
 
-  const _TransactionCard({required this.transactions, required this.loading});
+  const _TransactionCard({
+    required this.transactions,
+    required this.loading,
+    this.hasMore = false,
+    this.loadingMore = false,
+    required this.onLoadMore,
+  });
 
   String _dateLabel(DateTime dt) {
     final now = DateTime.now();
@@ -552,6 +662,27 @@ class _TransactionCard extends StatelessWidget {
               }
               return widgets;
             }(),
+
+          if (!loading && hasMore)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Center(
+                child: loadingMore
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox.square(
+                          dimension: 20,
+                          child: CircularProgressIndicator(
+                              color: AppColors.primary, strokeWidth: 2),
+                        ),
+                      )
+                    : TextButton.icon(
+                        onPressed: onLoadMore,
+                        icon: const Icon(Icons.expand_more_rounded),
+                        label: const Text('Xem thêm giao dịch'),
+                      ),
+              ),
+            ),
 
           const SizedBox(height: 8),
         ],

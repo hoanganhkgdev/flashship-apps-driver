@@ -108,8 +108,9 @@ class DriverDebt {
 
   factory DriverDebt.fromJson(Map<String, dynamic> j) => DriverDebt(
         id: (j['id'] as num).toInt(),
-        amount: num.parse(j['amount_due'].toString()).toInt(),
-        paidAmount: num.parse((j['amount_paid'] ?? 0).toString()).toInt(),
+        // Làm tròn (không cắt phần lẻ) — khớp số backend dùng để tạo QR.
+        amount: num.parse(j['amount_due'].toString()).round(),
+        paidAmount: num.parse((j['amount_paid'] ?? 0).toString()).round(),
         status: j['status'] as String? ?? 'pending',
         note: j['note'] as String?,
         weekStart: j['week_start'] as String?,
@@ -154,5 +155,57 @@ class BankListItem {
         code: j['code'] as String? ?? '',
         name: j['name'] as String? ?? '',
         logoUrl: j['logo_url'] as String?,
+      );
+}
+
+/// Yêu cầu rút tiền của tài xế (GET /wallet/withdraw/requests).
+class WithdrawRequestItem {
+  final int id;
+  final int amount;
+  final String status; // pending | approved | rejected
+  final bool inProgress; // đang chuyển qua PayOS
+  final String? bankName;
+  final String? accountNumber; // đã che, vd ••••6789
+  final String? rejectReason;
+  final DateTime createdAt;
+  final DateTime? processedAt;
+
+  const WithdrawRequestItem({
+    required this.id,
+    required this.amount,
+    required this.status,
+    this.inProgress = false,
+    this.bankName,
+    this.accountNumber,
+    this.rejectReason,
+    required this.createdAt,
+    this.processedAt,
+  });
+
+  bool get isPending => status == 'pending';
+  bool get isApproved => status == 'approved';
+  bool get isRejected => status == 'rejected';
+
+  String get statusLabel => switch (status) {
+        'pending' => inProgress ? 'Đang chuyển tiền' : 'Chờ duyệt',
+        'approved' => 'Đã chuyển',
+        'rejected' => 'Bị từ chối · đã hoàn ví',
+        _ => status,
+      };
+
+  factory WithdrawRequestItem.fromJson(Map<String, dynamic> j) =>
+      WithdrawRequestItem(
+        id: (j['id'] as num).toInt(),
+        amount: ((j['amount'] as num?) ?? 0).round(),
+        status: j['status'] as String? ?? 'pending',
+        inProgress: j['in_progress'] == true,
+        bankName: j['bank_name'] as String?,
+        accountNumber: j['account_number'] as String?,
+        rejectReason: j['reject_reason'] as String?,
+        createdAt:
+            DateTime.tryParse(j['created_at']?.toString() ?? '')?.toLocal() ??
+                DateTime.now(),
+        processedAt:
+            DateTime.tryParse(j['processed_at']?.toString() ?? '')?.toLocal(),
       );
 }

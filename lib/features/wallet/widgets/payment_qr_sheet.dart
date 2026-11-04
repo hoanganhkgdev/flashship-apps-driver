@@ -56,6 +56,12 @@ class _PaymentQrSheetState extends ConsumerState<PaymentQrSheet> {
   Timer? _pollTimer;
   int _pollCount = 0;
   static const _maxPoll = 100; // 5 phút (3s × 100)
+  // Lần hỏi trạng thái trước chưa xong thì bỏ qua nhịp này: mạng chậm từng làm
+  // 2 lần cùng thấy PAID → đóng sheet 2 lần, đóng luôn màn công nợ phía dưới.
+  bool _polling = false;
+  bool _finished = false;
+  // Số tiền server dùng để tạo QR (có thể khác số app tính nếu nợ vừa đổi).
+  int? _serverAmount;
 
   @override
   void initState() {
@@ -87,6 +93,7 @@ class _PaymentQrSheetState extends ConsumerState<PaymentQrSheet> {
         _qrData = data['qr_code'] as String?;
         _checkoutUrl = data['checkout_url'] as String?;
         _orderCode = (data['order_code'] as num).toInt();
+        _serverAmount = (data['amount'] as num?)?.round();
         _loading = false;
       });
 
@@ -113,7 +120,7 @@ class _PaymentQrSheetState extends ConsumerState<PaymentQrSheet> {
 
   void _startPolling() {
     _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
-      if (_orderCode == null || !mounted) return;
+      if (_orderCode == null || !mounted || _polling || _finished) return;
       _pollCount++;
       if (_pollCount > _maxPoll) {
         _pollTimer?.cancel();
@@ -121,21 +128,28 @@ class _PaymentQrSheetState extends ConsumerState<PaymentQrSheet> {
         return;
       }
 
+      _polling = true;
       try {
         final res = await ref
             .read(apiClientProvider)
             .get('/driver/payment/$_orderCode/status');
         final status = res.data['data']['status'] as String?;
+        if (_finished) return;
 
         if (status == 'PAID') {
+          _finished = true;
           _pollTimer?.cancel();
           await ref.read(walletProvider.notifier).fetch();
           if (mounted) Navigator.of(context).pop(true);
         } else if (status == 'CANCELLED') {
+          _finished = true;
           _pollTimer?.cancel();
           if (mounted) setState(() => _error = 'Thanh toán đã bị huỷ');
         }
-      } catch (_) {}
+      } catch (_) {
+      } finally {
+        _polling = false;
+      }
     });
   }
 
@@ -177,7 +191,7 @@ class _PaymentQrSheetState extends ConsumerState<PaymentQrSheet> {
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
-                Fmt.currency(widget.amount),
+                Fmt.currency(_serverAmount ?? widget.amount),
                 style: const TextStyle(
                   fontSize: AppFontSize.xl3,
                   fontWeight: FontWeight.w700,

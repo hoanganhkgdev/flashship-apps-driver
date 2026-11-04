@@ -26,6 +26,9 @@ class WalletState {
   final int? withdrawableRaw;
   final int minWithdraw;
   final int maxWithdraw;
+  final bool txHasMore;
+  final bool txLoadingMore;
+  final List<WithdrawRequestItem> withdrawRequests;
 
   int get withdrawable => withdrawableRaw ?? balance;
 
@@ -52,6 +55,9 @@ class WalletState {
     this.withdrawableRaw,
     this.minWithdraw = 50000,
     this.maxWithdraw = 50000000,
+    this.txHasMore = false,
+    this.txLoadingMore = false,
+    this.withdrawRequests = const [],
   });
 
   WalletState copyWith({
@@ -73,6 +79,9 @@ class WalletState {
     int? withdrawableRaw,
     int? minWithdraw,
     int? maxWithdraw,
+    bool? txHasMore,
+    bool? txLoadingMore,
+    List<WithdrawRequestItem>? withdrawRequests,
   }) =>
       WalletState(
         balance: balance ?? this.balance,
@@ -95,12 +104,17 @@ class WalletState {
         withdrawableRaw: withdrawableRaw ?? this.withdrawableRaw,
         minWithdraw: minWithdraw ?? this.minWithdraw,
         maxWithdraw: maxWithdraw ?? this.maxWithdraw,
+        txHasMore: txHasMore ?? this.txHasMore,
+        txLoadingMore: txLoadingMore ?? this.txLoadingMore,
+        withdrawRequests: withdrawRequests ?? this.withdrawRequests,
       );
 }
 
 class WalletNotifier extends StateNotifier<WalletState> {
   final Ref _ref;
   Future<void>? _fetchInFlight;
+  // Trang giao dịch đã tải (API trả 20 dòng/trang).
+  int _txPage = 1;
 
   WalletNotifier(this._ref) : super(const WalletState());
 
@@ -139,8 +153,11 @@ class WalletNotifier extends StateNotifier<WalletState> {
     int? maxWithdraw;
     bool balanceFailed = false;
     List<dynamic>? txList;
+    bool? txHasMore;
     List<dynamic>? debtList;
-    Map<String, dynamic>? profileData;
+    Map<String, dynamic>? bankData;
+    bool bankInWallet = false;
+    List<dynamic>? withdrawRaw;
     List<dynamic>? bankListRaw;
 
     try {
@@ -152,14 +169,34 @@ class WalletNotifier extends StateNotifier<WalletState> {
           withdrawable = (d['withdrawable'] as num?)?.toInt();
           minWithdraw = (d['min_withdraw'] as num?)?.toInt();
           maxWithdraw = (d['max_withdraw'] as num?)?.toInt();
+          // Backend mới trả kèm tài khoản ngân hàng — không phải gọi thêm
+          // /driver/profile chỉ để lấy phần này.
+          if (d.containsKey('bank')) {
+            bankInWallet = true;
+            final b = d['bank'];
+            bankData = b is Map
+                ? {
+                    'bank_code': b['bank_code'],
+                    'bank_name': b['bank_name'],
+                    'bank_account': b['account_number'],
+                    'bank_holder': b['account_name'],
+                  }
+                : <String, dynamic>{};
+          }
         }).catchError((_) {
           balanceFailed = true;
         }),
         _ref.read(apiClientProvider).get('/wallet/transactions').then((r) {
           final d = r.data['data'] ?? r.data;
           txList = d is List ? d : <dynamic>[];
+          final meta = r.data is Map ? r.data['meta'] : null;
+          txHasMore = meta is Map && meta['has_more'] == true;
         }).catchError((_) {}),
-        _ref.read(apiClientProvider).get('/debts').then((r) {
+        // unpaid=1: mọi khoản chưa trả. Không dùng 20 khoản mới nhất (gồm cả
+        // đã trả) — khoản quá hạn cũ sẽ rơi khỏi danh sách.
+        _ref
+            .read(apiClientProvider)
+            .get('/debts', params: {'unpaid': 1}).then((r) {
           final d = r.data['data'] ?? r.data;
           debtList = d is List ? d : <dynamic>[];
         }).catchError((_) {}),
@@ -180,10 +217,9 @@ class WalletNotifier extends StateNotifier<WalletState> {
         }).catchError((_) {
           state = state.copyWith(earningsSummaryLoading: false);
         }),
-        _ref.read(apiClientProvider).get('/driver/profile').then((r) {
-          profileData = ((r.data['data'] ?? r.data)
-                  as Map<String, dynamic>)['user'] as Map<String, dynamic>? ??
-              {};
+        _ref.read(apiClientProvider).get('/wallet/withdraw/requests').then((r) {
+          final d = r.data['data'] ?? r.data;
+          withdrawRaw = d is List ? d : <dynamic>[];
         }).catchError((_) {}),
         _ref.read(apiClientProvider).get('/driver/bank-lists').then((r) {
           final d = r.data['data'] ?? r.data;
@@ -191,10 +227,27 @@ class WalletNotifier extends StateNotifier<WalletState> {
         }).catchError((_) {}),
       ]);
 
+      // Backend cũ chưa trả ngân hàng trong /wallet: lấy từ hồ sơ như trước.
+      if (!bankInWallet && balance != null) {
+        try {
+          final r = await _ref.read(apiClientProvider).get('/driver/profile');
+          bankData = ((r.data['data'] ?? r.data)
+                  as Map<String, dynamic>)['user'] as Map<String, dynamic>? ??
+              {};
+        } catch (_) {}
+      }
+
       List<WalletTransaction>? transactions;
       List<DriverDebt>? debts;
       BankAccount? bankAccount;
       List<BankListItem>? bankList;
+      List<WithdrawRequestItem>? withdrawRequests;
+      try {
+        withdrawRequests = withdrawRaw
+            ?.map(
+                (e) => WithdrawRequestItem.fromJson(e as Map<String, dynamic>))
+            .toList();
+      } catch (_) {}
       try {
         transactions = txList
             ?.map((e) => WalletTransaction.fromJson(e as Map<String, dynamic>))
@@ -207,8 +260,7 @@ class WalletNotifier extends StateNotifier<WalletState> {
             .toList();
       } catch (_) {}
       try {
-        bankAccount =
-            profileData == null ? null : BankAccount.fromJson(profileData!);
+        bankAccount = bankData == null ? null : BankAccount.fromJson(bankData!);
       } catch (_) {}
       try {
         bankList = bankListRaw
@@ -216,6 +268,7 @@ class WalletNotifier extends StateNotifier<WalletState> {
             .toList();
       } catch (_) {}
 
+      if (transactions != null) _txPage = 1;
       state = state.copyWith(
         balance: balance,
         overdueDebt: overdueDebt,
@@ -223,6 +276,8 @@ class WalletNotifier extends StateNotifier<WalletState> {
         minWithdraw: minWithdraw,
         maxWithdraw: maxWithdraw,
         transactions: transactions,
+        txHasMore: transactions == null ? null : (txHasMore ?? false),
+        withdrawRequests: withdrawRequests,
         debts: debts,
         bankAccount: bankAccount,
         bankList: bankList,
@@ -260,11 +315,40 @@ class WalletNotifier extends StateNotifier<WalletState> {
     }
   }
 
-  Future<bool> updateBank({
+  /// Tải thêm giao dịch cũ hơn (20 dòng/trang).
+  Future<void> loadMoreTransactions() async {
+    if (!state.txHasMore || state.txLoadingMore) return;
+    state = state.copyWith(txLoadingMore: true);
+    try {
+      final next = _txPage + 1;
+      final r = await _ref
+          .read(apiClientProvider)
+          .get('/wallet/transactions', params: {'page': next});
+      final d = r.data['data'] ?? r.data;
+      final more = (d is List ? d : const [])
+          .map((e) => WalletTransaction.fromJson(e as Map<String, dynamic>))
+          .toList();
+      final meta = r.data is Map ? r.data['meta'] : null;
+      _txPage = next;
+      state = state.copyWith(
+        transactions: [...state.transactions, ...more],
+        txHasMore: meta is Map && meta['has_more'] == true,
+        txLoadingMore: false,
+      );
+    } catch (_) {
+      state = state.copyWith(txLoadingMore: false);
+    }
+  }
+
+  /// `null` là thành công; ngược lại là lý do (sai mật khẩu, STK sai...).
+  /// Bắt buộc mật khẩu hiện tại: người cầm máy đang đăng nhập không đổi
+  /// được tài khoản nhận tiền rồi rút sạch ví.
+  Future<String?> updateBank({
     required String bankCode,
     required String bankName,
     required String accountNumber,
     required String accountHolder,
+    required String password,
   }) async {
     try {
       await _ref.read(apiClientProvider).post('/driver/profile/bank', data: {
@@ -272,6 +356,7 @@ class WalletNotifier extends StateNotifier<WalletState> {
         'bank_name': bankName,
         'account_number': accountNumber,
         'account_name': accountHolder,
+        'password': password,
       });
       state = state.copyWith(
         bankAccount: BankAccount(
@@ -281,9 +366,9 @@ class WalletNotifier extends StateNotifier<WalletState> {
           accountHolder: accountHolder,
         ),
       );
-      return true;
-    } catch (_) {
-      return false;
+      return null;
+    } catch (e) {
+      return parseApiError(e, fallback: 'Không thể lưu. Thử lại sau.');
     }
   }
 

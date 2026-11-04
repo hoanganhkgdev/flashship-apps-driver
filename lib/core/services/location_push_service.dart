@@ -32,6 +32,19 @@ typedef LocationRawWriter = Future<void> Function(
 
 class LocationPushService {
   static final LocationPushService instance = LocationPushService._();
+
+  /// Vị trí vừa gửi lên hệ thống (khi đang Online), nếu còn mới hơn [maxAge].
+  /// Dùng để tính khoảng cách tới điểm lấy cho khớp vị trí server đang thấy.
+  ({double lat, double lng})? recentPosition(
+      {Duration maxAge = const Duration(minutes: 2)}) {
+    final at = _lastPushedAt;
+    final lat = _lastPushedLat;
+    final lng = _lastPushedLng;
+    if (at == null || lat == null || lng == null) return null;
+    if (DateTime.now().difference(at) > maxAge) return null;
+    return (lat: lat, lng: lng);
+  }
+
   LocationPushService._();
 
   /// Chỉ dùng trong test — tạo 1 instance độc lập (không phải singleton dùng
@@ -66,6 +79,7 @@ class LocationPushService {
   Timer? _refreshTimer;
   double? _lastPushedLat;
   double? _lastPushedLng;
+  DateTime? _lastPushedAt;
   DateTime? _noGoodFixSince;
   String? _lastDiagnosticStatus;
   String? _pendingFailure;
@@ -139,6 +153,7 @@ class LocationPushService {
     _driverId = null;
     _lastPushedLat = null;
     _lastPushedLng = null;
+    _lastPushedAt = null;
     _noGoodFixSince = null;
     _lastDiagnosticStatus = null;
     _pendingFailure = null;
@@ -297,6 +312,7 @@ class LocationPushService {
       if (gen != _generation) return;
       _lastPushedLat = lat;
       _lastPushedLng = lng;
+      _lastPushedAt = DateTime.now();
       _lastDiagnosticStatus = 'healthy';
       _pendingFailure = null;
       _pendingFailureAt = null;

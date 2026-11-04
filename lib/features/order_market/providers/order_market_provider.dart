@@ -7,7 +7,9 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
+import '../../../core/services/location_push_service.dart';
 import '../../../core/utils/api_error.dart';
+import '../../wallet/providers/wallet_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../orders/providers/order_provider.dart';
 import '../models/market_order.dart';
@@ -29,19 +31,23 @@ class OrderMarketState {
     this.debug = '',
   });
 
+  static const _unset = Object();
+
+  // `error` không truyền thì giữ nguyên, truyền null thì xoá — để cập nhật
+  // khoảng cách hay gỡ một đơn không vô tình xoá cảnh báo mất kết nối.
   OrderMarketState copyWith({
     List<MarketOrder>? orders,
     bool? loading,
     int? claimingId,
     bool clearClaiming = false,
-    String? error,
+    Object? error = _unset,
     String? debug,
   }) =>
       OrderMarketState(
         orders: orders ?? this.orders,
         loading: loading ?? this.loading,
         claimingId: clearClaiming ? null : (claimingId ?? this.claimingId),
-        error: error,
+        error: identical(error, _unset) ? this.error : error as String?,
         debug: debug ?? this.debug,
       );
 }
@@ -56,6 +62,9 @@ class OrderMarketNotifier extends StateNotifier<OrderMarketState> {
   Timer? _connectTimeout;
   int? _subscribedCityId;
   String? _subscribedUid;
+  // Đã thử xin lại token Firebase sau một lần bị Rules từ chối chưa — chỉ
+  // thử 1 lần mỗi lượt nghe để không lặp vô hạn khi tài khoản thật sự bị chặn.
+  bool _retriedAfterDenied = false;
 
   OrderMarketNotifier(this._ref)
       : super(const OrderMarketState(loading: true)) {
@@ -149,7 +158,10 @@ class OrderMarketNotifier extends StateNotifier<OrderMarketState> {
     _subscription = FirebaseDatabase.instance
         .ref('order_market/city_$cityId/orders')
         .onValue
-        .listen(_onSnapshot, onError: (e) {
+        .listen((event) {
+      _retriedAfterDenied = false;
+      _onSnapshot(event);
+    }, onError: (e) {
       debugPrint('[Market] lỗi Firebase: $e');
       // Một stream bị Firebase hủy do Rules sẽ không tự sống lại. Đánh dấu
       // listener đã chết để lần retry/auth event kế tiếp có thể đăng ký mới.
@@ -162,7 +174,21 @@ class OrderMarketNotifier extends StateNotifier<OrderMarketState> {
         error: 'Không kết nối được danh sách đơn mới',
         debug: 'LỖI Firebase: $e',
       );
+      // Rules chỉ cho đọc khu vực ghi trong token. Admin vừa đổi khu vực
+      // (hoặc token cũ) → xin token mới rồi nghe lại, 1 lần.
+      if (!_retriedAfterDenied && '$e'.contains('permission')) {
+        _retriedAfterDenied = true;
+        unawaited(_resubscribeWithFreshToken(cityId));
+      }
     });
+  }
+
+  Future<void> _resubscribeWithFreshToken(int cityId) async {
+    final ok =
+        await _ref.read(authProvider.notifier).ensureFirebaseAuthenticated();
+    final user = FirebaseAuth.instance.currentUser;
+    if (!mounted || !ok || user == null || _subscription != null) return;
+    _subscribe(cityId, user.uid);
   }
 
   Future<void> _onSnapshot(DatabaseEvent event) async {
@@ -197,24 +223,39 @@ class OrderMarketNotifier extends StateNotifier<OrderMarketState> {
           'city_$_subscribedCityId · snapshot ${DateTime.now().toIso8601String().substring(11, 19)} · raw=$rawCount · hiện=${parsed.length} · bằng ô tô=$hasCarLicense',
     );
 
-    // Khoảng cách tới điểm lấy tính trên máy từ vị trí gần nhất đã biết;
-    // có sau thì bổ sung, không bao giờ chặn việc hiện đơn.
-    Position? position;
-    try {
-      position = await Geolocator.getLastKnownPosition()
-          .timeout(const Duration(seconds: 2));
-    } catch (_) {}
-    if (position == null || !mounted) return;
-    final here = position;
+    // Khoảng cách tới điểm lấy tính trên máy; có sau thì bổ sung, không bao
+    // giờ chặn việc hiện đơn. Ưu tiên vị trí app vừa gửi lên hệ thống (đang
+    // Online); không có thì dùng vị trí hệ điều hành nhớ nếu còn mới — vị
+    // trí cũ hàng giờ cho khoảng cách sai, thà không hiện.
+    final here = await _currentPosition();
+    if (here == null || !mounted) return;
     state = state.copyWith(
       orders: state.orders
           .map((o) => o.pickupLat != null && o.pickupLng != null
-              ? o.withDistance(Geolocator.distanceBetween(here.latitude,
-                      here.longitude, o.pickupLat!, o.pickupLng!) /
+              ? o.withDistance(Geolocator.distanceBetween(
+                      here.lat, here.lng, o.pickupLat!, o.pickupLng!) /
                   1000)
               : o)
           .toList(),
     );
+  }
+
+  static const _maxLastKnownAge = Duration(minutes: 10);
+
+  Future<({double lat, double lng})?> _currentPosition() async {
+    final pushed = LocationPushService.instance.recentPosition();
+    if (pushed != null) return pushed;
+    try {
+      final p = await Geolocator.getLastKnownPosition()
+          .timeout(const Duration(seconds: 2));
+      if (p == null ||
+          DateTime.now().difference(p.timestamp) > _maxLastKnownAge) {
+        return null;
+      }
+      return (lat: p.latitude, lng: p.longitude);
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Kéo để làm mới / thử lại: nghe lại nhánh Firebase để lấy ảnh chụp mới.
@@ -286,10 +327,31 @@ class OrderMarketNotifier extends StateNotifier<OrderMarketState> {
       return null;
     } on DioException catch (e) {
       state = state.copyWith(clearClaiming: true);
+      _syncAfterRejectedClaim(e, orderId);
       return parseApiError(e, fallback: 'Không thể nhận đơn này');
     } catch (_) {
       state = state.copyWith(clearClaiming: true);
       return 'Không thể nhận đơn này';
+    }
+  }
+
+  /// Backend trả mã lý do khi từ chối nhận đơn — làm mới đúng phần trạng thái
+  /// đang lệch để màn hình hiện đúng (Offline, khoá do nợ, đủ đơn...).
+  void _syncAfterRejectedClaim(DioException e, int orderId) {
+    final data = e.response?.data;
+    final code = data is Map ? data['code']?.toString() : null;
+    switch (code) {
+      case 'taken':
+        // Firebase chưa kịp gỡ đơn: ẩn ngay trên máy này.
+        state = state.copyWith(
+            orders: state.orders.where((o) => o.id != orderId).toList());
+      case 'offline' || 'on_leave' || 'account_inactive':
+        unawaited(_ref.read(authProvider.notifier).refreshUser());
+      case 'debt_overdue':
+        unawaited(_ref.read(authProvider.notifier).refreshUser());
+        unawaited(_ref.read(walletProvider.notifier).fetch());
+      case 'busy':
+        unawaited(_ref.read(activeOrderProvider.notifier).fetch());
     }
   }
 

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../home/providers/home_providers.dart';
+import '../../orders/providers/order_provider.dart';
 import '../models/market_order.dart';
 import '../providers/order_market_provider.dart';
 import 'market_order_card.dart';
@@ -26,6 +28,13 @@ class NewOrdersSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(orderMarketProvider);
+    // Đang chạy đủ số đơn tối đa của khu vực: backend sẽ từ chối nhận thêm,
+    // nên khoá nút vuốt và nói rõ lý do thay vì để tài xế vuốt rồi bị báo lỗi.
+    final maxActive =
+        ref.watch(authProvider.select((s) => s.user?.maxActiveOrders));
+    final activeCount =
+        ref.watch(activeOrderProvider.select((s) => s.orders.length));
+    final atLimit = maxActive != null && activeCount >= maxActive;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -70,11 +79,30 @@ class NewOrdersSection extends ConsumerWidget {
             message: 'Đơn mới sẽ hiện ngay tại đây và có thông báo đến bạn.',
           )
         else ...[
+          if (atLimit) ...[
+            _Banner(
+              icon: Icons.inventory_2_outlined,
+              color: AppColors.warning,
+              text:
+                  'Bạn đang chạy đủ $maxActive đơn. Hoàn thành bớt đơn để nhận thêm.',
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          if (state.error != null) ...[
+            _Banner(
+              icon: Icons.cloud_off_rounded,
+              color: AppColors.danger,
+              text: 'Mất kết nối, danh sách có thể chưa mới.',
+              actionLabel: 'Thử lại',
+              onAction: () => ref.read(orderMarketProvider.notifier).fetch(),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           for (final order in state.orders) ...[
             MarketOrderCard(
               order: order,
               claiming: state.claimingId == order.id,
-              disabled: state.claimingId != null,
+              disabled: state.claimingId != null || atLimit,
               onClaim: () => _claim(context, ref, order),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -94,6 +122,54 @@ class NewOrdersSection extends ConsumerWidget {
       content: Text(error ?? 'Đã nhận đơn ${order.code}'),
       backgroundColor: error == null ? AppColors.success : AppColors.danger,
     ));
+  }
+}
+
+/// Dải cảnh báo gọn phía trên danh sách (danh sách vẫn hiện bên dưới).
+class _Banner extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String text;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  const _Banner({
+    required this.icon,
+    required this.color,
+    required this.text,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .08),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: color.withValues(alpha: .25)),
+      ),
+      child: Row(children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Text(text,
+              style:
+                  AppTextStyles.caption.copyWith(color: color, height: 1.35)),
+        ),
+        if (onAction != null)
+          TextButton(
+            onPressed: onAction,
+            style: TextButton.styleFrom(
+              foregroundColor: color,
+              visualDensity: VisualDensity.compact,
+            ),
+            child: Text(actionLabel ?? 'Thử lại'),
+          ),
+      ]),
+    );
   }
 }
 

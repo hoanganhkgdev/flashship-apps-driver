@@ -96,10 +96,14 @@ class MarketOrder {
         openedAt: openedAt,
       );
 
-  // shippingFee đã bao gồm phụ phí đêm; chỉ cộng các khoản thưởng
-  // do nền tảng trả riêng để không tính phụ phí đêm hai lần.
+  // shippingFee đã gồm phụ phí đêm và đã trừ voucher; cộng các khoản công
+  // ty trả riêng (thưởng, bù voucher, mưa) — khớp OrderMoney::driverEarnings
+  // ở backend, tức số tiền thật sự vào ví khi hoàn thành.
   int get estimatedIncome =>
-      shippingFee + bonusFee + (isRainMode ? rainBonusAmount : 0);
+      shippingFee +
+      bonusFee +
+      discountAmount +
+      (isRainMode ? rainBonusAmount : 0);
   int get baseShippingFee {
     final fee = shippingFee - nightSurcharge;
     return fee < 0 ? 0 : fee;

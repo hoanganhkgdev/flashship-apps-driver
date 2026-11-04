@@ -57,9 +57,8 @@ class EarningCard extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: Text(
-              order.driverEarning == 0
-                  ? 'Cộng vào ví sau khi hoàn thành'
-                  : '+ ${Fmt.currency(order.discountAmount)} cộng vào ví',
+              // driverEarning đã gồm phần bù voucher (công ty cộng vào ví khi hoàn thành).
+              'Đã gồm ${Fmt.currency(order.discountAmount)} công ty bù vào ví',
               style: AppTextStyles.caption.copyWith(color: AppColors.success),
             ),
           ),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -41,7 +43,7 @@ class _BatchStopsCardState extends ConsumerState<BatchStopsCard> {
     try {
       final res = await ref
           .read(apiClientProvider)
-          .post('/orders/${widget.order.code}/stops/$seq/deliver');
+          .post('/orders/${widget.order.id}/stops/$seq/deliver');
       final completed = res.data['completed'] as bool? ?? false;
       if (!mounted) return;
       setState(() => _delivering.remove(seq));
@@ -56,6 +58,9 @@ class _BatchStopsCardState extends ConsumerState<BatchStopsCard> {
       await ref.read(activeOrderProvider.notifier).fetch();
     } catch (e) {
       if (isFinalStop) widget.onCompletionStateChanged?.call(false);
+      // Danh sách điểm trên máy có thể đã cũ (điểm đã lưu là đã giao, đơn
+      // đã huỷ…): tải lại để hiện đúng, không để tài xế bấm mãi một lỗi.
+      unawaited(ref.read(activeOrderProvider.notifier).fetch());
       if (mounted) {
         setState(() => _delivering.remove(seq));
         // Hiện đúng lý do server trả về (vd. "cách điểm giao 1734 m, cần trong

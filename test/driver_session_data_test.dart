@@ -105,8 +105,8 @@ void main() {
           'orders': [_orderJson()],
         }),
       });
-      expect(mine.read(activeOrderProvider).orders.single.storeName,
-          'Cửa hàng A');
+      expect(
+          mine.read(activeOrderProvider).orders.single.storeName, 'Cửa hàng A');
 
       final other = await boot({
         ...session,

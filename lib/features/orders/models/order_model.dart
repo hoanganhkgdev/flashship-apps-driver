@@ -41,6 +41,11 @@ class OrderModel {
   final int rainBonusConfirmedAmount;
   final int discountAmount;
   final String? voucherCode;
+  final bool isFreeship;
+
+  /// Freeship do tổng đài bật (không voucher): khách KHÔNG trả phí ship,
+  /// công ty trả nguyên phí ship vào ví khi hoàn thành.
+  final bool platformFreeship;
   final String paymentMethod;
   final int? codAmount;
   final DateTime createdAt;
@@ -87,6 +92,8 @@ class OrderModel {
     this.rainBonusConfirmedAmount = 0,
     this.discountAmount = 0,
     this.voucherCode,
+    this.isFreeship = false,
+    this.platformFreeship = false,
     required this.paymentMethod,
     this.codAmount,
     required this.createdAt,
@@ -145,6 +152,9 @@ class OrderModel {
             (j['rain_bonus_amount'] as num?)?.toInt() ?? 0,
         discountAmount: (j['discount_amount'] as num?)?.toInt() ?? 0,
         voucherCode: j['voucher_code'] as String?,
+        isFreeship: j['is_freeship'] == true || j['is_freeship'] == 1,
+        platformFreeship:
+            j['platform_freeship'] == true || j['platform_freeship'] == 1,
         paymentMethod: j['payment_method'] as String? ?? 'prepaid',
         codAmount: (j['cod_amount'] as num?)?.toInt(),
         createdAt: j['created_at'] != null
@@ -206,6 +216,8 @@ class OrderModel {
         rainBonusConfirmedAmount: rainBonusConfirmedAmount,
         discountAmount: discountAmount,
         voucherCode: voucherCode,
+        isFreeship: isFreeship,
+        platformFreeship: platformFreeship,
         paymentMethod: paymentMethod,
         codAmount: codAmount,
         createdAt: createdAt,
@@ -254,6 +266,8 @@ class OrderModel {
         'rain_bonus_amount': rainBonusConfirmedAmount,
         'discount_amount': discountAmount,
         'voucher_code': voucherCode,
+        'is_freeship': isFreeship,
+        'platform_freeship': platformFreeship,
         'payment_method': paymentMethod,
         'cod_amount': codAmount,
         'created_at': createdAt.toIso8601String(),
@@ -284,12 +298,17 @@ class OrderModel {
 
   bool get hasMultipleShoppingStops => shoppingStopCount > 1;
 
-  // shipping_fee đã gồm phụ phí đêm và đã trừ discount. Thưởng mưa
-  // là khoản nền tảng trả riêng sau khi hoàn thành nên cộng thêm ở đây.
+  // Đúng số tiền tài xế nhận (khớp OrderMoney::driverEarnings ở backend):
+  // phí ship (đã gồm phụ phí đêm, đã trừ voucher — khách trả, hoặc công ty
+  // trả nếu freeship tổng đài) + thưởng + phần công ty bù voucher + mưa.
   int get driverEarning =>
       shippingFee +
       bonusFee +
+      discountAmount +
       (rainBonusEligible ? rainBonusConfirmedAmount : 0);
+
+  /// Phí ship khách phải trả tài xế (0 khi freeship tổng đài).
+  int get customerShippingFee => platformFreeship ? 0 : shippingFee;
 
   /// Phí vận chuyển hiển thị riêng với tài xế. Phụ phí đêm và các khoản
   /// thưởng do công ty trả được trình bày tách biệt để tránh thu nhầm khách.
@@ -334,7 +353,7 @@ class OrderModel {
 
   // Tổng tiền cần thu khách: phí giao sau giảm giá (đã gồm phụ phí đêm)
   // cộng tiền hàng/COD. Bonus do hệ thống trả nên không tính vào đây.
-  int get customerCollectionAmount => shippingFee + (codAmount ?? 0);
+  int get customerCollectionAmount => customerShippingFee + (codAmount ?? 0);
 
   String get nextAction => switch (status) {
         'assigned' => switch (serviceType) {

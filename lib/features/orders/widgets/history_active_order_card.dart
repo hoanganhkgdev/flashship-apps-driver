@@ -100,10 +100,9 @@ class _ActiveOrderCardState extends ConsumerState<ActiveOrderCard> {
     if (wasCompleting) {
       error = await ref.read(activeOrderProvider.notifier).complete(orderId);
     } else {
-      final ok = await ref
+      error = await ref
           .read(activeOrderProvider.notifier)
           .updateOrderStatus(nextStatus, orderId: orderId);
-      if (!ok) error = 'Không thể cập nhật trạng thái đơn.';
     }
     if (!mounted) return;
     setState(() => _actionLoading = false);
@@ -520,7 +519,7 @@ class _CustomerAppRunningHeader extends StatelessWidget {
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerRight,
             child: Text(
-              Fmt.currency(order.shippingFee),
+              Fmt.currency(order.customerShippingFee),
               style: AppTextStyles.metric.copyWith(
                 color: AppColors.primaryDark,
                 fontSize: AppFontSize.xl2,
@@ -528,7 +527,9 @@ class _CustomerAppRunningHeader extends StatelessWidget {
             ),
           ),
           Text(
-            Fmt.customerFeeLabel(order.serviceType),
+            order.platformFreeship
+                ? 'FREESHIP · KHÔNG THU KHÁCH'
+                : Fmt.customerFeeLabel(order.serviceType),
             maxLines: 2,
             textAlign: TextAlign.right,
             style: AppTextStyles.caption.copyWith(
@@ -1159,7 +1160,10 @@ class _ShopActiveCollection extends StatelessWidget {
           height: 38,
           child: VerticalDivider(width: 20, color: AppColors.divider),
         ),
-        item(Icons.local_shipping_rounded, 'PHÍ SHIP', order.shippingFee,
+        item(
+            Icons.local_shipping_rounded,
+            order.platformFreeship ? 'FREESHIP' : 'PHÍ SHIP',
+            order.customerShippingFee,
             AppColors.textPrimary),
       ]),
     );
@@ -1184,6 +1188,7 @@ class _CallCenterRunningCard extends StatelessWidget {
   });
 
   bool get _hasRewards =>
+      order.platformFreeship ||
       order.bonusFee > 0 ||
       (order.rainBonusEligible && order.rainBonusConfirmedAmount > 0);
 
@@ -1355,14 +1360,18 @@ class _CallCenterRunningHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                Fmt.currency(order.baseShippingFee),
+                order.platformFreeship
+                    ? Fmt.currency(0)
+                    : Fmt.currency(order.baseShippingFee),
                 style: AppTextStyles.metric.copyWith(
                   color: AppColors.primaryDark,
                   fontSize: AppFontSize.xl2,
                 ),
               ),
               Text(
-                'PHÍ SHIP GỐC',
+                order.platformFreeship
+                    ? 'FREESHIP · KHÔNG THU KHÁCH'
+                    : 'PHÍ SHIP GỐC',
                 style: AppTextStyles.caption.copyWith(
                   color: AppColors.primaryDark,
                   fontSize: 9,
@@ -1382,6 +1391,14 @@ class _CallCenterActiveRewards extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rewards = <({IconData icon, String label, int amount, Color color})>[
+      // Freeship tổng đài: khách không trả, công ty trả phí ship vào ví.
+      if (order.platformFreeship)
+        (
+          icon: Icons.local_shipping_rounded,
+          label: 'CÔNG TY TRẢ SHIP',
+          amount: order.shippingFee,
+          color: AppColors.success,
+        ),
       if (order.bonusFee > 0)
         (
           icon: Icons.card_giftcard_rounded,

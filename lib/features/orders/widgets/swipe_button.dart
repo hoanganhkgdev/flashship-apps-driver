@@ -33,13 +33,18 @@ class _SwipeButtonState extends State<SwipeButton>
   bool get _enabled => widget.onConfirm != null && !widget.loading;
 
   late AnimationController _ctrl;
-  late Animation<double> _snapAnim;
+  // Vị trí bắt đầu trượt về 0. Một listener duy nhất gắn vào controller —
+  // trước đây mỗi lần thả tay lại gắn thêm listener mới mà không gỡ, các
+  // listener cũ ghi đè vị trí làm nút giật.
+  double _snapFrom = 0;
 
   @override
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 280));
+        vsync: this, duration: const Duration(milliseconds: 280))
+      ..addListener(() => setState(() =>
+          _dragX = _snapFrom * (1 - Curves.easeOut.transform(_ctrl.value))));
   }
 
   @override
@@ -70,9 +75,7 @@ class _SwipeButtonState extends State<SwipeButton>
         }
       });
     } else {
-      _snapAnim = Tween<double>(begin: _dragX, end: 0).animate(
-        CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
-      )..addListener(() => setState(() => _dragX = _snapAnim.value));
+      _snapFrom = _dragX;
       _ctrl.forward(from: 0);
     }
   }

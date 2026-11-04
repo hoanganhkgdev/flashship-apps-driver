@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_constants.dart';
@@ -127,7 +129,10 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
     final revisionAtStart = ++_stateRevision;
     state = state.copyWith(loading: true, error: null);
     try {
-      final res = await _ref.read(apiClientProvider).get('/orders/my-orders');
+      // active_only: không kéo kèm 20 đơn đã hoàn thành (lịch sử lấy riêng).
+      final res = await _ref
+          .read(apiClientProvider)
+          .get('/orders/my-orders', params: {'active_only': 1});
       final data = (res.data['data'] ?? res.data);
 
       // Backend trả về key 'assigned' (hoặc 'orders' nếu thay đổi sau này)
@@ -193,11 +198,19 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
       await _persist(remaining);
       return null;
     } catch (e) {
+      _refreshIfRejected(e);
       return parseApiError(
         e,
         fallback: 'Không thể hoàn thành đơn. Vui lòng thử lại.',
       );
     }
+  }
+
+  /// Server đã trả lời từ chối (đơn bị huỷ, không còn là của mình, sai bước…)
+  /// → danh sách trên máy đang sai, tải lại. Lỗi mạng thì giữ nguyên.
+  void _refreshIfRejected(Object e) {
+    final code = e is DioException ? e.response?.statusCode : null;
+    if (code != null && code >= 400 && code < 500) unawaited(fetch());
   }
 
   void clearOrder() {
@@ -206,13 +219,14 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
     _persist([]);
   }
 
-  Future<bool> updateOrderStatus(String status, {int? orderId}) async {
+  /// `null` là thành công; ngược lại là lý do để màn hình hiển thị.
+  Future<String?> updateOrderStatus(String status, {int? orderId}) async {
     _stateRevision++;
     // Tìm đơn cần update theo orderId, fallback về đơn đầu tiên
     final o = orderId != null
         ? state.orders.where((x) => x.id == orderId).firstOrNull
         : state.order;
-    if (o == null) return false;
+    if (o == null) return 'Không tìm thấy đơn.';
 
     final updated = o.withStatus(status);
     final updatedList =
@@ -224,8 +238,8 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
         '/orders/${o.id}/update-status',
         data: {'status': status},
       );
-      return true;
-    } catch (_) {
+      return null;
+    } catch (e) {
       // Chỉ rollback đúng đơn vừa thao tác. Không khôi phục nguyên danh sách
       // vì trong lúc chờ API, đơn khác có thể vừa accept/complete/fetch xong.
       final current = state.orders;
@@ -238,7 +252,8 @@ class ActiveOrderNotifier extends StateNotifier<ActiveOrderState> {
         state = ActiveOrderState(orders: rolledBack, isRestored: true);
         await _persist(rolledBack);
       }
-      return false;
+      _refreshIfRejected(e);
+      return parseApiError(e, fallback: 'Không thể cập nhật trạng thái đơn.');
     }
   }
 }

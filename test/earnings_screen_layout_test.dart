@@ -1,6 +1,7 @@
 import 'package:flashship_driver/core/theme/app_theme.dart';
 import 'package:flashship_driver/features/orders/providers/order_provider.dart';
 import 'package:flashship_driver/features/wallet/models/wallet_model.dart';
+import 'package:flashship_driver/features/wallet/providers/earnings_orders_provider.dart';
 import 'package:flashship_driver/features/wallet/providers/wallet_provider.dart';
 import 'package:flashship_driver/features/wallet/screens/earnings_screen.dart';
 import 'package:flutter/material.dart';
@@ -81,6 +82,16 @@ class _FakeOrderHistoryNotifier extends OrderHistoryNotifier {
   Future<void> fetch({bool refresh = false}) async {}
 }
 
+/// Danh sách đơn theo kỳ giả — không gọi API thật trong test.
+class _FakeEarningsOrders extends EarningsOrdersNotifier {
+  _FakeEarningsOrders(super.ref, super.period);
+
+  @override
+  Future<void> fetch({bool refresh = false}) async {
+    state = const OrderHistoryState(hasMore: false);
+  }
+}
+
 void main() {
   testWidgets('keeps the previous earnings visible during a wallet refresh',
       (tester) async {
@@ -89,6 +100,7 @@ void main() {
         overrides: [
           walletProvider.overrideWith(_RefreshingWalletNotifier.new),
           orderHistoryProvider.overrideWith(_FakeOrderHistoryNotifier.new),
+          earningsOrdersProvider.overrideWith(_FakeEarningsOrders.new),
         ],
         child: MaterialApp(
           theme: AppTheme.light,
@@ -98,8 +110,8 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Tổng thu nhập'), findsOneWidget);
-    expect(find.text('850.000 đ'), findsOneWidget);
+    expect(find.text('THU NHẬP TUẦN NÀY'), findsOneWidget);
+    expect(find.text('850.000 đ'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
@@ -117,6 +129,7 @@ void main() {
         overrides: [
           walletProvider.overrideWith(_FakeWalletNotifier.new),
           orderHistoryProvider.overrideWith(_FakeOrderHistoryNotifier.new),
+          earningsOrdersProvider.overrideWith(_FakeEarningsOrders.new),
         ],
         child: MaterialApp(
           theme: AppTheme.light,
@@ -126,28 +139,26 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Tổng thu nhập'), findsOneWidget);
-    expect(find.text('850.000 đ'), findsOneWidget);
+    expect(find.text('THU NHẬP TUẦN NÀY'), findsOneWidget);
+    expect(find.text('850.000 đ'), findsWidgets);
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.text('Tháng này'));
     await tester.pump();
+    expect(find.text('THU NHẬP THÁNG NÀY'), findsOneWidget);
     expect(find.text('3.150.000 đ'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -600));
+    await tester.drag(find.byType(ListView), const Offset(0, -600));
     await tester.pumpAndSettle();
     expect(find.text('Số dư ví'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -700));
+    await tester.drag(find.byType(ListView), const Offset(0, -900));
     await tester.pumpAndSettle();
-    expect(find.text('Lịch sử thu nhập'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-
-    await tester.tap(find.text('Giao dịch ví'));
-    await tester.pump();
-    expect(find.text('Thu nhập đơn hàng'), findsOneWidget);
+    // Danh sách đơn theo đúng kỳ; giao dịch ví đầy đủ nằm ở màn Ví.
+    expect(find.text('Đơn hoàn thành tháng này'), findsOneWidget);
+    expect(find.text('Xem giao dịch ví (tiền vào/ra, rút tiền)'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

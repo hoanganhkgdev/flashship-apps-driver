@@ -55,7 +55,7 @@ void main() {
                 uploadingAvatar: false,
                 nameLocked: false,
                 cityName: 'Thành phố Rạch Giá, Kiên Giang',
-                hasStats: true,
+                verified: false,
                 acceptanceRate: 98,
                 completionRate: 96,
                 rating: 4.9,
@@ -63,13 +63,10 @@ void main() {
                 onEditName: (_) {},
               ),
               const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: KycSummaryCard(
-                  cccdStatus: 'pending',
-                  licenseStatus: 'approved',
-                  onTap: () {},
-                ),
+              KycSummaryCard(
+                cccdStatus: 'pending',
+                licenseStatus: 'approved',
+                onTap: () {},
               ),
               const SizedBox(height: 12),
               ProfileFinanceCard(
@@ -98,9 +95,12 @@ void main() {
     await tester.pump();
 
     expect(find.text('Nguyễn Hoàng Anh Tài Xế'), findsOneWidget);
-    expect(find.text('Tài chính'), findsOneWidget);
-    expect(find.text('Quá hạn'), findsOneWidget);
-    expect(find.text('Lịch làm việc'), findsOneWidget);
+    expect(find.text('Chưa xác minh'), findsOneWidget);
+    expect(find.text('98%'), findsOneWidget);
+    expect(find.text('Giấy tờ đang chờ duyệt'), findsOneWidget);
+    expect(find.text('VÍ & THANH TOÁN'), findsOneWidget);
+    expect(find.text('Nợ quá hạn'), findsOneWidget);
+    expect(find.text('Ca làm việc'), findsOneWidget);
     expect(find.text('Đã đăng ký'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

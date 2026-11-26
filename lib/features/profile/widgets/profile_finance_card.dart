@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
+import 'settings_section.dart';
 
+/// Nhóm "Ví & thanh toán": dải 2 ô Số dư ví | Công nợ (chạm để mở), rồi
+/// các dòng Tài khoản ngân hàng, Giới thiệu cửa hàng.
 class ProfileFinanceCard extends StatelessWidget {
   final int balance;
   final int debtAmount;
@@ -27,8 +30,10 @@ class ProfileFinanceCard extends StatelessWidget {
     required this.onReferralTap,
   });
 
+  bool get _hasBank => bankName != null && bankName!.isNotEmpty;
+
   String get _bankSubtitle {
-    if (bankName == null || bankName!.isEmpty) return 'Chưa liên kết';
+    if (!_hasBank) return 'Chưa liên kết — cần để rút tiền';
     if (bankAccount == null || bankAccount!.isEmpty) return bankName!;
     final lastDigits = bankAccount!.length > 4
         ? bankAccount!.substring(bankAccount!.length - 4)
@@ -37,242 +42,125 @@ class ProfileFinanceCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadius.card),
-          border: Border.all(color: AppColors.divider),
-        ),
-        child: Column(children: [
-          Row(children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.primarySoft,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: const Icon(Icons.account_balance_wallet_rounded,
-                  size: 22, color: AppColors.primary),
+  Widget build(BuildContext context) {
+    final hasDebt = debtAmount > 0;
+    return SettingsSection(
+      header: 'Ví & thanh toán',
+      children: [
+        // Không dùng IntrinsicHeight: đo chiều cao cùng FittedBox làm ô cao
+        // dư một khoảng trống lớn. Hai ô cùng khuôn (dòng nhãn cao cố định)
+        // nên tự cao bằng nhau; vạch ngăn là viền trái của ô thứ hai.
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(
+            child: _MoneyCell(
+              label: 'Số dư ví',
+              value: Fmt.currency(balance),
+              color: AppColors.textPrimary,
+              onTap: onWalletTap,
             ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Tài chính',
-                    style: AppTextStyles.sectionTitle.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    'Theo dõi ví, công nợ và tài khoản nhận tiền',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
+          ),
+          Expanded(
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                border: Border(left: BorderSide(color: AppColors.divider)),
+              ),
+              child: _MoneyCell(
+                // Quá hạn: đổi hẳn nhãn sang đỏ — viên "Quá hạn" cạnh nhãn bị
+                // cắt thành "Quá…" trên máy hẹp chữ to.
+                label: hasOverdueDebt ? 'Nợ quá hạn' : 'Công nợ',
+                labelColor: hasOverdueDebt ? AppColors.danger : null,
+                value: hasDebt ? Fmt.currency(debtAmount) : 'Không có',
+                color: hasDebt ? AppColors.danger : AppColors.success,
+                onTap: onDebtTap,
               ),
             ),
-          ]),
-          const SizedBox(height: AppSpacing.md),
-          IntrinsicHeight(
-            child:
-                Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Expanded(
-                child: _FinanceMetric(
-                  icon: Icons.wallet_outlined,
-                  label: 'Số dư ví',
-                  value: Fmt.currency(balance),
-                  color: AppColors.primary,
-                  background: AppColors.primarySoft,
-                  onTap: onWalletTap,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _FinanceMetric(
-                  icon: debtAmount > 0
-                      ? Icons.warning_amber_rounded
-                      : Icons.verified_rounded,
-                  label: 'Công nợ',
-                  value: debtAmount > 0 ? Fmt.currency(debtAmount) : 'Không có',
-                  color: debtAmount > 0 ? AppColors.danger : AppColors.success,
-                  background: debtAmount > 0
-                      ? AppColors.dangerSoft
-                      : AppColors.successSoft,
-                  badge: hasOverdueDebt ? 'Quá hạn' : null,
-                  onTap: onDebtTap,
-                ),
-              ),
-            ]),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _FinanceAction(
-            icon: Icons.account_balance_rounded,
-            label: 'Tài khoản ngân hàng',
-            subtitle: _bankSubtitle,
-            color: AppColors.info,
-            background: AppColors.infoSoft,
-            onTap: onBankTap,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _FinanceAction(
-            icon: Icons.card_giftcard_rounded,
-            label: 'Giới thiệu cửa hàng',
-            subtitle: 'Chia sẻ FlashShip và nhận thưởng',
-            color: AppColors.success,
-            background: AppColors.successSoft,
-            onTap: onReferralTap,
           ),
         ]),
-      );
+        SettingsRow(
+          icon: Icons.account_balance_rounded,
+          iconBg: _hasBank ? AppColors.infoSoft : AppColors.warningSoft,
+          iconColor: _hasBank ? AppColors.info : AppColors.warning,
+          label: 'Tài khoản ngân hàng',
+          subtitle: _bankSubtitle,
+          onTap: onBankTap,
+        ),
+        SettingsRow(
+          icon: Icons.card_giftcard_rounded,
+          iconBg: AppColors.successSoft,
+          iconColor: AppColors.success,
+          label: 'Giới thiệu cửa hàng',
+          subtitle: 'Chia sẻ FlashShip và nhận thưởng',
+          onTap: onReferralTap,
+        ),
+      ],
+    );
+  }
 }
 
-class _FinanceMetric extends StatelessWidget {
-  final IconData icon;
+class _MoneyCell extends StatelessWidget {
   final String label;
   final String value;
-  final String? badge;
+  final Color? labelColor;
   final Color color;
-  final Color background;
   final VoidCallback onTap;
 
-  const _FinanceMetric({
-    required this.icon,
+  const _MoneyCell({
     required this.label,
     required this.value,
-    this.badge,
+    this.labelColor,
     required this.color,
-    required this.background,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) => Material(
-        color: background,
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadius.md),
           child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
+            padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                      minHeight: MediaQuery.textScalerOf(context).scale(24)),
+                  child: Row(children: [
+                    Flexible(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.caption.copyWith(
+                          color: labelColor ?? AppColors.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ]),
+                ),
+                const SizedBox(height: 4),
                 Row(children: [
-                  Icon(icon, size: 18, color: color),
-                  const SizedBox(width: 5),
                   Expanded(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.label.copyWith(
-                        color: AppColors.textSecondary,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        value,
+                        style: AppTextStyles.bodyStrong.copyWith(
+                          color: color,
+                          fontSize: AppFontSize.lg,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ),
+                  const Icon(Icons.chevron_right_rounded,
+                      size: 20, color: AppColors.textTertiary),
                 ]),
-                const SizedBox(height: AppSpacing.sm),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    value,
-                    style: AppTextStyles.bodyStrong.copyWith(
-                      color: color,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                if (badge != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    badge!,
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.danger,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
               ],
             ),
-          ),
-        ),
-      );
-}
-
-class _FinanceAction extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String subtitle;
-  final Color color;
-  final Color background;
-  final VoidCallback onTap;
-
-  const _FinanceAction({
-    required this.icon,
-    required this.label,
-    required this.subtitle,
-    required this.color,
-    required this.background,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) => Material(
-        color: AppColors.surfaceAlt.withValues(alpha: .65),
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          child: Padding(
-            padding: const EdgeInsets.all(10),
-            child: Row(children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: background,
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                ),
-                child: Icon(icon, size: 18, color: color),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.body.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right_rounded,
-                  size: 19, color: AppColors.textTertiary),
-            ]),
           ),
         ),
       );

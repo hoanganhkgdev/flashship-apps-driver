@@ -216,8 +216,6 @@ class _KycScreenState extends ConsumerState<KycScreen>
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        // Header giờ nền trắng (trước là gradient cam) — icon status bar
-        // phải đổi sang màu đen mới nhìn thấy được.
         statusBarIconBrightness: Brightness.dark,
         statusBarBrightness: Brightness.light,
       ),
@@ -225,7 +223,7 @@ class _KycScreenState extends ConsumerState<KycScreen>
         backgroundColor: AppColors.background,
         appBar: const AppScreenHeader(
           title: 'Xác minh tài khoản',
-          backgroundColor: AppColors.primarySoft,
+          subtitle: 'Hồ sơ cá nhân · Giấy tờ tài xế',
         ),
         body: RefreshIndicator(
           color: AppColors.primary,
@@ -264,7 +262,7 @@ class _KycScreenState extends ConsumerState<KycScreen>
 
   Widget _buildHeader(int steps) {
     final isDone = steps == 1;
-    final accent = isDone ? AppColors.success : AppColors.primary;
+    final accent = isDone ? AppColors.success : AppBrand.ink;
     final accentSoft = isDone ? AppColors.successSoft : AppColors.primarySoft;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -278,7 +276,7 @@ class _KycScreenState extends ConsumerState<KycScreen>
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(AppRadius.card),
-          border: Border.all(color: accent.withValues(alpha: .18)),
+          border: Border.all(color: AppColors.divider, width: 1.25),
         ),
         child: Column(children: [
           Row(children: [
@@ -287,6 +285,7 @@ class _KycScreenState extends ConsumerState<KycScreen>
               height: 44,
               decoration: BoxDecoration(
                 color: accentSoft,
+                gradient: isDone ? null : AppBrand.gradient,
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: Icon(
@@ -327,6 +326,7 @@ class _KycScreenState extends ConsumerState<KycScreen>
               decoration: BoxDecoration(
                 color: accentSoft,
                 borderRadius: BorderRadius.circular(AppRadius.full),
+                border: Border.all(color: accent.withValues(alpha: .65)),
               ),
               child: Text(
                 '$steps/1',
@@ -394,7 +394,7 @@ class _KycScreenState extends ConsumerState<KycScreen>
           width: 4,
           height: 36,
           decoration: BoxDecoration(
-            color: AppColors.primary,
+            gradient: AppBrand.gradient,
             borderRadius: BorderRadius.circular(AppRadius.full),
           ),
         ),
@@ -520,14 +520,15 @@ class _DocCard extends StatelessWidget {
                         ? AppColors.primarySoft
                         : AppColors.surfaceAlt,
                     borderRadius: BorderRadius.circular(AppRadius.full),
+                    border: Border.all(color: AppColors.divider),
                   ),
                   child: Text(
                     requirementLabel,
                     style: AppTextStyles.caption.copyWith(
                       color: requirementLabel == 'Bắt buộc'
-                          ? AppColors.primary
+                          ? AppBrand.ink
                           : AppColors.textSecondary,
-                      fontSize: 9,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -552,7 +553,7 @@ class _DocCard extends StatelessWidget {
               const SizedBox(height: 3),
               Text(
                 description,
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.caption.copyWith(
                   color: AppColors.textSecondary,
@@ -569,6 +570,7 @@ class _DocCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.dangerSoft,
               borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: AppColors.danger),
             ),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Icon(Icons.error_outline_rounded,
@@ -591,36 +593,44 @@ class _DocCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             height: 44,
-            child: FilledButton.icon(
-              onPressed: canUpload ? onTap : null,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                disabledBackgroundColor:
-                    AppColors.primary.withValues(alpha: 0.5),
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: AppBrand.gradient,
+                borderRadius: BorderRadius.circular(AppRadius.md),
               ),
-              icon: isUploading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.upload_rounded,
-                      size: 18, color: Colors.white),
-              label: Text(
-                isUploading
-                    ? 'Đang tải lên...'
-                    : (status == null ? 'Tải ảnh giấy tờ' : 'Cập nhật ảnh'),
-                style: const TextStyle(
-                  fontSize: AppFontSize.base,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
+              child: FilledButton.icon(
+                onPressed: canUpload ? onTap : null,
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  disabledBackgroundColor: Colors.transparent,
+                  foregroundColor: AppBrand.ink,
+                  disabledForegroundColor: AppBrand.ink,
+                  shadowColor: Colors.transparent,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                ),
+                icon: isUploading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppBrand.ink,
+                        ),
+                      )
+                    : const Icon(Icons.upload_rounded,
+                        size: 18, color: AppBrand.ink),
+                label: Text(
+                  isUploading
+                      ? 'Đang tải lên...'
+                      : (status == null ? 'Tải ảnh giấy tờ' : 'Cập nhật ảnh'),
+                  style: const TextStyle(
+                    fontSize: AppFontSize.base,
+                    fontWeight: FontWeight.w600,
+                    color: AppBrand.ink,
+                  ),
                 ),
               ),
             ),
@@ -634,6 +644,6 @@ class _DocCard extends StatelessWidget {
         width: 64,
         height: 64,
         color: color.withValues(alpha: 0.08),
-        child: Icon(icon, size: 28, color: color.withValues(alpha: 0.65)),
+        child: Icon(icon, size: 28, color: color),
       );
 }

@@ -63,10 +63,10 @@ class AvatarPickerSheet extends StatelessWidget {
             width: 100,
             height: 100,
             decoration: BoxDecoration(
-              color: const Color(0xFFFFE5DB),
+              color: AppColors.primarySoft,
               shape: BoxShape.circle,
               border: Border.all(
-                color: const Color(0xFFFFC5B2),
+                color: AppColors.primary,
                 width: 3,
               ),
             ),
@@ -90,7 +90,7 @@ class AvatarPickerSheet extends StatelessWidget {
               width: 30,
               height: 30,
               decoration: BoxDecoration(
-                color: const Color(0xFFFF6035),
+                color: AppColors.primary,
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 2),
               ),
@@ -184,12 +184,12 @@ class _SheetInitials extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ColoredBox(
-        color: const Color(0xFFFFE5DB),
+        color: AppColors.primarySoft,
         child: Center(
           child: Text(
             user?.initials ?? 'D',
             style: const TextStyle(
-              color: Color(0xFFFF6035),
+              color: AppColors.primary,
               fontSize: 28,
               fontWeight: FontWeight.w900,
             ),

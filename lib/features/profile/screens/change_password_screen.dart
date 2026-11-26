@@ -178,7 +178,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
         backgroundColor: AppColors.background,
         appBar: const AppScreenHeader(
           title: 'Đổi mật khẩu',
-          backgroundColor: AppColors.primarySoft,
+          subtitle: 'Xác minh OTP · Bảo vệ tài khoản',
         ),
         body: Column(children: [
           // ── Body ────────────────────────────────────────────────────────────
@@ -196,7 +196,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
-                          color: AppColors.primarySoft,
+                          gradient: AppBrand.gradient,
                           borderRadius: BorderRadius.circular(AppRadius.lg),
                         ),
                         child: Icon(
@@ -204,7 +204,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                                 ? Icons.shield_outlined
                                 : Icons.lock_reset_rounded,
                             size: 28,
-                            color: AppColors.primary),
+                            color: AppBrand.ink),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.md),
@@ -267,7 +267,9 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                             Container(
                               padding: const EdgeInsets.all(AppSpacing.md),
                               decoration: BoxDecoration(
-                                color: AppColors.infoSoft,
+                                color: AppColors.primarySoft,
+                                border: Border.all(
+                                    color: AppColors.primary, width: 1.25),
                                 borderRadius:
                                     BorderRadius.circular(AppRadius.md),
                               ),
@@ -275,7 +277,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Icon(Icons.sms_outlined,
-                                      size: 18, color: AppColors.info),
+                                      size: 18, color: AppBrand.ink),
                                   SizedBox(width: AppSpacing.sm),
                                   Expanded(
                                     child: Text(
@@ -333,7 +335,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                                         style: const TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w600,
-                                            color: AppColors.primary),
+                                            color: AppBrand.ink),
                                       ),
                                     ),
                                 ]),
@@ -370,6 +372,10 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 color: AppColors.dangerSoft,
+                                border: Border.all(
+                                    color:
+                                        AppColors.danger.withValues(alpha: .65),
+                                    width: 1.25),
                                 borderRadius:
                                     BorderRadius.circular(AppRadius.md),
                               ),
@@ -412,7 +418,7 @@ class _SectionHeading extends StatelessWidget {
           width: 4,
           height: 36,
           decoration: BoxDecoration(
-            color: AppColors.primary,
+            gradient: AppBrand.gradient,
             borderRadius: BorderRadius.circular(AppRadius.full),
           ),
         ),
@@ -455,7 +461,8 @@ class _StepBar extends StatelessWidget {
         Container(
           height: 5,
           decoration: BoxDecoration(
-            color: active ? AppColors.primary : AppColors.divider,
+            color: active ? null : AppColors.divider,
+            gradient: active ? AppBrand.gradient : null,
             borderRadius: BorderRadius.circular(AppRadius.full),
           ),
         ),
@@ -463,8 +470,7 @@ class _StepBar extends StatelessWidget {
         Text(label,
             style: AppTextStyles.label.copyWith(
                 fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                color:
-                    active ? AppColors.primaryDark : AppColors.textTertiary)),
+                color: active ? AppBrand.ink : AppColors.textTertiary)),
       ]);
 }
 
@@ -519,25 +525,10 @@ class _PrimaryButton extends StatelessWidget {
       {required this.label, required this.loading, this.onPressed});
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-        height: 52,
-        child: FilledButton(
-          onPressed: loading ? null : onPressed,
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.md)),
-          ),
-          child: loading
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white))
-              : Text(label,
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w700)),
-        ),
+  Widget build(BuildContext context) => AppSheetButton(
+        label: label,
+        loading: loading,
+        onPressed: onPressed,
+        brandStyle: true,
       );
 }

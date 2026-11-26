@@ -45,6 +45,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   String? _licenseStatus;
   String? _cccdImageStatus;
   bool _deleteRequested = false;
+  bool _profileLoaded = false;
 
   int? _balance;
   String? _bankName;
@@ -99,6 +100,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       setState(() {
         final p = profileData;
         if (p != null) {
+          _profileLoaded = true;
           _cityName = p['city_name'] as String?;
           _photoUrl = p['profile_photo_url'] as String?;
           _licenseStatus = p['license_status'] as String?;
@@ -144,8 +146,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
-    final hasStats =
-        _acceptanceRate != null || _completionRate != null || _rating != null;
+    final verified = KycSummaryCard.isVerified(_cccdImageStatus);
+
+    Future<void> openKyc() async {
+      await context.push('/kyc');
+      _loadData();
+    }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -155,179 +161,170 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
       child: Scaffold(
         backgroundColor: AppColors.background,
-        body: Column(children: [
-          const _ProfileScreenHeader(),
-          Expanded(
-            child: RefreshIndicator(
-              color: AppColors.primary,
-              onRefresh: _loadData,
-              child: ListView(
-                padding: EdgeInsets.zero,
+        body: RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: _loadData,
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              // ── Ảnh, tên, xác minh, chỉ số ─────────────────────────────
+              ProfileHeader(
+                user: user,
+                photoUrl: _photoUrl,
+                uploadingAvatar: _uploadingAvatar,
+                nameLocked: _nameLocked,
+                nameLockedReason: _nameLockedReason,
+                cityName: _cityName,
+                verified: verified,
+                acceptanceRate: _acceptanceRate,
+                completionRate: _completionRate,
+                rating: _rating,
+                onAvatarTap: _onAvatarTap,
+                onEditName: (name) => _showEditName(context, name),
+                onVerifyTap: openKyc,
+              ),
+
+              // ── Nhắc xác minh (chỉ khi CCCD chưa duyệt) ─────────────────
+              // _cccdImageStatus null cả khi chưa tải xong profile — chờ có
+              // dữ liệu rồi mới nhắc, tránh băng nhắc nháy lên rồi biến mất.
+              if (!verified && _profileLoaded) ...[
+                const SizedBox(height: AppSpacing.lg),
+                KycSummaryCard(
+                  cccdStatus: _cccdImageStatus,
+                  licenseStatus: _licenseStatus,
+                  onTap: openKyc,
+                ),
+              ],
+
+              if (_deleteRequested) ...[
+                const SizedBox(height: AppSpacing.lg),
+                _DeletePendingBanner(
+                    onCancel: () => _confirmCancelDelete(context)),
+              ],
+
+              const SizedBox(height: AppSpacing.xl),
+
+              // ── Ví & thanh toán ────────────────────────────────────────
+              ProfileFinanceCard(
+                balance: _balance ?? 0,
+                debtAmount: _debts.fold<int>(0, (sum, d) => sum + d.remaining),
+                hasOverdueDebt: _debts.any((d) => d.isOverdue),
+                bankName: _bankName,
+                bankAccount: _bankAccount,
+                onWalletTap: () => context.push('/wallet'),
+                onDebtTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const DebtScreen()),
+                ),
+                onBankTap: () => context.push('/bank-account'),
+                onReferralTap: () => context.push('/referral'),
+              ),
+
+              const SizedBox(height: AppSpacing.xl),
+
+              // ── Công việc ──────────────────────────────────────────────
+              WorkScheduleCard(
+                currentShiftNames: _currentShiftNames(),
+                onShiftTap: () => context.push('/shifts'),
+                onLeaveTap: () => context.push('/leave-request'),
+              ),
+
+              const SizedBox(height: AppSpacing.xl),
+
+              // ── Cài đặt & pháp lý ──────────────────────────────────────
+              SettingsSection(
+                header: 'Cài đặt',
                 children: [
-                  // ── Header + floating stats card ──────────────────────────
-                  ProfileHeader(
-                    user: user,
-                    photoUrl: _photoUrl,
-                    uploadingAvatar: _uploadingAvatar,
-                    nameLocked: _nameLocked,
-                    nameLockedReason: _nameLockedReason,
-                    cityName: _cityName,
-                    hasStats: hasStats,
-                    acceptanceRate: _acceptanceRate,
-                    completionRate: _completionRate,
-                    rating: _rating,
-                    onAvatarTap: _onAvatarTap,
-                    onEditName: (name) => _showEditName(context, name),
+                  SettingsRow(
+                    icon: Icons.verified_user_outlined,
+                    iconBg: verified
+                        ? AppColors.successSoft
+                        : AppColors.primarySoft,
+                    iconColor: verified ? AppColors.success : AppBrand.ink,
+                    label: 'Hồ sơ & giấy tờ',
+                    subtitle: 'CCCD, bằng lái ô tô',
+                    onTap: openKyc,
                   ),
-
-                  const SizedBox(height: 12),
-
-                  // ── Hồ sơ tài xế ─────────────────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: KycSummaryCard(
-                      cccdStatus: _cccdImageStatus,
-                      licenseStatus: _licenseStatus,
-                      onTap: () async {
-                        await context.push('/kyc');
-                        _loadData();
-                      },
-                    ),
+                  SettingsRow(
+                    icon: Icons.lock_outline_rounded,
+                    iconBg: AppColors.surfaceAlt,
+                    iconColor: AppColors.textSecondary,
+                    label: 'Đổi mật khẩu',
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => const ChangePasswordScreen())),
                   ),
-
-                  const SizedBox(height: 12),
-
-                  // ── Lịch làm việc ────────────────────────────────────────
-                  WorkScheduleCard(
-                    currentShiftNames: _currentShiftNames(),
-                    onShiftTap: () => context.push('/shifts'),
-                    onLeaveTap: () => context.push('/leave-request'),
+                  SettingsRow(
+                    icon: Icons.shield_outlined,
+                    iconBg: AppColors.surfaceAlt,
+                    iconColor: AppColors.textSecondary,
+                    label: 'Chính sách bảo mật',
+                    onTap: () => _showPage(
+                        context, 'privacy-policy', 'Chính sách bảo mật'),
                   ),
-
-                  const SizedBox(height: 12),
-
-                  // ── Tài chính ────────────────────────────────────────────
-                  ProfileFinanceCard(
-                    balance: _balance ?? 0,
-                    debtAmount:
-                        _debts.fold<int>(0, (sum, d) => sum + d.remaining),
-                    hasOverdueDebt: _debts.any((d) => d.isOverdue),
-                    bankName: _bankName,
-                    bankAccount: _bankAccount,
-                    onWalletTap: () => context.push('/wallet'),
-                    onDebtTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const DebtScreen()),
-                    ),
-                    onBankTap: () => context.push('/bank-account'),
-                    onReferralTap: () => context.push('/referral'),
+                  SettingsRow(
+                    icon: Icons.description_outlined,
+                    iconBg: AppColors.surfaceAlt,
+                    iconColor: AppColors.textSecondary,
+                    label: 'Điều khoản sử dụng',
+                    onTap: () => _showPage(
+                        context, 'terms-of-service', 'Điều khoản sử dụng'),
                   ),
-
-                  const SizedBox(height: 12),
-
-                  // ── Bảo mật ──────────────────────────────────────────────
-                  SettingsSection(
-                    header: 'Bảo mật',
-                    children: [
-                      SettingsRow(
-                        icon: Icons.lock_outline_rounded,
-                        iconBg: AppColors.primary.withValues(alpha: 0.12),
-                        iconColor: AppColors.primary,
-                        label: 'Đổi mật khẩu',
-                        onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                                builder: (_) => const ChangePasswordScreen())),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // ── Pháp lý ──────────────────────────────────────────────
-                  SettingsSection(
-                    header: 'Pháp lý',
-                    children: [
-                      SettingsRow(
-                        icon: Icons.shield_outlined,
-                        iconBg: AppColors.primary.withValues(alpha: 0.12),
-                        iconColor: AppColors.primary,
-                        label: 'Chính sách bảo mật',
-                        onTap: () => _showPage(
-                            context, 'privacy-policy', 'Chính sách bảo mật'),
-                      ),
-                      const Divider(
-                          height: 1, indent: 64, color: AppColors.surfaceAlt),
-                      SettingsRow(
-                        icon: Icons.description_outlined,
-                        iconBg: AppColors.primary.withValues(alpha: 0.12),
-                        iconColor: AppColors.primary,
-                        label: 'Điều khoản sử dụng',
-                        onTap: () => _showPage(
-                            context, 'terms-of-service', 'Điều khoản sử dụng'),
-                      ),
-                      const Divider(
-                          height: 1, indent: 64, color: AppColors.surfaceAlt),
-                      SettingsRow(
-                        icon: Icons.info_outline_rounded,
-                        iconBg: AppColors.primary.withValues(alpha: 0.12),
-                        iconColor: AppColors.primary,
-                        label: 'Phiên bản',
-                        trailing: Text(
-                          _appVersion.isEmpty ? '...' : _appVersion,
-                          style: const TextStyle(
-                              color: AppColors.textSecondary, fontSize: 14),
-                        ),
-                        onTap: null,
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // ── Tài khoản ────────────────────────────────────────────
-                  SettingsSection(
-                    header: 'Tài khoản',
-                    children: [
-                      SettingsRow(
-                        icon: Icons.logout_rounded,
-                        iconBg: AppColors.danger.withValues(alpha: 0.12),
-                        iconColor: AppColors.danger,
-                        label: 'Đăng xuất',
-                        labelColor: AppColors.danger,
-                        showChevron: false,
-                        onTap: () => _confirmLogout(context),
-                      ),
-                      const Divider(
-                          height: 1, indent: 64, color: AppColors.surfaceAlt),
-                      SettingsRow(
-                        icon: _deleteRequested
-                            ? Icons.restore_rounded
-                            : Icons.delete_forever_rounded,
-                        iconBg: AppColors.danger.withValues(alpha: 0.12),
-                        iconColor: _deleteRequested
-                            ? AppColors.textSecondary
-                            : AppColors.danger,
-                        label: _deleteRequested
-                            ? 'Hủy yêu cầu xóa tài khoản'
-                            : 'Yêu cầu xóa tài khoản',
-                        labelColor: _deleteRequested
-                            ? AppColors.textSecondary
-                            : AppColors.danger,
-                        showChevron: false,
-                        onTap: () => _deleteRequested
-                            ? _confirmCancelDelete(context)
-                            : _confirmDeleteAccount(context),
-                      ),
-                    ],
-                  ),
-
-                  // Chừa chỗ cho thanh bottom nav nổi (kính mờ, extendBody: true
-                  // ở HomeScreen) — không thì phần cuối bị nav che mất.
-                  SizedBox(height: BottomNav.reservedHeight(context)),
                 ],
               ),
-            ),
+
+              const SizedBox(height: AppSpacing.xl),
+
+              // ── Đăng xuất / xoá tài khoản / phiên bản ──────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                child: SizedBox(
+                  height: AppSize.buttonHeight,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _confirmLogout(context),
+                    icon: const Icon(Icons.logout_rounded, size: 20),
+                    label: const Text('Đăng xuất'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppBrand.ink,
+                      backgroundColor: AppColors.primarySoft,
+                      side: const BorderSide(
+                          color: AppColors.primary, width: 1.25),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.md)),
+                      textStyle: AppTextStyles.bodyStrong
+                          .copyWith(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+              ),
+              if (!_deleteRequested)
+                Center(
+                  child: TextButton(
+                    onPressed: () => _confirmDeleteAccount(context),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.textTertiary,
+                      minimumSize: const Size(48, AppSize.minTouchTarget),
+                    ),
+                    child: const Text('Yêu cầu xóa tài khoản'),
+                  ),
+                ),
+              Padding(
+                padding:
+                    EdgeInsets.only(top: _deleteRequested ? AppSpacing.lg : 0),
+                child: Text(
+                  'FLASH SHIP Tài xế · phiên bản '
+                  '${_appVersion.isEmpty ? '...' : _appVersion}',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.caption
+                      .copyWith(color: AppColors.textTertiary),
+                ),
+              ),
+
+              // Chừa chỗ cho thanh bottom nav nổi (extendBody: true ở
+              // HomeScreen) — không thì phần cuối bị nav che mất.
+              SizedBox(
+                  height: BottomNav.reservedHeight(context) + AppSpacing.sm),
+            ],
           ),
-        ]),
+        ),
       ),
     );
   }
@@ -603,70 +600,48 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 }
 
-class _ProfileScreenHeader extends StatelessWidget {
-  const _ProfileScreenHeader();
+/// Đang có yêu cầu xoá tài khoản chờ xử lý — hiện rõ ở đầu trang kèm nút
+/// huỷ, thay vì chỉ là một dòng chữ xám cuối danh sách.
+class _DeletePendingBanner extends StatelessWidget {
+  final VoidCallback onCancel;
+  const _DeletePendingBanner({required this.onCancel});
 
   @override
   Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: EdgeInsets.fromLTRB(
-          AppSpacing.lg,
-          MediaQuery.paddingOf(context).top + 10,
-          AppSpacing.lg,
-          AppSpacing.md,
-        ),
-        decoration: const BoxDecoration(
-          color: AppColors.primarySoft,
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
-          border: Border(bottom: BorderSide(color: Color(0xFFFFC9B3))),
+        margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+        padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+        decoration: BoxDecoration(
+          color: AppColors.dangerSoft,
+          borderRadius: BorderRadius.circular(AppRadius.card),
         ),
         child: Row(children: [
+          const Icon(Icons.delete_outline_rounded,
+              color: AppColors.danger, size: 22),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text.rich(
-                  const TextSpan(children: [
-                    TextSpan(text: 'Tài '),
-                    TextSpan(
-                      text: 'khoản',
-                      style: TextStyle(color: AppColors.primary),
-                    ),
-                  ]),
-                  style: AppTextStyles.screenTitle.copyWith(
-                    fontSize: AppFontSize.xl2,
-                    color: AppColors.textPrimary,
+                Text(
+                  'Đang chờ xóa tài khoản',
+                  style: AppTextStyles.bodyStrong.copyWith(
+                    color: AppColors.danger,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                Row(children: [
-                  const Icon(Icons.tune_rounded,
-                      size: 14, color: AppColors.primary),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      'Quản lý hồ sơ và thiết lập của bạn',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                ]),
+                const SizedBox(height: 2),
+                Text(
+                  'Bạn vẫn có thể hủy yêu cầu trước khi được xử lý.',
+                  style: AppTextStyles.caption
+                      .copyWith(color: AppColors.textSecondary),
+                ),
               ],
             ),
           ),
-          const SizedBox(width: AppSpacing.md),
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: .82),
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            child: const Icon(Icons.person_outline_rounded,
-                size: 21, color: AppColors.primary),
+          TextButton(
+            onPressed: onCancel,
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            child: const Text('Hủy yêu cầu'),
           ),
         ]),
       );

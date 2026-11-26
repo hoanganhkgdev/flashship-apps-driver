@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 
+/// Băng nhắc xác minh — chỉ hiện khi CCCD CHƯA được duyệt (đã duyệt thì
+/// chip "Đã xác minh" ở đầu trang là đủ). CCCD là điều kiện KYC bắt buộc;
+/// bằng lái ô tô chỉ là giấy tờ bổ sung, không làm tài khoản đã xác minh
+/// thành "chưa hoàn tất".
 class KycSummaryCard extends StatelessWidget {
   final String? cccdStatus;
   final String? licenseStatus;
@@ -14,41 +18,60 @@ class KycSummaryCard extends StatelessWidget {
     required this.onTap,
   });
 
+  static bool isVerified(String? cccdStatus) => cccdStatus == 'approved';
+
   @override
   Widget build(BuildContext context) {
-    // CCCD là điều kiện KYC bắt buộc. Bằng lái ô tô chỉ là giấy tờ bổ sung,
-    // không được làm tài khoản đang xác minh trở thành "chưa hoàn tất".
-    final isDone = cccdStatus == 'approved';
-    final accent = isDone ? AppColors.success : AppColors.primary;
-    final accentSoft = isDone ? AppColors.successSoft : AppColors.primarySoft;
+    final (accent, soft, icon, subtitle) = switch (cccdStatus) {
+      'approved' => (
+          AppColors.success,
+          AppColors.successSoft,
+          Icons.verified_user_rounded,
+          'Đã xác minh',
+        ),
+      'pending' => (
+          AppColors.warning,
+          AppColors.warningSoft,
+          Icons.hourglass_top_rounded,
+          'Giấy tờ đang chờ duyệt',
+        ),
+      'rejected' => (
+          AppColors.danger,
+          AppColors.dangerSoft,
+          Icons.error_outline_rounded,
+          'Giấy tờ bị từ chối — chạm để gửi lại',
+        ),
+      _ => (
+          AppColors.primaryDark,
+          AppColors.primarySoft,
+          Icons.badge_rounded,
+          'Chưa hoàn tất — chạm để tải CCCD lên',
+        ),
+    };
 
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(AppRadius.card),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        onTap: onTap,
-        child: Ink(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(color: accent.withValues(alpha: .14)),
-          ),
-          child: Row(
-            children: [
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+      child: Material(
+        color: soft,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          side: BorderSide(color: accent, width: 1.25),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(children: [
               Container(
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: accentSoft,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  isDone ? Icons.verified_user_rounded : Icons.badge_rounded,
-                  color: accent,
-                  size: 20,
-                ),
+                child: Icon(icon, color: accent, size: 22),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
@@ -59,34 +82,22 @@ class KycSummaryCard extends StatelessWidget {
                       'Xác minh tài khoản',
                       style: AppTextStyles.bodyStrong.copyWith(
                         color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      isDone ? 'Đã xác minh' : 'Chưa hoàn tất',
+                      subtitle,
                       style: AppTextStyles.label.copyWith(
-                        color: isDone ? AppColors.success : AppColors.primary,
-                        fontWeight: FontWeight.w500,
+                        color: accent,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
               ),
-              Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: accentSoft,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.arrow_forward_rounded,
-                  color: accent,
-                  size: 16,
-                ),
-              ),
-            ],
+              Icon(Icons.chevron_right_rounded, color: accent, size: 22),
+            ]),
           ),
         ),
       ),

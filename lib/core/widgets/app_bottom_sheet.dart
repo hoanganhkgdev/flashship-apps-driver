@@ -98,10 +98,10 @@ class AppBottomSheetHeader extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
+                  gradient: AppBrand.gradient,
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-                child: Icon(icon, size: 20, color: AppColors.primary),
+                child: Icon(icon, size: 20, color: AppBrand.ink),
               ),
               const SizedBox(width: AppSpacing.md),
             ],
@@ -179,12 +179,12 @@ InputDecoration appSheetInputDecoration({
     errorStyle:
         const TextStyle(fontSize: AppFontSize.sm, color: AppColors.danger),
     filled: true,
-    fillColor: AppColors.surfaceAlt,
+    fillColor: AppColors.surface,
     contentPadding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.lg, vertical: AppSpacing.md + 2),
     border: border(AppColors.divider),
-    enabledBorder: border(AppColors.divider),
-    focusedBorder: border(AppColors.primary, 1.5),
+    enabledBorder: border(AppColors.divider, 1.25),
+    focusedBorder: border(AppColors.primaryDark, 2),
     errorBorder: border(AppColors.danger),
     focusedErrorBorder: border(AppColors.danger, 1.5),
   );
@@ -381,6 +381,7 @@ class AppSheetOption extends StatelessWidget {
 
 /// Nút chính của sheet: cùng kiểu với nút ở các màn đăng nhập.
 class AppSheetButton extends StatelessWidget {
+  final bool brandStyle;
   final String label;
   final bool loading;
   final VoidCallback? onPressed;
@@ -390,32 +391,46 @@ class AppSheetButton extends StatelessWidget {
     required this.label,
     this.loading = false,
     required this.onPressed,
+    this.brandStyle = false,
   });
 
   @override
   Widget build(BuildContext context) => SizedBox(
         width: double.infinity,
         height: 52,
-        child: FilledButton(
-          onPressed: loading ? null : onPressed,
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5),
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.md)),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: brandStyle ? AppBrand.gradient : null,
+            borderRadius: BorderRadius.circular(AppRadius.md),
           ),
-          child: loading
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white))
-              : Text(label,
-                  style: const TextStyle(
-                      fontSize: AppFontSize.md,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white)),
+          child: FilledButton(
+            onPressed: loading ? null : onPressed,
+            style: FilledButton.styleFrom(
+              backgroundColor:
+                  brandStyle ? Colors.transparent : AppColors.primary,
+              disabledBackgroundColor: brandStyle
+                  ? Colors.transparent
+                  : AppColors.primary.withValues(alpha: 0.5),
+              foregroundColor: brandStyle ? AppBrand.ink : Colors.white,
+              disabledForegroundColor: brandStyle ? AppBrand.ink : Colors.white,
+              shadowColor: Colors.transparent,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md)),
+            ),
+            child: loading
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: brandStyle ? AppBrand.ink : Colors.white))
+                : Text(label,
+                    style: TextStyle(
+                        fontSize: AppFontSize.md,
+                        fontWeight: FontWeight.w600,
+                        color: brandStyle ? AppBrand.ink : Colors.white)),
+          ),
         ),
       );
 }

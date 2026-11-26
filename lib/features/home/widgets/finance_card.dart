@@ -30,7 +30,7 @@ class FinanceCard extends StatelessWidget {
       Expanded(
         child: _FinanceTile(
           icon: Icons.account_balance_wallet_rounded,
-          color: AppColors.primary,
+          color: AppBrand.ink,
           label: 'Số dư ví',
           value: Fmt.currency(balance),
           hint: 'Rút tiền',
@@ -81,6 +81,7 @@ class _FinanceTile extends StatelessWidget {
             height: 40,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
+              gradient: color == AppBrand.ink ? AppBrand.gradient : null,
               borderRadius: BorderRadius.circular(AppRadius.sm + 2),
             ),
             child: Icon(icon, size: 22, color: color),

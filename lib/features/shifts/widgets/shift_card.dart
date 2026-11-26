@@ -28,8 +28,8 @@ class ShiftCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(
-          color: selected ? AppColors.primary : AppColors.divider,
-          width: selected ? 1.5 : 1,
+          color: selected ? AppBrand.ink : AppColors.divider,
+          width: selected ? 1.5 : 1.25,
         ),
         color: selected ? AppColors.primarySoft : AppColors.surface,
       ),
@@ -49,9 +49,11 @@ class ShiftCard extends StatelessWidget {
                   height: 44,
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.14),
+                    gradient: selected ? AppBrand.gradient : null,
                     borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
-                  child: Icon(icon, color: color, size: 22),
+                  child: Icon(icon,
+                      color: selected ? AppBrand.ink : color, size: 22),
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
@@ -63,7 +65,8 @@ class ShiftCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTextStyles.bodyStrong.copyWith(
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
                           ),
                         ),
                         const SizedBox(height: 3),
@@ -89,14 +92,15 @@ class ShiftCard extends StatelessWidget {
                   height: 28,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: selected ? AppColors.primary : Colors.transparent,
+                    gradient: selected ? AppBrand.gradient : null,
+                    color: selected ? null : Colors.transparent,
                     border: Border.all(
-                        color: selected ? AppColors.primary : AppColors.divider,
+                        color: selected ? AppBrand.ink : AppColors.divider,
                         width: 1.5),
                   ),
                   child: selected
                       ? const Icon(Icons.check_rounded,
-                          size: 18, color: Colors.white)
+                          size: 18, color: AppBrand.ink)
                       : null,
                 ),
               ]),

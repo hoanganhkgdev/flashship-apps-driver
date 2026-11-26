@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_screen_header.dart';
 import '../../../core/widgets/app_bottom_sheet.dart';
-import '../../../core/widgets/app_surface_card.dart';
 import '../models/wallet_model.dart';
 import '../providers/wallet_provider.dart';
 
@@ -113,9 +112,20 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
               onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Huỷ'),
             ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, ctrl.text),
-              child: const Text('Xác nhận'),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: AppBrand.gradient,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: AppBrand.ink,
+                  shadowColor: Colors.transparent,
+                ),
+                onPressed: () => Navigator.pop(dialogContext, ctrl.text),
+                child: const Text('Xác nhận'),
+              ),
             ),
           ],
         ),
@@ -185,7 +195,7 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
         backgroundColor: AppColors.background,
         appBar: AppScreenHeader(
           title: hasBank ? 'Tài khoản ngân hàng' : 'Thêm ngân hàng',
-          backgroundColor: AppColors.primarySoft,
+          subtitle: 'Thông tin nhận tiền · Rút tiền về ngân hàng',
         ),
         body: SingleChildScrollView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -204,10 +214,16 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
-            AppSurfaceCard(
-              color: AppColors.surface,
-              showBorder: true,
-              showShadow: false,
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              foregroundDecoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.divider, width: 1.25),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -228,7 +244,7 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
                         borderRadius: BorderRadius.circular(AppRadius.md),
                         border: Border.all(
                           color: _selectedBank != null
-                              ? AppColors.primary.withValues(alpha: 0.5)
+                              ? AppBrand.ink
                               : AppColors.divider,
                         ),
                       ),
@@ -314,6 +330,7 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.infoSoft,
                       borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(color: AppColors.divider),
                     ),
                     child: const Row(children: [
                       Icon(Icons.info_outline_rounded,
@@ -332,32 +349,11 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
                     ]),
                   ),
                   const SizedBox(height: AppSpacing.xl2),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: FilledButton(
-                      onPressed: _saving ? null : _save,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        disabledBackgroundColor:
-                            AppColors.primary.withValues(alpha: 0.5),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                        ),
-                      ),
-                      child: _saving
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
-                          : Text(hasBank ? 'Cập nhật' : 'Lưu tài khoản',
-                              style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white)),
-                    ),
+                  AppSheetButton(
+                    brandStyle: true,
+                    label: hasBank ? 'Cập nhật' : 'Lưu tài khoản',
+                    loading: _saving,
+                    onPressed: _save,
                   ),
                 ],
               ),
@@ -372,6 +368,17 @@ class _BankAccountScreenState extends ConsumerState<BankAccountScreen> {
       appSheetInputDecoration(
         hint: hint,
         prefixIcon: Icon(icon, size: 20, color: AppColors.textSecondary),
+      ).copyWith(
+        filled: true,
+        fillColor: AppColors.surface,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: const BorderSide(color: AppColors.divider, width: 1.25),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: const BorderSide(color: AppBrand.ink, width: 2),
+        ),
       );
 
   void _hydrateBankForm(WalletState wallet, {bool notify = true}) {
@@ -417,7 +424,7 @@ class _SectionHeading extends StatelessWidget {
           width: 4,
           height: 36,
           decoration: BoxDecoration(
-            color: AppColors.primary,
+            gradient: AppBrand.gradient,
             borderRadius: BorderRadius.circular(AppRadius.full),
           ),
         ),
@@ -439,6 +446,7 @@ class _SectionHeading extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.caption.copyWith(
                   color: AppColors.textSecondary,
+                  fontSize: 12,
                 ),
               ),
             ],
@@ -483,8 +491,11 @@ class _BankPreviewCard extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.primary.withValues(alpha: .22)),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.divider, width: 1.25),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
@@ -493,6 +504,7 @@ class _BankPreviewCard extends StatelessWidget {
             height: 44,
             decoration: BoxDecoration(
               color: AppColors.primarySoft,
+              gradient: AppBrand.gradient,
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             alignment: Alignment.center,
@@ -506,10 +518,10 @@ class _BankPreviewCard extends StatelessWidget {
                         errorBuilder: (_, __, ___) => const Icon(
                             Icons.account_balance_rounded,
                             size: 21,
-                            color: AppColors.primary)),
+                            color: AppBrand.ink)),
                   )
                 : const Icon(Icons.account_balance_rounded,
-                    size: 21, color: AppColors.primary),
+                    size: 21, color: AppBrand.ink),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -521,7 +533,8 @@ class _BankPreviewCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.bodyStrong.copyWith(
                       color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
                     )),
                 const SizedBox(height: 5),
                 Container(
@@ -531,6 +544,9 @@ class _BankPreviewCard extends StatelessWidget {
                     color:
                         hasBank ? AppColors.successSoft : AppColors.warningSoft,
                     borderRadius: BorderRadius.circular(AppRadius.full),
+                    border: Border.all(
+                      color: hasBank ? AppColors.success : AppColors.warning,
+                    ),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Icon(
@@ -548,6 +564,7 @@ class _BankPreviewCard extends StatelessWidget {
                             color:
                                 hasBank ? AppColors.success : AppColors.warning,
                             fontWeight: FontWeight.w600,
+                            fontSize: 12,
                           )),
                     ),
                   ]),
@@ -574,8 +591,10 @@ class _BankPreviewCard extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.lg),
         Text('CHỦ TÀI KHOẢN',
-            style: AppTextStyles.caption
-                .copyWith(color: AppColors.textTertiary, letterSpacing: .8)),
+            style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+                letterSpacing: .8)),
         const SizedBox(height: 2),
         Text(holderLabel,
             maxLines: 1,
@@ -593,12 +612,13 @@ class _BankPreviewCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: hasBank ? AppColors.successSoft : AppColors.primarySoft,
             borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: AppColors.divider),
           ),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Icon(
               hasBank ? Icons.verified_user_rounded : Icons.wallet_rounded,
               size: 17,
-              color: hasBank ? AppColors.success : AppColors.primary,
+              color: hasBank ? AppColors.success : AppBrand.ink,
             ),
             const SizedBox(width: AppSpacing.sm),
             Expanded(

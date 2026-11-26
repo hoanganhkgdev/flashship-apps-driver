@@ -93,7 +93,7 @@ class Fmt {
         'delivery' => const Color(0xFFF18330),
         'shopping' => const Color(0xFF6C63FF),
         'topup' => AppColors.success,
-        'bike' => const Color(0xFFFFA000),
+        'bike' => AppColors.primary,
         'motor' => AppColors.info,
         'car' => AppColors.danger,
         _ => AppColors.primary,

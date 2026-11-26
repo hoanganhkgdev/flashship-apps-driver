@@ -3,9 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/app_bottom_sheet.dart';
 import '../../../core/widgets/app_screen_header.dart';
-import '../../../core/widgets/app_surface_card.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 import '../../../core/utils/formatters.dart';
 import '../models/wallet_model.dart';
 import '../providers/wallet_provider.dart';
@@ -33,9 +32,47 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
       value: SystemUiOverlayStyle.dark,
       child: Scaffold(
         backgroundColor: AppColors.background,
-        appBar: const AppScreenHeader(
+        appBar: AppScreenHeader(
           title: 'Số dư ví',
-          backgroundColor: AppColors.primarySoft,
+          backgroundColor: AppColors.primary,
+          subtitle: 'Ví tài xế · Quản lý thu chi',
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.md),
+              child: Center(
+                child: IconButton(
+                  tooltip: 'Làm mới số dư ví',
+                  onPressed: wallet.loading
+                      ? null
+                      : () => ref.read(walletProvider.notifier).fetch(),
+                  style: IconButton.styleFrom(
+                    foregroundColor: AppBrand.ink,
+                    padding: EdgeInsets.zero,
+                  ),
+                  icon: Container(
+                    width: MediaQuery.textScalerOf(context).scale(18) * 1.25 +
+                        3 +
+                        MediaQuery.textScalerOf(context).scale(12) * 1.35,
+                    height: MediaQuery.textScalerOf(context).scale(18) * 1.25 +
+                        3 +
+                        MediaQuery.textScalerOf(context).scale(12) * 1.35,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface.withValues(alpha: .55),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: wallet.loading
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: AppBrand.ink),
+                          )
+                        : const Icon(Icons.refresh_rounded, size: 20),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
         body: RefreshIndicator(
           color: AppColors.primary,
@@ -43,7 +80,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              padding: EdgeInsets.fromLTRB(
+                  16, 16, 16, 32 + MediaQuery.paddingOf(context).bottom),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -110,6 +148,34 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
 
 // ── Wallet header ─────────────────────────────────────────────────────────────
 
+class _WalletCard extends StatelessWidget {
+  final Widget child;
+  final Color color;
+  final EdgeInsetsGeometry padding;
+  final VoidCallback? onTap;
+
+  const _WalletCard({
+    required this.child,
+    this.color = AppColors.surface,
+    this.padding = const EdgeInsets.all(AppSpacing.lg),
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: color,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          side: const BorderSide(color: AppColors.divider, width: 1.25),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(padding: padding, child: child),
+        ),
+      );
+}
+
 class _BalanceCard extends StatelessWidget {
   final int balance;
   final bool loading;
@@ -128,9 +194,16 @@ class _BalanceCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.primary.withValues(alpha: .20)),
+        gradient: const LinearGradient(
+          colors: [AppColors.primarySoft, AppColors.surface],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.primary, width: 1.25),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
@@ -138,11 +211,11 @@ class _BalanceCard extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: AppColors.primarySoft,
+              gradient: AppBrand.gradient,
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: const Icon(Icons.account_balance_wallet_rounded,
-                color: AppColors.primary, size: 22),
+                color: AppBrand.ink, size: 22),
           ),
           const SizedBox(width: AppSpacing.md),
           const Expanded(
@@ -152,25 +225,8 @@ class _BalanceCard extends StatelessWidget {
                     fontSize: AppFontSize.base,
                     fontWeight: FontWeight.w600)),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-            decoration: BoxDecoration(
-              color: AppColors.successSoft,
-              borderRadius: BorderRadius.circular(AppRadius.full),
-            ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.shield_outlined,
-                  size: 14, color: AppColors.success),
-              const SizedBox(width: 4),
-              Text('An toàn',
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.success,
-                    fontWeight: FontWeight.w600,
-                  )),
-            ]),
-          ),
         ]),
-        const SizedBox(height: AppSpacing.xl),
+        const SizedBox(height: AppSpacing.lg),
         if (loading)
           Container(
             height: 38,
@@ -186,7 +242,7 @@ class _BalanceCard extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Text(Fmt.currency(balance),
                 style: const TextStyle(
-                    color: AppColors.primaryDark,
+                    color: AppColors.success,
                     fontSize: 36,
                     height: 1.05,
                     fontWeight: FontWeight.w700,
@@ -198,21 +254,32 @@ class _BalanceCard extends StatelessWidget {
               style:
                   TextStyle(fontSize: AppFontSize.sm, color: AppColors.danger)),
         ],
+        const SizedBox(height: AppSpacing.sm),
+        Text('Số tiền hiện có trong ví của bạn',
+            style:
+                AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
         const SizedBox(height: AppSpacing.xl),
         SizedBox(
           width: double.infinity,
-          height: 48,
-          child: FilledButton.icon(
-            onPressed: onWithdraw,
-            icon: const Icon(Icons.arrow_upward_rounded, size: 20),
-            label: const Text('Rút tiền'),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              textStyle: AppTextStyles.bodyStrong,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md)),
+          height: 52,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: AppBrand.gradient,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: FilledButton.icon(
+              onPressed: onWithdraw,
+              icon: const Icon(Icons.north_east_rounded, size: 20),
+              label: const Text('Rút tiền'),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                foregroundColor: AppBrand.ink,
+                shadowColor: Colors.transparent,
+                elevation: 0,
+                textStyle: AppTextStyles.bodyStrong,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.md)),
+              ),
             ),
           ),
         ),
@@ -257,10 +324,8 @@ class _DebtWarningBanner extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: AppSurfaceCard(
+      child: _WalletCard(
         color: AppColors.dangerSoft,
-        showBorder: true,
-        showShadow: false,
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
@@ -351,24 +416,22 @@ class _BankAccountCard extends StatelessWidget {
         : (account.length > 4
             ? account.substring(account.length - 4)
             : account);
-    return AppSurfaceCard(
+    return _WalletCard(
       onTap: onTap,
       color: AppColors.surface,
-      showBorder: true,
-      showShadow: false,
       padding: const EdgeInsets.all(14),
       child: Row(children: [
         Container(
           width: 42,
           height: 42,
           decoration: BoxDecoration(
-            color: hasBank ? AppColors.infoSoft : AppColors.warningSoft,
+            color: AppColors.primarySoft,
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
           child: Icon(
             Icons.account_balance_rounded,
             size: 20,
-            color: hasBank ? AppColors.info : AppColors.warning,
+            color: AppBrand.ink,
           ),
         ),
         const SizedBox(width: AppSpacing.md),
@@ -378,20 +441,27 @@ class _BankAccountCard extends StatelessWidget {
             Text(
               'Tài khoản nhận tiền',
               style: AppTextStyles.bodyStrong.copyWith(
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 3),
             Text(
               hasBank
-                  ? '${bankAccount.bankName ?? 'Ngân hàng'}${lastDigits == null ? '' : ' · ••••$lastDigits'}'
+                  ? bankAccount.bankName ?? 'Ngân hàng'
                   : 'Chưa liên kết tài khoản ngân hàng',
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: AppTextStyles.label.copyWith(
                 color: hasBank ? AppColors.textSecondary : AppColors.warning,
               ),
             ),
+            if (hasBank && lastDigits != null) ...[
+              const SizedBox(height: 6),
+              Text('•••• $lastDigits',
+                  style: AppTextStyles.bodyStrong
+                      .copyWith(color: AppBrand.ink, letterSpacing: 1.5)),
+            ],
           ]),
         ),
         const Icon(Icons.chevron_right_rounded,
@@ -416,8 +486,11 @@ class _WithdrawRequestsCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.divider),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.divider, width: 1.25),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -485,10 +558,11 @@ class _WithdrawRequestRow extends StatelessWidget {
           decoration: BoxDecoration(
             color: color.withValues(alpha: .1),
             borderRadius: BorderRadius.circular(AppRadius.full),
+            border: Border.all(color: color.withValues(alpha: .65)),
           ),
           child: Text(r.statusLabel,
               style: TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+                  fontSize: 12, fontWeight: FontWeight.w700, color: color)),
         ),
       ]),
     );
@@ -542,10 +616,8 @@ class _TransactionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppSurfaceCard(
+    return _WalletCard(
       color: AppColors.surface,
-      showBorder: true,
-      showShadow: false,
       padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -570,16 +642,16 @@ class _TransactionCard extends StatelessWidget {
                     Text(
                       'Lịch sử giao dịch',
                       style: AppTextStyles.sectionTitle.copyWith(
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
+                        color: AppBrand.ink,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'Theo dõi các khoản cộng và trừ trong ví',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.caption.copyWith(
                         color: AppColors.textSecondary,
+                        fontSize: 12,
                       ),
                     ),
                   ],
@@ -588,7 +660,7 @@ class _TransactionCard extends StatelessWidget {
             ]),
           ),
 
-          const Divider(height: 1, color: AppColors.surfaceAlt),
+          const Divider(height: 1, color: AppColors.divider),
 
           if (loading)
             const Padding(
@@ -606,11 +678,11 @@ class _TransactionCard extends StatelessWidget {
                     width: 64,
                     height: 64,
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceAlt,
+                      color: AppColors.primarySoft,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.receipt_long_outlined,
-                        size: 28, color: AppColors.textTertiary),
+                        size: 28, color: AppBrand.ink),
                   ),
                   const SizedBox(height: 12),
                   const Text('Chưa có giao dịch nào',
@@ -635,7 +707,7 @@ class _TransactionCard extends StatelessWidget {
                   widgets.add(Container(
                     width: double.infinity,
                     margin: const EdgeInsets.only(top: 8),
-                    color: AppColors.surfaceAlt,
+                    color: AppColors.primarySoft,
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                     child: Text(
                       item,
@@ -656,7 +728,7 @@ class _TransactionCard extends StatelessWidget {
                         height: 1,
                         indent: 76,
                         endIndent: 0,
-                        color: AppColors.surfaceAlt));
+                        color: AppColors.divider));
                   }
                 }
               }
@@ -677,6 +749,9 @@ class _TransactionCard extends StatelessWidget {
                         ),
                       )
                     : TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppBrand.ink,
+                        ),
                         onPressed: onLoadMore,
                         icon: const Icon(Icons.expand_more_rounded),
                         label: const Text('Xem thêm giao dịch'),
@@ -709,8 +784,7 @@ class _TxItem extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      child: Row(children: [
-        // Circle avatar
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(
           width: 44,
           height: 44,
@@ -720,10 +794,7 @@ class _TxItem extends StatelessWidget {
           ),
           child: Icon(_icon, color: _color, size: 20),
         ),
-
         const SizedBox(width: 14),
-
-        // Description + time
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -735,37 +806,26 @@ class _TxItem extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
                 ),
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 4),
-              Text(
-                timeStr,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textTertiary,
+              const SizedBox(height: 8),
+              Row(children: [
+                Text(timeStr,
+                    style: AppTextStyles.caption
+                        .copyWith(color: AppColors.textTertiary)),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Text('$sign${Fmt.currency(tx.amount)}',
+                        style:
+                            AppTextStyles.sectionTitle.copyWith(color: _color)),
+                  ),
                 ),
-              ),
+              ]),
             ],
-          ),
-        ),
-
-        const SizedBox(width: 12),
-
-        // Amount
-        SizedBox(
-          width: 104,
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerRight,
-            child: Text(
-              '$sign${Fmt.currency(tx.amount)}',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: _color,
-              ),
-            ),
           ),
         ),
       ]),
@@ -986,17 +1046,21 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
                                 horizontal: 14, vertical: 7),
                             decoration: BoxDecoration(
                               color: _parsedAmount == a
-                                  ? const Color(0xFFFFEAE3)
+                                  ? AppColors.primarySoft
                                   : AppColors.surfaceAlt,
                               borderRadius:
                                   BorderRadius.circular(AppRadius.full),
+                              border: Border.all(
+                                  color: _parsedAmount == a
+                                      ? AppColors.primary
+                                      : AppColors.divider),
                             ),
                             child: Text(Fmt.currency(a).replaceAll(' đ', ''),
                                 style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                     color: _parsedAmount == a
-                                        ? const Color(0xFFFF6035)
+                                        ? AppBrand.ink
                                         : const Color(0xFF1B1411))),
                           ),
                         )),
@@ -1008,15 +1072,16 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
                           horizontal: 14, vertical: 7),
                       decoration: BoxDecoration(
                         color: _parsedAmount == limit
-                            ? const Color(0xFFFFEAE3)
-                            : const Color(0xFFFFF0EB),
+                            ? AppColors.primarySoft
+                            : AppColors.surface,
                         borderRadius: BorderRadius.circular(AppRadius.full),
+                        border: Border.all(color: AppColors.primary),
                       ),
                       child: Text(limit < balance ? 'Tối đa' : 'Tất cả',
                           style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFFFF6035))),
+                              color: AppBrand.ink)),
                     ),
                   ),
               ]),
@@ -1055,6 +1120,7 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
 
               // Submit
               AppSheetButton(
+                brandStyle: true,
                 label: 'Gửi yêu cầu rút tiền',
                 loading: _loading,
                 onPressed: _submit,
@@ -1062,6 +1128,7 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
             ] else ...[
               const SizedBox(height: 16),
               AppSheetButton(
+                brandStyle: true,
                 label: 'Thêm tài khoản ngân hàng',
                 onPressed: () {
                   Navigator.pop(context);

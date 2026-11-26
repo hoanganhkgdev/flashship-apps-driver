@@ -17,7 +17,7 @@ class AppSurfaceCard extends StatelessWidget {
     this.onTap,
     this.color,
     this.showBorder = true,
-    this.showShadow = true,
+    this.showShadow = false,
   });
 
   @override
@@ -25,7 +25,6 @@ class AppSurfaceCard extends StatelessWidget {
     final decoration = BoxDecoration(
       color: color ?? AppColors.surface,
       borderRadius: BorderRadius.circular(AppRadius.card),
-      border: showBorder ? Border.all(color: AppColors.divider) : null,
       boxShadow: showShadow ? AppShadows.soft : null,
     );
 
@@ -33,6 +32,12 @@ class AppSurfaceCard extends StatelessWidget {
       width: double.infinity,
       padding: padding,
       decoration: decoration,
+      foregroundDecoration: showBorder
+          ? BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              border: Border.all(color: AppColors.divider, width: 1.25),
+            )
+          : null,
       child: child,
     );
 

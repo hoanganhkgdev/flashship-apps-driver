@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/widgets/app_screen_header.dart';
 import '../../../core/widgets/app_surface_card.dart';
+import '../../../core/widgets/app_screen_header.dart';
 import '../models/referral_model.dart';
 import '../providers/referral_provider.dart';
 
@@ -19,7 +19,7 @@ class ReferralScreen extends ConsumerWidget {
       backgroundColor: AppColors.background,
       appBar: const AppScreenHeader(
         title: 'Giới thiệu cửa hàng',
-        backgroundColor: AppColors.primarySoft,
+        subtitle: 'Kết nối shop · Nhận thêm thưởng',
       ),
       body: async.when(
         loading: () => const Center(
@@ -27,6 +27,7 @@ class ReferralScreen extends ConsumerWidget {
                 color: AppColors.primary, strokeWidth: 2)),
         error: (_, __) => Center(
           child: TextButton.icon(
+            style: TextButton.styleFrom(foregroundColor: AppBrand.ink),
             onPressed: () => ref.invalidate(referralProvider),
             icon: const Icon(Icons.refresh_rounded),
             label: const Text('Không tải được. Nhấn để thử lại'),
@@ -37,8 +38,11 @@ class ReferralScreen extends ConsumerWidget {
           onRefresh: () async => ref.refresh(referralProvider.future),
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xl3),
+            padding: EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.lg,
+                AppSpacing.lg,
+                AppSpacing.xl3 + MediaQuery.paddingOf(context).bottom),
             children: [
               _CodeCard(info: info),
               const SizedBox(height: AppSpacing.md),
@@ -64,11 +68,11 @@ class ReferralScreen extends ConsumerWidget {
                       width: 56,
                       height: 56,
                       decoration: BoxDecoration(
-                        color: AppColors.primarySoft,
+                        gradient: AppBrand.gradient,
                         borderRadius: BorderRadius.circular(AppRadius.lg),
                       ),
                       child: const Icon(Icons.storefront_rounded,
-                          size: 28, color: AppColors.primary),
+                          size: 28, color: AppBrand.ink),
                     ),
                     const SizedBox(height: AppSpacing.md),
                     const Text('Chưa có cửa hàng nào',
@@ -114,7 +118,7 @@ class _SectionHeading extends StatelessWidget {
           width: 4,
           height: 36,
           decoration: BoxDecoration(
-            color: AppColors.primary,
+            gradient: AppBrand.gradient,
             borderRadius: BorderRadius.circular(AppRadius.full),
           ),
         ),
@@ -125,17 +129,14 @@ class _SectionHeading extends StatelessWidget {
             children: [
               Text(
                 title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.sectionTitle.copyWith(
-                  fontWeight: FontWeight.w600,
+                  color: AppBrand.ink,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.caption.copyWith(
                   color: AppColors.textSecondary,
                 ),
@@ -154,7 +155,7 @@ class _SectionHeading extends StatelessWidget {
             child: Text(
               '$count',
               style: AppTextStyles.label.copyWith(
-                color: AppColors.primary,
+                color: AppBrand.ink,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -185,9 +186,16 @@ class _CodeCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        gradient: LinearGradient(
+          colors: [AppColors.primarySoft, AppColors.surface],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.primary.withValues(alpha: .22)),
+      ),
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.primary, width: 1.25),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
@@ -195,11 +203,11 @@ class _CodeCard extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: AppColors.primarySoft,
+              gradient: AppBrand.gradient,
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: const Icon(Icons.card_giftcard_rounded,
-                size: 22, color: AppColors.primary),
+                size: 22, color: AppBrand.ink),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -208,16 +216,15 @@ class _CodeCard extends StatelessWidget {
               children: [
                 Text(
                   'Mã giới thiệu của bạn',
-                  style: AppTextStyles.bodyStrong.copyWith(
-                    fontWeight: FontWeight.w600,
+                  style: AppTextStyles.sectionTitle.copyWith(
+                    color: AppBrand.ink,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   _reward,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.label.copyWith(
+                  style: AppTextStyles.body.copyWith(
                     color: AppColors.textSecondary,
                   ),
                 ),
@@ -228,8 +235,11 @@ class _CodeCard extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
         // Ô mã: bấm để sao chép nhanh.
         Material(
-          color: AppColors.primarySoft,
-          borderRadius: BorderRadius.circular(AppRadius.md),
+          color: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            side: const BorderSide(color: AppColors.primary, width: 1.25),
+          ),
           child: InkWell(
             onTap: hasCode
                 ? () => _copy(context, info.code, 'Đã sao chép mã giới thiệu')
@@ -247,14 +257,21 @@ class _CodeCard extends StatelessWidget {
                         style: const TextStyle(
                             fontSize: 32,
                             fontWeight: FontWeight.w700,
-                            letterSpacing: 6,
-                            color: AppColors.primary)),
+                            letterSpacing: 3,
+                            color: AppBrand.ink)),
                   ),
                 ),
                 if (hasCode) ...[
                   const SizedBox(width: AppSpacing.md),
-                  const Icon(Icons.copy_rounded,
-                      size: 20, color: AppColors.textTertiary),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySoft,
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: const Icon(Icons.copy_rounded,
+                        size: 20, color: AppBrand.ink),
+                  ),
                 ],
               ]),
             ),
@@ -264,24 +281,32 @@ class _CodeCard extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           height: 52,
-          child: FilledButton.icon(
-            onPressed: hasCode
-                ? () => _copy(
-                    context,
-                    'Đăng ký FlashShip Shop và nhập mã giới thiệu ${info.code} của mình nhé!',
-                    'Đã sao chép, dán gửi cho chủ shop')
-                : null,
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md)),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: hasCode ? AppBrand.gradient : null,
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            icon: const Icon(Icons.send_rounded, size: 18),
-            label: Text('Sao chép lời mời',
-                style: AppTextStyles.sectionTitle.copyWith(
-                    color: Colors.white, fontWeight: FontWeight.w600)),
+            child: FilledButton.icon(
+              onPressed: hasCode
+                  ? () => _copy(
+                      context,
+                      'Đăng ký Flash Ship Shop và nhập mã giới thiệu ${info.code} của mình nhé!',
+                      'Đã sao chép, dán gửi cho chủ shop')
+                  : null,
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                foregroundColor: AppBrand.ink,
+                shadowColor: Colors.transparent,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.md)),
+              ),
+              icon: const Icon(Icons.copy_all_rounded, size: 20),
+              label: Text('Sao chép lời mời',
+                  style: AppTextStyles.sectionTitle.copyWith(
+                      color: hasCode ? AppBrand.ink : AppColors.textSecondary,
+                      fontWeight: FontWeight.w700)),
+            ),
           ),
         ),
       ]),
@@ -298,7 +323,7 @@ class _StatsRow extends StatelessWidget {
         Expanded(
           child: _Stat(
             icon: Icons.groups_rounded,
-            color: AppColors.secondary,
+            color: AppBrand.ink,
             label: 'Đã giới thiệu',
             value: '${info.totalReferred}',
           ),
@@ -333,35 +358,27 @@ class _Stat extends StatelessWidget {
         showBorder: true,
         showShadow: false,
         padding: const EdgeInsets.all(AppSpacing.md),
-        child: Row(children: [
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(AppRadius.sm + 2),
             ),
-            child: Icon(icon, size: 22, color: color),
+            child: Icon(icon, size: 20, color: color),
           ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
+          const SizedBox(height: AppSpacing.md),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
             child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(value,
-                    style: AppTextStyles.metric
-                        .copyWith(color: AppColors.textPrimary)),
-              ),
-              const SizedBox(height: 2),
-              Text(label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption
-                      .copyWith(color: AppColors.textSecondary)),
-            ]),
+                Text(value, style: AppTextStyles.metric.copyWith(color: color)),
           ),
+          const SizedBox(height: 4),
+          Text(label,
+              style: AppTextStyles.caption
+                  .copyWith(color: AppColors.textSecondary)),
         ]),
       );
 }
@@ -403,13 +420,14 @@ class _HowItWorks extends StatelessWidget {
                 width: 30,
                 height: 30,
                 alignment: Alignment.center,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: AppColors.primarySoft,
-                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.primary),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
                 child: Text('${i + 1}',
-                    style: AppTextStyles.bodyStrong
-                        .copyWith(color: AppColors.primary)),
+                    style:
+                        AppTextStyles.bodyStrong.copyWith(color: AppBrand.ink)),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
@@ -423,7 +441,7 @@ class _HowItWorks extends StatelessWidget {
                           )),
                       const SizedBox(height: 1),
                       Text(steps[i].$2,
-                          style: AppTextStyles.label
+                          style: AppTextStyles.body
                               .copyWith(color: AppColors.textSecondary)),
                     ]),
               ),
@@ -467,29 +485,29 @@ class _ShopTile extends StatelessWidget {
         showBorder: true,
         showShadow: false,
         padding: const EdgeInsets.all(AppSpacing.md),
-        child: Row(children: [
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
             width: 44,
             height: 44,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.primarySoft,
+              gradient: AppBrand.gradient,
               borderRadius: BorderRadius.circular(AppRadius.sm + 2),
             ),
             child: Text(initial,
-                style: AppTextStyles.sectionTitle
-                    .copyWith(color: AppColors.primary)),
+                style:
+                    AppTextStyles.sectionTitle.copyWith(color: AppBrand.ink)),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(shop.shopName,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                       fontSize: AppFontSize.base,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary)),
               if (date != null)
                 Padding(
@@ -499,22 +517,20 @@ class _ShopTile extends StatelessWidget {
                           fontSize: AppFontSize.sm,
                           color: AppColors.textTertiary)),
                 ),
-            ]),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
+              const SizedBox(height: AppSpacing.sm),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
                   color: bg,
-                  borderRadius: BorderRadius.circular(AppRadius.full)),
-              child: Text(label,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      fontSize: AppFontSize.xs,
-                      fontWeight: FontWeight.w600,
-                      color: fg)),
-            ),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  border: Border.all(color: fg.withValues(alpha: .45)),
+                ),
+                child: Text(label,
+                    style: AppTextStyles.caption
+                        .copyWith(fontWeight: FontWeight.w600, color: fg)),
+              ),
+            ]),
           ),
         ]),
       ),

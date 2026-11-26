@@ -41,12 +41,12 @@ class DashboardHeader extends StatelessWidget {
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: const BoxDecoration(
-        color: AppColors.primarySoft,
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
-        border: Border(bottom: BorderSide(color: Color(0xFFFFC9B3))),
+        gradient: AppBrand.gradient,
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+        border: Border(bottom: BorderSide(color: AppColors.primary)),
       ),
       padding: EdgeInsets.fromLTRB(AppSpacing.lg,
-          MediaQuery.paddingOf(context).top + 10, AppSpacing.lg, AppSpacing.md),
+          MediaQuery.paddingOf(context).top + 6, AppSpacing.lg, AppSpacing.sm),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -73,24 +73,40 @@ class DashboardHeader extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: AppTextStyles.screenTitle.copyWith(
                             fontSize: AppFontSize.lg,
-                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                            color: AppBrand.ink,
                           )),
                       const SizedBox(height: AppSpacing.xs),
-                      Row(children: [
-                        const Icon(Icons.insights_rounded,
-                            size: 14, color: AppColors.primary),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            '$todayOrders đơn · ${Fmt.currency(todayEarnings)} hôm nay',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.caption.copyWith(
-                              color: AppColors.textSecondary,
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text.rich(
+                          TextSpan(children: [
+                            TextSpan(text: '$todayOrders đơn · '),
+                            TextSpan(
+                              text: Fmt.currency(todayEarnings),
+                              style: const TextStyle(
+                                color: Color(0xFF075C2E),
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
+                            const TextSpan(text: ' hôm nay'),
+                          ]),
+                          maxLines: 1,
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppBrand.ink,
                           ),
                         ),
-                      ]),
+                      ),
+                      if (locked || (isOnline && !gpsReady)) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          locked ? 'Tạm khóa nhận đơn' : 'Cần kiểm tra GPS',
+                          style: AppTextStyles.caption.copyWith(
+                            color: statusColor,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -113,20 +129,14 @@ class DashboardHeader extends StatelessWidget {
   }
 
   TextSpan _greeting(String? name) {
-    final hour = DateTime.now().hour;
-    final greeting = hour < 11
-        ? 'Chào buổi sáng'
-        : hour < 18
-            ? 'Chào buổi chiều'
-            : 'Chào buổi tối';
     final trimmed = name?.trim() ?? '';
     final shortName =
         trimmed.isEmpty ? 'tài xế' : trimmed.split(RegExp(r'\s+')).last;
     return TextSpan(children: [
-      TextSpan(text: '$greeting, '),
+      const TextSpan(text: 'Xin chào, '),
       TextSpan(
         text: shortName,
-        style: const TextStyle(color: AppColors.primary),
+        style: const TextStyle(color: AppBrand.ink),
       ),
     ]);
   }
@@ -182,16 +192,25 @@ class _OnlineButton extends StatelessWidget {
                   : 'Đang Offline, chạm để Online',
       child: AnimatedContainer(
         duration: AppDuration.normal,
-        width: 88,
-        height: 40,
+        width: 96,
+        height: 48,
         decoration: BoxDecoration(
           color: locked
               ? AppColors.dangerSoft
               : isOnline
-                  ? AppColors.successSoft
+                  ? color
                   : Colors.white.withValues(alpha: .82),
           borderRadius: BorderRadius.circular(AppRadius.md),
           border: Border.all(color: color.withValues(alpha: .18)),
+          boxShadow: isOnline && !locked
+              ? [
+                  BoxShadow(
+                    color: color.withValues(alpha: .18),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
         ),
         clipBehavior: Clip.antiAlias,
         child: Material(
@@ -204,7 +223,7 @@ class _OnlineButton extends StatelessWidget {
                       dimension: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.3,
-                        color: color,
+                        color: isOnline && !locked ? Colors.white : color,
                       ),
                     )
                   : Row(
@@ -219,7 +238,7 @@ class _OnlineButton extends StatelessWidget {
                                       ? Icons.bolt_rounded
                                       : Icons.power_settings_new_rounded,
                           size: 18,
-                          color: color,
+                          color: isOnline && !locked ? Colors.white : color,
                         ),
                         const SizedBox(width: 5),
                         Flexible(
@@ -232,7 +251,7 @@ class _OnlineButton extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: AppTextStyles.label.copyWith(
-                              color: color,
+                              color: isOnline && !locked ? Colors.white : color,
                               fontWeight: FontWeight.w700,
                             ),
                           ),

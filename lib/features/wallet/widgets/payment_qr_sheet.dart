@@ -209,7 +209,7 @@ class _PaymentQrSheetState extends ConsumerState<PaymentQrSheet> {
               height: 180,
               child: Center(
                 child: CircularProgressIndicator(
-                    color: Color(0xFFFF6035), strokeWidth: 2),
+                    color: AppColors.primary, strokeWidth: 2),
               ),
             )
           else if (_error != null)

@@ -53,7 +53,8 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.textContaining('12 đơn ·'), findsOneWidget);
+    expect(find.text('12 đơn · 1.250.000 đ hôm nay', findRichText: true),
+        findsOneWidget);
     expect(find.text('Online'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

@@ -22,7 +22,7 @@ class AppRootHeaderTitle extends StatelessWidget {
               title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.screenTitle,
+              style: AppTextStyles.screenTitle.copyWith(color: AppBrand.ink),
             ),
           ),
           if (trailing != null) trailing!,
@@ -51,8 +51,7 @@ class AppRootHeader extends StatelessWidget {
           AppSpacing.md,
         ),
         decoration: const BoxDecoration(
-          color: Colors.white,
-          boxShadow: AppShadows.soft,
+          gradient: AppBrand.gradient,
         ),
         child: AppRootHeaderTitle(title: title, trailing: trailing),
       );

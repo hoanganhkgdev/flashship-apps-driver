@@ -122,7 +122,7 @@ class _ShiftRegistrationScreenState
         backgroundColor: AppColors.background,
         appBar: const AppScreenHeader(
           title: 'Lịch làm việc',
-          backgroundColor: AppColors.primarySoft,
+          subtitle: 'Đăng ký ca · Theo dõi lịch làm',
         ),
         body: state.loading && state.shifts.isEmpty
             ? const Center(
@@ -151,8 +151,8 @@ class _ShiftRegistrationScreenState
                                 borderRadius:
                                     BorderRadius.circular(AppRadius.card),
                                 border: Border.all(
-                                  color:
-                                      AppColors.success.withValues(alpha: .22),
+                                  color: AppColors.divider,
+                                  width: 1.25,
                                 ),
                               ),
                               child: Row(children: [
@@ -227,7 +227,7 @@ class _ShiftRegistrationScreenState
                                 width: 4,
                                 height: 38,
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary,
+                                  gradient: AppBrand.gradient,
                                   borderRadius:
                                       BorderRadius.circular(AppRadius.full),
                                 ),
@@ -348,35 +348,53 @@ class _ShiftRegistrationScreenState
                   SizedBox(
                     width: double.infinity,
                     height: 48,
-                    child: FilledButton(
-                      onPressed: (canSubmit && !state.submitting)
-                          ? () => _submit(isRegistered)
-                          : null,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        disabledBackgroundColor:
-                            AppColors.primary.withValues(alpha: 0.35),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.md)),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: canSubmit || state.submitting
+                            ? AppBrand.gradient
+                            : null,
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
-                      child: state.submitting
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
-                          : Text(
-                              hasPending
-                                  ? 'Đang chờ duyệt yêu cầu đổi ca'
-                                  : (isRegistered
-                                      ? 'Gửi yêu cầu đổi ca'
-                                      : 'Đăng ký ca làm việc'),
-                              style: AppTextStyles.sectionTitle.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
+                      child: FilledButton(
+                        onPressed: (canSubmit && !state.submitting)
+                            ? () => _submit(isRegistered)
+                            : null,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          foregroundColor: AppBrand.ink,
+                          disabledBackgroundColor: state.submitting
+                              ? Colors.transparent
+                              : AppColors.surfaceAlt,
+                          disabledForegroundColor: AppColors.textSecondary,
+                          shadowColor: Colors.transparent,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.md)),
+                        ),
+                        child: state.submitting
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: AppBrand.ink))
+                            : FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  hasPending
+                                      ? 'Đang chờ duyệt yêu cầu đổi ca'
+                                      : (isRegistered
+                                          ? 'Gửi yêu cầu đổi ca'
+                                          : 'Đăng ký ca làm việc'),
+                                  style: AppTextStyles.sectionTitle.copyWith(
+                                    color: canSubmit
+                                        ? AppBrand.ink
+                                        : AppColors.textSecondary,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
                               ),
-                            ),
+                      ),
                     ),
                   ),
                 ]),

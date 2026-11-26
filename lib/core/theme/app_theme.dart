@@ -3,27 +3,27 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 abstract final class AppColors {
-  // Cùng hệ màu với Customer: nền kem ấm, cam san hô và chữ nâu đen.
-  static const primary = Color(0xFFF56333);
-  static const primaryDark = Color(0xFFC74007);
-  static const primarySoft = Color(0xFFFFE5D9);
-  static const primaryGradientStart = Color(0xFFF8C8B4);
-  static const primaryGradientMiddle = Color(0xFFFFDDD0);
-  static const primaryGradientEnd = Color(0xFFFFEDE5);
+  // Cam mơ thống nhất; giữ chữ và icon đậm khi dùng ngoài trời.
+  static const primary = Color(0xFFFF9A5C);
+  static const primaryDark = Color(0xFFAD4E20);
+  static const primarySoft = Color(0xFFFFF0E6);
+  static const primaryGradientStart = primary;
+  static const primaryGradientMiddle = primary;
+  static const primaryGradientEnd = primary;
 
   static const secondary = Color(0xFF00B3B5);
   static const secondarySoft = Color(0xFFD1F3F2);
 
-  static const background = Color(0xFFFBF5F1);
-  static const surface = Color(0xFFFFFDFB);
-  static const surfaceAlt = Color(0xFFF5EDE8);
+  static const background = Color(0xFFF3F4F5);
+  static const surface = Color(0xFFFFFFFF);
+  static const surfaceAlt = Color(0xFFF0F2F3);
 
   static const textPrimary = Color(0xFF1C1410);
-  static const textSecondary = Color(0xFF5F5651);
-  static const textTertiary = Color(0xFF938A86);
-  static const divider = Color(0xFFE5DCD7);
+  static const textSecondary = Color(0xFF41464D);
+  static const textTertiary = Color(0xFF565D65);
+  static const divider = Color(0xFFBCC3CA);
 
-  static const success = Color(0xFF229650);
+  static const success = Color(0xFF16733C);
   static const successSoft = Color(0xFFE7F8F1);
   static const danger = Color(0xFFD52E36);
   static const dangerSoft = Color(0xFFFFE5E2);
@@ -39,11 +39,21 @@ abstract final class AppColors {
   static const iconMuted = Color(0xFFD0D0D5);
 
   // Cam nhấn cho icon danh mục/dải giờ ca (không mang nghĩa trạng thái).
-  static const amber = Color(0xFFF59E0B);
+  static const amber = primary;
 
   // Alias chuyển tiếp; code mới dùng secondary/secondarySoft.
   static const accent2 = secondary;
   static const accent2Soft = secondarySoft;
+}
+
+abstract final class AppBrand {
+  static const ink = Color(0xFF472000);
+  // Giữ chung một nguồn màu cho các thành phần đang dùng gradient.
+  static const gradient = LinearGradient(
+    colors: [AppColors.primaryGradientStart, AppColors.primaryGradientEnd],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 }
 
 abstract final class AppSpacing {
@@ -65,7 +75,7 @@ abstract final class AppRadius {
   static const md = 16.0;
   static const lg = 20.0;
   static const xl = 24.0;
-  static const card = lg;
+  static const card = md;
   static const full = 999.0;
 }
 
@@ -109,8 +119,8 @@ abstract final class AppTextStyles {
       fontSize: AppFontSize.base, height: 1.35, fontWeight: FontWeight.w600);
   static const label = TextStyle(
       fontSize: AppFontSize.sm, height: 1.3, fontWeight: FontWeight.w500);
-  static const caption = TextStyle(
-      fontSize: AppFontSize.xs, height: 1.3, fontWeight: FontWeight.w400);
+  static const caption =
+      TextStyle(fontSize: 12, height: 1.35, fontWeight: FontWeight.w500);
   static const metric = TextStyle(
       fontSize: AppFontSize.xl,
       height: 1.1,
@@ -145,6 +155,10 @@ class AppTheme {
   static ThemeData get light {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: AppColors.primary,
+      primary: AppColors.primary,
+      onPrimary: AppBrand.ink,
+      primaryContainer: AppColors.primarySoft,
+      onPrimaryContainer: AppBrand.ink,
       brightness: Brightness.light,
       surface: AppColors.surface,
       error: AppColors.danger,
@@ -200,9 +214,11 @@ class AppTheme {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: AppBrand.ink,
           disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.4),
-          shape: const StadiumBorder(),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
           minimumSize: const Size(64, AppSize.buttonHeight),
           textStyle:
               GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700),
@@ -210,16 +226,18 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primary,
-          side: const BorderSide(color: AppColors.primary),
-          shape: const StadiumBorder(),
+          foregroundColor: AppColors.primaryDark,
+          side: const BorderSide(color: AppColors.primaryDark, width: 1.25),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
           textStyle:
               GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.primary,
+          foregroundColor: AppColors.primaryDark,
           textStyle:
               GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
         ),
@@ -237,19 +255,19 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.surfaceAlt,
+        fillColor: AppColors.surface,
         hintStyle: const TextStyle(color: AppColors.textTertiary, fontSize: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(color: AppColors.divider, width: 1.25),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(color: AppColors.divider, width: 1.25),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+          borderSide: const BorderSide(color: AppColors.primaryDark, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),

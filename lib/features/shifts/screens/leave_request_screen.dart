@@ -195,7 +195,7 @@ class _LeaveRequestScreenState extends ConsumerState<LeaveRequestScreen> {
           backgroundColor: AppColors.background,
           appBar: const AppScreenHeader(
             title: 'Xin nghỉ phép',
-            backgroundColor: AppColors.primarySoft,
+            subtitle: 'Gửi yêu cầu · Theo dõi duyệt',
           ),
           body: RefreshIndicator(
             color: AppColors.primary,
@@ -226,7 +226,7 @@ class _LeaveRequestScreenState extends ConsumerState<LeaveRequestScreen> {
                     width: 4,
                     height: 38,
                     decoration: BoxDecoration(
-                      color: AppColors.primary,
+                      gradient: AppBrand.gradient,
                       borderRadius: BorderRadius.circular(AppRadius.full),
                     ),
                   ),
@@ -261,11 +261,12 @@ class _LeaveRequestScreenState extends ConsumerState<LeaveRequestScreen> {
                       decoration: BoxDecoration(
                         color: AppColors.primarySoft,
                         borderRadius: BorderRadius.circular(AppRadius.full),
+                        border: Border.all(color: AppColors.primary),
                       ),
                       child: Text(
                         '${_upcoming.length} ngày',
                         style: AppTextStyles.label.copyWith(
-                          color: AppColors.primary,
+                          color: AppBrand.ink,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -312,7 +313,7 @@ class _NoticeCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(AppRadius.card),
-          border: Border.all(color: AppColors.primary.withValues(alpha: .18)),
+          border: Border.all(color: AppColors.divider, width: 1.25),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -321,12 +322,12 @@ class _NoticeCard extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: AppColors.primarySoft,
+                gradient: AppBrand.gradient,
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: const Icon(
                 Icons.beach_access_rounded,
-                color: AppColors.primary,
+                color: AppBrand.ink,
               ),
             ),
             const SizedBox(width: AppSpacing.md),
@@ -382,7 +383,10 @@ class _RequestForm extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(AppRadius.card),
-          border: Border.all(color: AppColors.divider),
+        ),
+        foregroundDecoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.divider, width: 1.25),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -392,7 +396,7 @@ class _RequestForm extends StatelessWidget {
                 width: 4,
                 height: 24,
                 decoration: BoxDecoration(
-                  color: AppColors.primary,
+                  gradient: AppBrand.gradient,
                   borderRadius: BorderRadius.circular(AppRadius.full),
                 ),
               ),
@@ -466,19 +470,32 @@ class _RequestForm extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               height: AppSize.buttonHeight,
-              child: FilledButton.icon(
-                onPressed: submitting ? null : onSubmit,
-                icon: submitting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.send_rounded, size: 19),
-                label: Text(submitting ? 'Đang gửi...' : 'Gửi yêu cầu nghỉ'),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: AppBrand.gradient,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    disabledBackgroundColor: Colors.transparent,
+                    foregroundColor: AppBrand.ink,
+                    disabledForegroundColor: AppBrand.ink,
+                    shadowColor: Colors.transparent,
+                  ),
+                  onPressed: submitting ? null : onSubmit,
+                  icon: submitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppBrand.ink,
+                          ),
+                        )
+                      : const Icon(Icons.send_rounded, size: 19),
+                  label: Text(submitting ? 'Đang gửi...' : 'Gửi yêu cầu nghỉ'),
+                ),
               ),
             ),
           ],
@@ -504,9 +521,9 @@ class _DateButton extends StatelessWidget {
         child: Ink(
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
-            color: AppColors.surfaceAlt,
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: AppColors.divider),
+            border: Border.all(color: AppColors.divider, width: 1.25),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -522,7 +539,7 @@ class _DateButton extends StatelessWidget {
                 children: [
                   const Icon(
                     Icons.calendar_month_rounded,
-                    color: AppColors.primary,
+                    color: AppBrand.ink,
                     size: 18,
                   ),
                   const SizedBox(width: 6),
@@ -587,15 +604,17 @@ class _LeaveCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(
           color: leave.isApproved
-              ? AppColors.divider.withValues(alpha: .7)
-              : status.color.withValues(alpha: .25),
+              ? AppColors.divider
+              : status.color.withValues(alpha: .65),
+          width: 1.25,
         ),
       ),
       child: Row(
         children: [
           Container(
             width: 46,
-            height: 56,
+            constraints: const BoxConstraints(minHeight: 56),
+            padding: const EdgeInsets.symmetric(vertical: 6),
             decoration: BoxDecoration(
               color: status.soft,
               borderRadius: BorderRadius.circular(AppRadius.md),
@@ -701,7 +720,7 @@ class _EmptyLeaves extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(AppRadius.card),
-          border: Border.all(color: AppColors.divider.withValues(alpha: .7)),
+          border: Border.all(color: AppColors.divider, width: 1.25),
         ),
         child: Column(
           children: [
@@ -709,12 +728,12 @@ class _EmptyLeaves extends StatelessWidget {
               width: 52,
               height: 52,
               decoration: const BoxDecoration(
-                color: AppColors.surfaceAlt,
+                gradient: AppBrand.gradient,
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.event_available_rounded,
-                color: AppColors.textTertiary,
+                color: AppBrand.ink,
               ),
             ),
             const SizedBox(height: AppSpacing.md),

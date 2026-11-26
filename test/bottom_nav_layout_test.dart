@@ -24,6 +24,7 @@ void main() {
             bottomNavigationBar: BottomNav(
               currentIndex: selected,
               newOrderCount: 12,
+              runningCount: 2,
               onTap: (value) => setState(() => selected = value),
             ),
           ),
@@ -35,6 +36,9 @@ void main() {
     expect(find.text('Thu nhập'), findsOneWidget);
     expect(find.text('Tài khoản'), findsOneWidget);
     expect(find.text('12'), findsOneWidget);
+    // Nhãn trợ năng đọc đúng tên tab + số đơn (trước đây đọc "Instance of NavItem.label").
+    expect(find.bySemanticsLabel('Đơn hàng, 12 đơn mới, 2 đơn đang chạy'),
+        findsOneWidget);
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.text('Thu nhập'));

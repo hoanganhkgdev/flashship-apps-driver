@@ -267,6 +267,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         ref.watch(orderMarketProvider.select((s) => s.orders.length));
     final isOnline =
         ref.watch(authProvider.select((s) => s.user?.isOnline ?? false));
+    final runningCount =
+        ref.watch(activeOrderProvider.select((s) => s.orders.length));
     final pages = <Widget>[
       const DashboardPage(),
       const EarningsScreen(),
@@ -286,6 +288,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         bottomNavigationBar: BottomNav(
           currentIndex: effectiveTab,
           newOrderCount: isOnline ? newOrderCount : 0,
+          runningCount: runningCount,
           onTap: (i) => ref.read(homeTabProvider.notifier).state = i,
         ),
       ),

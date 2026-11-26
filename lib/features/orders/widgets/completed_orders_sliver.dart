@@ -75,15 +75,15 @@ class CompletedOrdersSliver extends ConsumerWidget {
               )
             : EmptyState(
                 icon: Icons.receipt_long_rounded,
-                iconColor: AppColors.primary.withValues(alpha: 0.45),
-                iconBgColor: AppColors.primary.withValues(alpha: 0.08),
+                iconColor: AppColors.primaryDark,
+                iconBgColor: AppColors.primarySoft,
                 circleSize: 76,
                 iconSize: 36,
                 title: 'Chưa có đơn hoàn thành',
                 titleFontSize: 16,
                 subtitle: 'Các đơn đã hoàn thành sẽ hiện ở đây',
                 actionLabel: 'Tải lại',
-                actionColor: AppColors.primary,
+                actionColor: AppColors.primaryDark,
                 onAction: () => ref
                     .read(orderHistoryProvider.notifier)
                     .fetch(refresh: true),

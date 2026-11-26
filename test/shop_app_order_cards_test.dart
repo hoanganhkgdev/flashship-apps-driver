@@ -98,15 +98,13 @@ void main() {
     expect(find.textContaining('Hoa T\'Ny'), findsOneWidget);
     expect(find.text('Shop book'), findsOneWidget);
     expect(find.text('Giao đơn'), findsOneWidget);
-    expect(find.text('KHÁCH TRẢ PHÍ SHIP'), findsOneWidget);
-    expect(find.text('PHÍ SHIP'), findsOneWidget);
-    expect(find.text('15.000 đ'), findsNWidgets(2));
-    expect(find.text('THU HỘ SHOP'), findsOneWidget);
-    expect(find.text('200.000 đ'), findsOneWidget);
-    expect(find.text('TỔNG THU NGƯỜI NHẬN'), findsOneWidget);
+    // Thu người nhận = ship + thu hộ; tài xế nhận phí ship.
+    expect(find.text('THU NGƯỜI NHẬN'), findsOneWidget);
     expect(find.text('215.000 đ'), findsOneWidget);
-    // COD đơn shop là tiền thu hộ, không phải tiền tài xế ứng trả shop.
-    expect(find.text('TIỀN TRẢ SHOP'), findsNothing);
+    expect(find.text('ship 15k + thu hộ 200k'), findsOneWidget);
+    expect(find.text('BẠN NHẬN'), findsOneWidget);
+    expect(find.text('15.000 đ'), findsOneWidget);
+    expect(find.textContaining('Ứng trả shop'), findsNothing);
     expect(find.text('LẤY TẠI SHOP'), findsOneWidget);
     expect(find.text('GIAO ĐẾN'), findsOneWidget);
     expect(find.text('Giỏ hoa / Trái cây / Bó hoa'), findsOneWidget);
@@ -131,8 +129,8 @@ void main() {
     );
 
     expect(find.text('Đơn gộp · 3 điểm'), findsOneWidget);
-    expect(find.text('Không thu hộ tiền hàng'), findsOneWidget);
-    expect(find.text('THU HỘ SHOP'), findsNothing);
+    expect(find.textContaining('không thu hộ'), findsOneWidget);
+    expect(find.textContaining('thu hộ 0'), findsNothing);
     expect(find.text('GIAO 3 ĐIỂM'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -172,10 +170,11 @@ void main() {
     expect(find.text('Đã nhận'), findsOneWidget);
     expect(find.text('Giao đơn'), findsOneWidget);
     expect(find.text('ĐƠN 1/2'), findsOneWidget);
-    expect(find.text('CẦN THU'), findsOneWidget);
+    // Tiền cần thu người nhận = ship + thu hộ, nằm ngay đầu thẻ.
+    expect(find.text('THU NGƯỜI NHẬN'), findsOneWidget);
     expect(find.text('215.000 đ'), findsOneWidget);
-    expect(find.text('THU HỘ SHOP'), findsOneWidget);
-    expect(find.text('200.000 đ'), findsOneWidget);
+    expect(find.textContaining('thu hộ 200k'), findsOneWidget);
+    expect(find.text('BẠN NHẬN'), findsOneWidget);
     expect(find.text('LẤY TẠI SHOP'), findsOneWidget);
     expect(find.text('Giỏ hoa / Trái cây / Bó hoa'), findsOneWidget);
     expect(find.text('Vuốt để Đã lấy hàng'), findsOneWidget);
@@ -189,9 +188,10 @@ void main() {
 
     expect(find.text('Hoa T\'Ny'), findsWidgets);
     expect(find.textContaining('Shop book'), findsOneWidget);
-    expect(find.text('THU NHẬP'), findsOneWidget);
+    expect(find.text('BẠN NHẬN'), findsOneWidget);
     expect(find.text('15.000 đ'), findsOneWidget);
-    expect(find.text('Đã thu hộ 200.000 đ'), findsOneWidget);
+    expect(find.text('Đã thu người nhận 215.000 đ · ship 15k + thu hộ 200k'),
+        findsOneWidget);
     expect(find.text('ĐÃ GIAO ĐẾN'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

@@ -55,24 +55,22 @@ void main() {
     expect(find.text('Lấy đồ hộ'), findsOneWidget);
     expect(find.text('#APP001'), findsOneWidget);
     expect(find.text('Khách đặt app'), findsOneWidget);
-    expect(find.text('KHÁCH TRẢ PHÍ SHIP'), findsOneWidget);
+    // Thu khách chỉ phí ship (đã trừ voucher); bạn nhận gồm phần công ty trả.
+    expect(find.text('THU KHÁCH'), findsOneWidget);
     expect(find.text('15.000 đ'), findsOneWidget);
-    expect(find.text('CÔNG TY THANH TOÁN RIÊNG · KHÔNG THU KHÁCH'),
-        findsOneWidget);
-    expect(find.text('CÔNG TY BÙ VOUCHER'), findsOneWidget);
-    expect(find.text('+10.000 đ'), findsOneWidget);
-    expect(find.text('BONUS'), findsOneWidget);
-    expect(find.text('+3.000 đ'), findsOneWidget);
-    expect(find.text('THƯỞNG MƯA'), findsOneWidget);
-    expect(find.text('+2.000 đ'), findsOneWidget);
+    expect(find.text('BẠN NHẬN'), findsOneWidget);
+    expect(find.text('30.000 đ'), findsOneWidget);
+    expect(find.textContaining('bù voucher 10k'), findsOneWidget);
+    expect(find.textContaining('thưởng 3k'), findsOneWidget);
+    expect(find.textContaining('mưa 2k'), findsOneWidget);
     expect(find.text('1.2 km'), findsOneWidget);
     expect(find.text('4.5 km'), findsOneWidget);
-    expect(find.text('TIỀN TRẢ SHOP'), findsOneWidget);
-    expect(find.text('100.000 đ'), findsOneWidget);
+    expect(find.text('Ứng trả shop 100.000 đ khi lấy hàng'), findsOneWidget);
     expect(find.text('11 Lý Thường Kiệt'), findsOneWidget);
     expect(find.text('355 Nguyễn Trung Trực'), findsOneWidget);
-    expect(tester.widget<Text>(find.text('11 Lý Thường Kiệt')).maxLines, 1);
-    expect(tester.widget<Text>(find.text('355 Nguyễn Trung Trực')).maxLines, 1);
+    // Thẻ đơn mới: địa chỉ tối đa 2 dòng (đủ đọc, thẻ vẫn gọn).
+    expect(tester.widget<Text>(find.text('11 Lý Thường Kiệt')).maxLines, 2);
+    expect(tester.widget<Text>(find.text('355 Nguyễn Trung Trực')).maxLines, 2);
     expect(find.text('Vuốt để nhận đơn'), findsOneWidget);
     expect(find.text('THU NHẬP'), findsNothing);
     expect(tester.takeException(), isNull);
@@ -117,7 +115,7 @@ void main() {
 
     expect(find.text('TỚI ĐIỂM LẤY'), findsOneWidget);
     expect(find.text('QUÃNG ĐƯỜNG'), findsOneWidget);
-    expect(find.text('TIỀN TRẢ SHOP'), findsNothing);
+    expect(find.textContaining('Ứng trả shop'), findsNothing);
     expect(find.text('THANH TOÁN'), findsNothing);
     expect(find.text('Đã trả'), findsNothing);
     expect(find.textContaining('COD'), findsNothing);

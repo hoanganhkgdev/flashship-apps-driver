@@ -484,8 +484,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       return SliverToBoxAdapter(
         child: EmptyState(
           icon: Icons.inventory_2_outlined,
-          iconColor: AppColors.primary.withValues(alpha: 0.45),
-          iconBgColor: AppColors.primary.withValues(alpha: 0.08),
+          iconColor: AppBrand.ink,
+          iconBgColor: AppColors.primarySoft,
           circleSize: 76,
           iconSize: 36,
           title: 'Chưa nhận đơn nào',
@@ -657,9 +657,9 @@ class _ReceivedOrdersSummary extends StatelessWidget {
           vertical: 10,
         ),
         decoration: BoxDecoration(
-          color: AppColors.infoSoft,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: AppColors.info.withValues(alpha: .12)),
+          border: Border.all(color: AppColors.divider, width: 1.25),
         ),
         child: Row(
           children: [
@@ -667,12 +667,12 @@ class _ReceivedOrdersSummary extends StatelessWidget {
               width: 30,
               height: 30,
               decoration: const BoxDecoration(
-                color: AppColors.info,
+                gradient: AppBrand.gradient,
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.route_rounded,
-                color: Colors.white,
+                color: AppBrand.ink,
                 size: 17,
               ),
             ),

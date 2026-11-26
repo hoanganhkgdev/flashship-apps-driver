@@ -8,6 +8,7 @@ class SwipeButton extends StatefulWidget {
   final Color color;
   final bool loading;
   final VoidCallback? onConfirm;
+  final bool brandStyle;
 
   const SwipeButton({
     super.key,
@@ -15,6 +16,7 @@ class SwipeButton extends StatefulWidget {
     required this.color,
     required this.loading,
     required this.onConfirm,
+    this.brandStyle = false,
   });
 
   @override
@@ -85,6 +87,8 @@ class _SwipeButtonState extends State<SwipeButton>
     final effectiveColor = widget.onConfirm == null && !widget.loading
         ? AppColors.textTertiary
         : widget.color;
+    final branded = widget.brandStyle && (_enabled || widget.loading);
+    final foreground = branded ? AppBrand.ink : Colors.white;
 
     return Semantics(
       button: true,
@@ -98,7 +102,8 @@ class _SwipeButtonState extends State<SwipeButton>
 
           return Container(
             decoration: BoxDecoration(
-              color: effectiveColor,
+              color: branded ? null : effectiveColor,
+              gradient: branded ? AppBrand.gradient : null,
               borderRadius: BorderRadius.circular(_h / 2),
               boxShadow: [
                 BoxShadow(
@@ -132,21 +137,26 @@ class _SwipeButtonState extends State<SwipeButton>
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // Chữ to: thu nhỏ cho vừa nút thay vì cắt "Vuốt để Hoàn th…"
+                        // — tài xế phải đọc được hành động mình sắp vuốt.
                         Flexible(
-                          child: Text(
-                            widget.label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.bodyStrong.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              widget.label,
+                              maxLines: 1,
+                              style: AppTextStyles.bodyStrong.copyWith(
+                                color: foreground,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ),
                         const SizedBox(width: AppSpacing.xs),
                         Icon(
                           Icons.keyboard_double_arrow_right_rounded,
-                          color: Colors.white.withValues(alpha: .72),
+                          color: foreground.withValues(alpha: .72),
                           size: 18,
                         ),
                       ],
@@ -192,7 +202,7 @@ class _SwipeButtonState extends State<SwipeButton>
                           )
                         : Icon(
                             Icons.arrow_forward_rounded,
-                            color: effectiveColor,
+                            color: branded ? AppBrand.ink : effectiveColor,
                             size: 21,
                           ),
                   ),

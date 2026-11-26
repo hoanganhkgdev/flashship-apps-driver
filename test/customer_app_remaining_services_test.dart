@@ -118,7 +118,8 @@ void main() {
       await tester.pumpWidget(_newCard(service.key));
 
       _expectDrivingRoute(service.value);
-      expect(find.text('KHÁCH TRẢ TIỀN CUỐC'), findsOneWidget);
+      expect(find.text('THU KHÁCH'), findsOneWidget);
+      expect(find.text('cước 70k'), findsNWidgets(2)); // thu khách và bạn nhận đều là cước
       expect(find.text('TỚI VỊ TRÍ XE'), findsOneWidget);
       expect(find.text('QUÃNG ĐƯỜNG'), findsOneWidget);
       expect(find.text('Vuốt để nhận cuốc'), findsOneWidget);
@@ -131,7 +132,8 @@ void main() {
       await tester.pumpWidget(_activeCard(service.key));
 
       _expectDrivingRoute(service.value);
-      expect(find.text('KHÁCH TRẢ TIỀN CUỐC'), findsOneWidget);
+      expect(find.text('THU KHÁCH'), findsOneWidget);
+      expect(find.textContaining('cước '), findsWidgets);
       expect(find.text('Vuốt để Đã đến xe'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
@@ -142,7 +144,7 @@ void main() {
       await tester.pumpWidget(_completedCard(service.key));
 
       _expectDrivingRoute(service.value);
-      expect(find.text('KHÁCH ĐÃ TRẢ TIỀN CUỐC'), findsOneWidget);
+      expect(find.textContaining('Đã thu khách 70.000 đ'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }
@@ -157,11 +159,12 @@ void main() {
     expect(find.text('ĐIỂM GIAO'), findsNothing);
     expect(find.text('TỚI ĐIỂM NẠP'), findsOneWidget);
     expect(find.text('QUÃNG ĐƯỜNG'), findsNothing);
-    expect(find.text('SỐ TIỀN CẦN NẠP'), findsOneWidget);
-    expect(find.text('2.000.000 đ'), findsOneWidget);
-    expect(find.text('KHÁCH TRẢ PHÍ DỊCH VỤ'), findsOneWidget);
+    expect(find.text('Số tiền cần nạp 2.000.000 đ'), findsOneWidget);
+    expect(find.text('THU KHÁCH'), findsOneWidget);
+    expect(find.text('2.020.000 đ'), findsOneWidget);
+    expect(find.text('phí 20k + tiền nạp 2tr'), findsOneWidget);
     expect(find.text('20.000 đ'), findsOneWidget);
-    expect(find.text('TIỀN TRẢ SHOP'), findsNothing);
+    expect(find.textContaining('Ứng trả shop'), findsNothing);
     expect(find.text('Vuốt để nhận đơn'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -173,10 +176,11 @@ void main() {
 
     expect(find.text('ĐIỂM NẠP'), findsOneWidget);
     expect(find.text('ĐIỂM GIAO'), findsNothing);
-    expect(find.text('SỐ TIỀN CẦN NẠP'), findsOneWidget);
-    expect(find.text('2.000.000 đ'), findsOneWidget);
-    expect(find.text('KHÁCH TRẢ PHÍ DỊCH VỤ'), findsOneWidget);
-    expect(find.text('QUÃNG ĐƯỜNG'), findsNothing);
+    // Việc phải làm (số tiền cần nạp) ghi riêng, rõ ràng.
+    expect(find.text('Số tiền cần nạp 2.000.000 đ'), findsOneWidget);
+    expect(find.text('THU KHÁCH'), findsOneWidget);
+    expect(find.textContaining('tiền nạp 2tr'), findsOneWidget);
+    expect(find.textContaining('Quãng đường'), findsNothing);
     expect(find.text('0947333595'), findsOneWidget);
     expect(find.text('Vuốt để Đã đến nơi nạp'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -189,11 +193,10 @@ void main() {
 
     expect(find.text('ĐIỂM NẠP'), findsOneWidget);
     expect(find.text('ĐIỂM GIAO'), findsNothing);
-    expect(find.text('SỐ TIỀN CẦN NẠP'), findsOneWidget);
-    expect(find.text('2.000.000 đ'), findsOneWidget);
-    expect(find.text('KHÁCH ĐÃ TRẢ PHÍ DỊCH VỤ'), findsOneWidget);
-    expect(find.text('QUÃNG ĐƯỜNG'), findsNothing);
-    expect(find.text('TIỀN TRẢ SHOP'), findsNothing);
+    expect(find.text('Đã nạp 2.000.000 đ'), findsOneWidget);
+    expect(find.textContaining('Đã thu khách 2.020.000 đ'), findsOneWidget);
+    expect(find.textContaining('Quãng đường'), findsNothing);
+    expect(find.textContaining('Ứng trả shop'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

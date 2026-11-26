@@ -30,7 +30,10 @@ class CallCenterPickupDetails extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surfaceAlt,
           borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: AppColors.divider),
+        ),
+        foregroundDecoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.divider, width: 1.25),
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
@@ -61,7 +64,7 @@ class CallCenterPickupDetails extends StatelessWidget {
                             'ĐIỂM LẤY',
                             style: AppTextStyles.caption.copyWith(
                               color: AppColors.primaryDark,
-                              fontSize: 9,
+                              fontSize: 10,
                               letterSpacing: .7,
                               fontWeight: FontWeight.w700,
                             ),
@@ -170,7 +173,7 @@ class CallCenterPickupDetails extends StatelessWidget {
                           style: AppTextStyles.caption.copyWith(
                             color:
                                 _hasNote ? AppColors.warning : AppColors.danger,
-                            fontSize: 9,
+                            fontSize: 10,
                             letterSpacing: .7,
                             fontWeight: FontWeight.w700,
                           ),

@@ -34,7 +34,10 @@ class OrdersTabBar extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: AppColors.divider),
+        ),
+        foregroundDecoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.divider, width: 1.25),
         ),
         child: Row(children: [
           for (var i = 0; i < tabs.length; i++)
@@ -53,10 +56,18 @@ class OrdersTabBar extends StatelessWidget {
                     height: 38,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: i == index
-                          ? AppColors.primarySoft
-                          : Colors.transparent,
+                      gradient: i == index ? AppBrand.gradient : null,
+                      color: i == index ? null : Colors.transparent,
                       borderRadius: BorderRadius.circular(AppRadius.sm),
+                      boxShadow: i == index
+                          ? [
+                              BoxShadow(
+                                color: AppColors.primary.withValues(alpha: .22),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ]
+                          : null,
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -71,7 +82,7 @@ class OrdersTabBar extends StatelessWidget {
                                   ? FontWeight.w700
                                   : FontWeight.w500,
                               color: i == index
-                                  ? AppColors.primary
+                                  ? AppBrand.ink
                                   : AppColors.textSecondary,
                             ),
                           ),
@@ -84,8 +95,13 @@ class OrdersTabBar extends StatelessWidget {
                                 horizontal: 5, vertical: 1),
                             decoration: BoxDecoration(
                               color: i == index
-                                  ? AppColors.primary
+                                  ? Colors.white.withValues(alpha: .22)
                                   : AppColors.surfaceAlt,
+                              border: i == index
+                                  ? Border.all(
+                                      color: Colors.white.withValues(alpha: .2),
+                                    )
+                                  : null,
                               borderRadius:
                                   BorderRadius.circular(AppRadius.full),
                             ),
@@ -97,7 +113,7 @@ class OrdersTabBar extends StatelessWidget {
                                 height: 1.3,
                                 fontWeight: FontWeight.w700,
                                 color: i == index
-                                    ? Colors.white
+                                    ? AppBrand.ink
                                     : AppColors.textSecondary,
                               ),
                             ),

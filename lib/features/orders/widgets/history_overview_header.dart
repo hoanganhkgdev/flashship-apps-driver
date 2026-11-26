@@ -21,19 +21,12 @@ class HistoryOverviewHeader extends StatelessWidget {
       margin: const EdgeInsets.only(top: AppSpacing.md, bottom: AppSpacing.xs),
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF168547), Color(0xFF2AAA60)],
-        ),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.success.withValues(alpha: .22),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.divider, width: 1.25),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -44,12 +37,12 @@ class HistoryOverviewHeader extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: .16),
+                  gradient: AppBrand.gradient,
                   borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
                 child: const Icon(
                   Icons.account_balance_wallet_rounded,
-                  color: Colors.white,
+                  color: AppBrand.ink,
                   size: 20,
                 ),
               ),
@@ -61,18 +54,22 @@ class HistoryOverviewHeader extends StatelessWidget {
                     Text(
                       'THU NHẬP HÔM NAY',
                       style: AppTextStyles.caption.copyWith(
-                        color: Colors.white.withValues(alpha: .78),
-                        fontSize: 9,
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
                         letterSpacing: .9,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      Fmt.currency(todayEarnings),
-                      style: AppTextStyles.metricLarge.copyWith(
-                        color: Colors.white,
-                        fontSize: 30,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        Fmt.currency(todayEarnings),
+                        style: AppTextStyles.metricLarge.copyWith(
+                          color: AppColors.success,
+                          fontSize: 30,
+                        ),
                       ),
                     ),
                   ],
@@ -84,8 +81,9 @@ class HistoryOverviewHeader extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: .16),
+                  color: AppColors.successSoft,
                   borderRadius: BorderRadius.circular(AppRadius.full),
+                  border: Border.all(color: AppColors.success),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -93,13 +91,13 @@ class HistoryOverviewHeader extends StatelessWidget {
                     const Icon(
                       Icons.check_circle_rounded,
                       size: 15,
-                      color: Colors.white,
+                      color: AppColors.success,
                     ),
                     const SizedBox(width: 5),
                     Text(
                       '$todayCount đơn',
                       style: AppTextStyles.label.copyWith(
-                        color: Colors.white,
+                        color: AppColors.success,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -115,29 +113,37 @@ class HistoryOverviewHeader extends StatelessWidget {
               vertical: 10,
             ),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: .12),
-              borderRadius: BorderRadius.circular(AppRadius.md),
+              color: AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              border: Border.all(color: AppColors.divider),
             ),
             child: Row(
               children: [
                 const Icon(
                   Icons.trending_up_rounded,
                   size: 17,
-                  color: Colors.white,
+                  color: AppColors.success,
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                Text(
-                  'Trung bình mỗi đơn',
-                  style: AppTextStyles.label.copyWith(
-                    color: Colors.white.withValues(alpha: .82),
+                Expanded(
+                  child: Text(
+                    'Trung bình mỗi đơn',
+                    style: AppTextStyles.label.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
-                const Spacer(),
-                Text(
-                  Fmt.currency(average),
-                  style: AppTextStyles.bodyStrong.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
+                const SizedBox(width: AppSpacing.sm),
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      Fmt.currency(average),
+                      style: AppTextStyles.bodyStrong.copyWith(
+                        color: AppColors.success,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
                 ),
               ],

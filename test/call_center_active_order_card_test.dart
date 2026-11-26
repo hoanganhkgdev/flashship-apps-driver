@@ -61,12 +61,14 @@ void main() {
     expect(find.byIcon(Icons.navigation_rounded), findsOneWidget);
     expect(find.text('10.012345, 105.123456'), findsNothing);
     expect(find.text('GHI CHÚ TỔNG ĐÀI'), findsOneWidget);
-    expect(find.text('PHÍ SHIP GỐC'), findsOneWidget);
-    expect(find.text('15.000 đ'), findsOneWidget);
-    expect(find.text('CÔNG TY THƯỞNG'), findsOneWidget);
-    expect(find.text('+3.000 đ'), findsOneWidget);
-    expect(find.text('THƯỞNG MƯA'), findsOneWidget);
-    expect(find.text('+2.000 đ'), findsOneWidget);
+    // Dải tiền: thu khách | bạn nhận, kèm diễn giải.
+    expect(find.text('THU KHÁCH'), findsOneWidget);
+    expect(find.text('120.000 đ'), findsOneWidget);
+    expect(find.textContaining('gồm đêm 5k'), findsOneWidget);
+    expect(find.text('BẠN NHẬN'), findsOneWidget);
+    expect(find.text('25.000 đ'), findsOneWidget);
+    expect(find.textContaining('thưởng 3k'), findsOneWidget);
+    expect(find.textContaining('mưa 2k'), findsOneWidget);
     expect(find.text('Đang đi lấy hàng'), findsNothing);
     expect(find.text('Xem điểm lấy trong ghi chú'), findsNothing);
     expect(find.text('0942526271'), findsOneWidget);

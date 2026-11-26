@@ -38,7 +38,10 @@ class ShoppingOrderNote extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.secondarySoft,
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.secondary.withValues(alpha: .16)),
+      ),
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.divider, width: 1.25),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

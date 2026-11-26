@@ -86,7 +86,10 @@ void main() {
     ));
 
     _expectBikeRoute();
-    expect(find.text('KHÁCH TRẢ TIỀN CUỐC'), findsOneWidget);
+    expect(find.text('THU KHÁCH'), findsOneWidget);
+    expect(find.text('cước 35k'), findsOneWidget);
+    expect(find.text('BẠN NHẬN'), findsOneWidget);
+    expect(find.text('40.000 đ'), findsOneWidget);
     expect(find.text('TỚI ĐIỂM RƯỚC'), findsOneWidget);
     expect(find.text('TỚI ĐIỂM LẤY'), findsNothing);
     expect(find.text('QUÃNG ĐƯỜNG'), findsOneWidget);
@@ -114,7 +117,8 @@ void main() {
     ));
 
     _expectBikeRoute();
-    expect(find.text('KHÁCH TRẢ TIỀN CUỐC'), findsOneWidget);
+    expect(find.text('THU KHÁCH'), findsOneWidget);
+    expect(find.textContaining('cước '), findsWidgets);
     expect(find.text('Vuốt để Đã đón khách'), findsOneWidget);
     expect(find.text('0944424964'), findsOneWidget);
     expect(find.text('0912345678'), findsOneWidget);
@@ -134,7 +138,7 @@ void main() {
     ));
 
     _expectBikeRoute();
-    expect(find.text('KHÁCH ĐÃ TRẢ TIỀN CUỐC'), findsOneWidget);
+    expect(find.textContaining('Đã thu khách 35.000 đ'), findsOneWidget);
     expect(find.text('09:35 · Khách đặt app'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

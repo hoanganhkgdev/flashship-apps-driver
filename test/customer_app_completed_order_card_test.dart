@@ -48,19 +48,12 @@ void main() {
     expect(find.text('Lấy đồ hộ'), findsOneWidget);
     expect(find.text('#APP001'), findsOneWidget);
     expect(find.text('10:30 · Khách đặt app'), findsOneWidget);
-    expect(find.text('KHÁCH ĐÃ TRẢ PHÍ SHIP'), findsOneWidget);
-    expect(find.text('15.000 đ'), findsOneWidget);
-    expect(find.text('CÔNG TY ĐÃ THANH TOÁN RIÊNG'), findsOneWidget);
-    expect(find.text('CÔNG TY BÙ VOUCHER'), findsOneWidget);
-    expect(find.text('+10.000 đ'), findsOneWidget);
-    expect(find.text('BONUS'), findsOneWidget);
-    expect(find.text('+3.000 đ'), findsOneWidget);
-    expect(find.text('THƯỞNG MƯA'), findsOneWidget);
-    expect(find.text('+2.000 đ'), findsOneWidget);
-    expect(find.text('QUÃNG ĐƯỜNG'), findsOneWidget);
-    expect(find.text('4.5 km'), findsOneWidget);
-    expect(find.text('TIỀN TRẢ SHOP'), findsOneWidget);
-    expect(find.text('100.000 đ'), findsOneWidget);
+    expect(find.text('Đã thu khách 15.000 đ'), findsOneWidget);
+    expect(find.text('BẠN NHẬN'), findsOneWidget);
+    expect(find.text('30.000 đ'), findsOneWidget);
+    expect(find.textContaining('bù voucher 10k'), findsOneWidget);
+    expect(find.textContaining('thưởng 3k'), findsOneWidget);
+    expect(find.textContaining('mưa 2k'), findsOneWidget);
     expect(find.text('THU NHẬP'), findsNothing);
     expect(find.textContaining('Thu hộ'), findsNothing);
     expect(find.textContaining('COD'), findsNothing);
@@ -69,8 +62,8 @@ void main() {
         tester.widget<Text>(find.text('11 Lý Thường Kiệt, phường rất dài'));
     final delivery =
         tester.widget<Text>(find.text('355 Nguyễn Trung Trực, phường rất dài'));
-    expect(pickup.maxLines, 1);
-    expect(delivery.maxLines, 1);
+    expect(pickup.maxLines, 2);
+    expect(delivery.maxLines, 2);
     expect(tester.takeException(), isNull);
   });
 }

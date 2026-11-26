@@ -147,12 +147,34 @@ class _Banner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md, vertical: AppSpacing.sm),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: .08),
+        gradient: LinearGradient(
+          colors: [
+            color.withValues(alpha: .12),
+            color.withValues(alpha: .055),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: color.withValues(alpha: .25)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: .07),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(children: [
-        Icon(icon, size: 18, color: color),
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: AppColors.surface.withValues(alpha: .82),
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+          ),
+          child: Icon(icon, size: 18, color: color),
+        ),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Text(text,
@@ -200,17 +222,31 @@ class _Notice extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.divider),
+      ),
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.divider, width: 1.25),
       ),
       child: Column(children: [
         Container(
           width: 72,
           height: 72,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: .10),
+            color: AppColors.surface,
+            gradient: color == AppColors.primary ? AppBrand.gradient : null,
             shape: BoxShape.circle,
+            border: Border.all(color: color.withValues(alpha: .18)),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: .12),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
-          child: Icon(icon, size: 34, color: color),
+          child: Icon(icon,
+              size: 34,
+              color: color == AppColors.primary ? AppBrand.ink : color),
         ),
         const SizedBox(height: AppSpacing.lg),
         Text(title,
@@ -224,16 +260,29 @@ class _Notice extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             height: 52,
-            child: FilledButton.icon(
-              onPressed: loading ? null : onAction,
-              icon: loading
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2.2, color: Colors.white),
-                    )
-                  : const Icon(Icons.bolt_rounded),
-              label: Text(actionLabel ?? 'Thử lại'),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: AppBrand.gradient,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  disabledBackgroundColor: Colors.transparent,
+                  foregroundColor: AppBrand.ink,
+                  disabledForegroundColor: AppBrand.ink,
+                  shadowColor: Colors.transparent,
+                ),
+                onPressed: loading ? null : onAction,
+                icon: loading
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2.2, color: AppBrand.ink),
+                      )
+                    : const Icon(Icons.bolt_rounded),
+                label: Text(actionLabel ?? 'Thử lại'),
+              ),
             ),
           ),
         ],

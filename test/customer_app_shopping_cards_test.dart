@@ -127,8 +127,11 @@ void main() {
       ),
     ));
 
+    // Danh sách mua hộ thu gọn sau "Xem chi tiết".
+    await tester.tap(find.text('Xem chi tiết'));
+    await tester.pump();
     _expectShoppingContent();
-    expect(find.text('KHÁCH ĐÃ TRẢ PHÍ SHIP'), findsOneWidget);
+    expect(find.text('Đã thu khách 20.000 đ'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

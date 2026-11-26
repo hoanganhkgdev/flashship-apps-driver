@@ -108,8 +108,9 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primarySoft,
+      backgroundColor: AppColors.surface,
       body: SafeArea(
+        top: false,
         child: TweenAnimationBuilder<double>(
           tween: Tween(begin: 0.0, end: 1.0),
           duration: const Duration(milliseconds: 500),
@@ -131,8 +132,8 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
                 Container(
                   decoration: const BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(28)),
+                    borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(AppRadius.lg)),
                   ),
                   child: Center(
                     child: ConstrainedBox(
@@ -219,8 +220,10 @@ class _PendingHero extends StatelessWidget {
   const _PendingHero({required this.onLogout});
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+  Widget build(BuildContext context) => Container(
+        decoration: const BoxDecoration(gradient: AppBrand.gradient),
+        padding: EdgeInsets.fromLTRB(
+            20, MediaQuery.paddingOf(context).top + 12, 20, 24),
         child: Column(children: [
           Row(children: [
             Container(
@@ -239,10 +242,8 @@ class _PendingHero extends StatelessWidget {
               child: Text.rich(
                 const TextSpan(children: [
                   TextSpan(
-                      text: 'FLASH',
-                      style: TextStyle(color: AppColors.success)),
-                  TextSpan(
-                      text: 'SHIP', style: TextStyle(color: AppColors.primary)),
+                      text: 'FLASH ', style: TextStyle(color: AppBrand.ink)),
+                  TextSpan(text: 'SHIP', style: TextStyle(color: AppBrand.ink)),
                 ]),
                 maxLines: 1,
                 style: const TextStyle(
@@ -256,7 +257,7 @@ class _PendingHero extends StatelessWidget {
             TextButton(
               onPressed: onLogout,
               style: TextButton.styleFrom(
-                foregroundColor: AppColors.textSecondary,
+                foregroundColor: AppBrand.ink,
                 padding: const EdgeInsets.symmetric(horizontal: 10),
               ),
               child: const Text('Đăng xuất'),
@@ -271,6 +272,7 @@ class _PendingHero extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.warningSoft,
               borderRadius: BorderRadius.circular(AppRadius.full),
+              border: Border.all(color: AppBrand.ink.withValues(alpha: .4)),
             ),
             child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -280,7 +282,7 @@ class _PendingHero extends StatelessWidget {
                     height: 7,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                          color: AppColors.warning, shape: BoxShape.circle),
+                          color: AppBrand.ink, shape: BoxShape.circle),
                     ),
                   ),
                   SizedBox(width: 7),
@@ -292,7 +294,7 @@ class _PendingHero extends StatelessWidget {
                       style: TextStyle(
                         fontSize: AppFontSize.sm,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.warning,
+                        color: AppBrand.ink,
                       ),
                     ),
                   ),
@@ -304,8 +306,8 @@ class _PendingHero extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: AppFontSize.xl2,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+              color: AppBrand.ink,
               letterSpacing: -.5,
             ),
           ),
@@ -315,7 +317,7 @@ class _PendingHero extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: AppFontSize.base,
-              color: AppColors.textSecondary,
+              color: AppBrand.ink,
               height: 1.4,
             ),
           ),

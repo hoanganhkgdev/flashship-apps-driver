@@ -74,14 +74,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         statusBarColor: Colors.transparent,
       ),
       child: Scaffold(
-        backgroundColor: AppColors.primarySoft,
+        backgroundColor: AppColors.surface,
         resizeToAvoidBottomInset: true,
         body: SafeArea(
+          top: false,
           child: LayoutBuilder(builder: (context, constraints) {
+            final topInset = MediaQuery.paddingOf(context).top;
             final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
-            final compact = keyboardVisible || constraints.maxHeight < 680;
+            final compact =
+                keyboardVisible || constraints.maxHeight - topInset < 680;
             final scale = MediaQuery.textScalerOf(context).scale(1);
-            final heroHeight = compact ? 104.0 : 194.0 + (scale - 1) * 24;
+            final heroHeight =
+                (compact ? 104.0 : 194.0 + (scale - 1) * 24) + topInset;
 
             return SingleChildScrollView(
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -99,7 +103,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       decoration: const BoxDecoration(
                         color: AppColors.surface,
                         borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(28),
+                          top: Radius.circular(AppRadius.lg),
                         ),
                       ),
                       child: Align(
@@ -124,7 +128,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Widget _buildLoginForm() {
-    const fieldBorder = BorderSide(color: AppColors.divider);
+    const fieldBorder = BorderSide(color: AppColors.divider, width: 1.25);
     return Form(
       key: _formKey,
       child: Column(
@@ -142,7 +146,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             onFieldSubmitted: (_) => _passwordFocus.requestFocus(),
             prefixIcon: const Icon(Icons.phone_outlined,
                 size: 20, color: AppColors.textSecondary),
-            fillColor: AppColors.surfaceAlt,
+            fillColor: AppColors.surface,
             borderSide: fieldBorder,
             focusNode: _phoneFocus,
             validator: (v) {
@@ -178,7 +182,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 color: AppColors.textSecondary,
               ),
             ),
-            fillColor: AppColors.surfaceAlt,
+            fillColor: AppColors.surface,
             borderSide: fieldBorder,
             focusNode: _passwordFocus,
             validator: (v) {
@@ -196,7 +200,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: TextButton(
               onPressed: () => context.push('/forgot-password'),
               style: TextButton.styleFrom(
-                foregroundColor: AppColors.primary,
+                foregroundColor: AppBrand.ink,
                 padding: const EdgeInsets.symmetric(vertical: 7),
                 minimumSize: const Size(0, 42),
               ),
@@ -215,36 +219,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           SizedBox(
             width: double.infinity,
             height: 52,
-            child: FilledButton(
-              onPressed: _loading ? null : _submit,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor:
-                    AppColors.primary.withValues(alpha: .5),
-                disabledForegroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: AppBrand.gradient,
+                borderRadius: BorderRadius.circular(AppRadius.md),
               ),
-              child: _loading
-                  ? const SizedBox.square(
-                      dimension: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
+              child: FilledButton(
+                onPressed: _loading ? null : _submit,
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: AppBrand.ink,
+                  disabledBackgroundColor: Colors.transparent,
+                  disabledForegroundColor: AppBrand.ink,
+                  shadowColor: Colors.transparent,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                ),
+                child: _loading
+                    ? const SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppBrand.ink,
+                        ),
+                      )
+                    : const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Đăng nhập',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.w700)),
+                          SizedBox(width: 7),
+                          Icon(Icons.arrow_forward_rounded, size: 20),
+                        ],
                       ),
-                    )
-                  : const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('Đăng nhập',
-                            style: TextStyle(fontWeight: FontWeight.w600)),
-                        SizedBox(width: 7),
-                        Icon(Icons.arrow_forward_rounded, size: 20),
-                      ],
-                    ),
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -258,8 +269,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               onPressed: () => context.go('/register'),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(0, 50),
-                foregroundColor: AppColors.primary,
-                side: const BorderSide(color: AppColors.divider),
+                foregroundColor: AppBrand.ink,
+                backgroundColor: AppColors.primarySoft,
+                side: const BorderSide(color: AppColors.primary, width: 1.25),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
@@ -285,34 +297,12 @@ class _LoginHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return Container(
       height: height,
-      child: Stack(children: [
-        Positioned(
-          top: -50,
-          right: -32,
-          child: Container(
-            width: 142,
-            height: 142,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: .08),
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-        Positioned(
-          left: -22,
-          bottom: 18,
-          child: Container(
-            width: 76,
-            height: 76,
-            decoration: BoxDecoration(
-              color: AppColors.surface.withValues(alpha: .55),
-              shape: BoxShape.circle,
-            ),
-          ),
-        ),
-        Center(
+      decoration: const BoxDecoration(gradient: AppBrand.gradient),
+      child: Padding(
+        padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top),
+        child: Center(
           child: compact
               ? Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -330,7 +320,7 @@ class _LoginHero extends StatelessWidget {
               : Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const _LogoBox(size: 94, radius: 26, padding: 4),
+                    const _LogoBox(size: 84, radius: 16, padding: 4),
                     const SizedBox(height: AppSpacing.xs),
                     const _DriverBrand(fontSize: 27),
                     const SizedBox(height: 5),
@@ -338,14 +328,14 @@ class _LoginHero extends StatelessWidget {
                       'Đồng hành cùng tài xế trên mọi hành trình',
                       textAlign: TextAlign.center,
                       style: AppTextStyles.caption.copyWith(
-                        color: AppColors.textSecondary,
+                        color: AppBrand.ink,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
                 ),
         ),
-      ]),
+      ),
     );
   }
 }
@@ -395,12 +385,12 @@ class _DriverBrand extends StatelessWidget {
         child: Text.rich(
           TextSpan(children: [
             TextSpan(
-              text: 'FLASH',
-              style: TextStyle(color: AppColors.success, fontSize: fontSize),
+              text: 'FLASH ',
+              style: TextStyle(color: AppBrand.ink, fontSize: fontSize),
             ),
             TextSpan(
               text: 'SHIP',
-              style: TextStyle(color: AppColors.primary, fontSize: fontSize),
+              style: TextStyle(color: AppBrand.ink, fontSize: fontSize),
             ),
           ]),
           maxLines: 1,
@@ -425,7 +415,7 @@ class _LoginHeading extends StatelessWidget {
             width: 4,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.primary,
+              gradient: AppBrand.gradient,
               borderRadius: BorderRadius.circular(AppRadius.full),
             ),
           ),
@@ -439,12 +429,13 @@ class _LoginHeading extends StatelessWidget {
                     TextSpan(text: 'Chào mừng bạn '),
                     TextSpan(
                       text: 'trở lại',
-                      style: TextStyle(color: AppColors.primary),
+                      style: TextStyle(color: AppBrand.ink),
                     ),
                   ]),
                   style: AppTextStyles.sectionTitle.copyWith(
                     color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -539,18 +530,18 @@ class _SupportRow extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: AppColors.divider),
+          border: Border.all(color: AppColors.divider, width: 1.25),
         ),
         child: Row(children: [
           Container(
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: AppColors.infoSoft,
+              gradient: AppBrand.gradient,
               borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
             child: const Icon(Icons.headset_mic_outlined,
-                size: 18, color: AppColors.info),
+                size: 18, color: AppBrand.ink),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
@@ -566,6 +557,7 @@ class _SupportRow extends StatelessWidget {
           TextButton(
             onPressed: onTap,
             style: TextButton.styleFrom(
+              foregroundColor: AppBrand.ink,
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
               minimumSize: const Size(0, 40),
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,

@@ -33,7 +33,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('FLASHSHIP', findRichText: true), findsOneWidget);
+    expect(find.text('FLASH SHIP', findRichText: true), findsOneWidget);
     expect(find.text('Xác thực số điện thoại'), findsOneWidget);
     expect(find.text('Nhập mã gồm 6 chữ số'), findsOneWidget);
     expect(find.text('Xác nhận mã OTP'), findsOneWidget);

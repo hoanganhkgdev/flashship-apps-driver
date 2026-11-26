@@ -21,7 +21,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('FLASHSHIP', findRichText: true), findsOneWidget);
+    expect(find.text('FLASH SHIP', findRichText: true), findsOneWidget);
     expect(find.text('Đồng hành cùng tài xế trên mọi hành trình'),
         findsOneWidget);
     expect(find.text('Chào mừng bạn trở lại'), findsOneWidget);

@@ -26,7 +26,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('FLASHSHIP', findRichText: true), findsOneWidget);
+    expect(find.text('FLASH SHIP', findRichText: true), findsOneWidget);
     expect(find.text('Khôi phục tài khoản'), findsOneWidget);
     expect(find.text('Số điện thoại đã đăng ký'), findsOneWidget);
     expect(find.text('Gửi mã OTP'), findsOneWidget);

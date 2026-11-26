@@ -15,16 +15,12 @@ class AuthBrandHeader extends StatelessWidget {
           width: compact ? 48 : 56,
           height: compact ? 48 : 56,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [AppColors.primary, AppColors.primaryGradientEnd],
-            ),
+            gradient: AppBrand.gradient,
             borderRadius: BorderRadius.circular(AppRadius.lg),
             boxShadow: AppShadows.soft,
           ),
           child: const Icon(Icons.local_shipping_rounded,
-              size: 27, color: Colors.white),
+              size: 27, color: AppBrand.ink),
         ),
         const SizedBox(height: AppSpacing.md),
         const Text('FlashShip Tài xế',
@@ -64,7 +60,7 @@ class AuthBackdrop extends StatelessWidget {
           const Positioned(
               top: -120,
               right: -110,
-              child: _Glow(size: 340, color: Color(0xFFFFB347))),
+              child: _Glow(size: 340, color: AppColors.primary)),
           const Positioned(
               bottom: -150,
               left: -130,
@@ -225,6 +221,7 @@ class AuthErrorBanner extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.dangerSoft,
             borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.danger),
           ),
           child: Row(children: [
             const Icon(Icons.error_outline_rounded,
@@ -284,6 +281,7 @@ class AuthFooterLink extends StatelessWidget {
 
 /// Nút submit full-width có spinner dùng chung.
 class AuthPrimaryButton extends StatelessWidget {
+  final bool brandStyle;
   final String label;
   final bool loading;
   final VoidCallback? onPressed;
@@ -302,34 +300,47 @@ class AuthPrimaryButton extends StatelessWidget {
     this.borderRadius,
     this.color = AppColors.primary,
     this.fontSize = 18,
+    this.brandStyle = false,
   });
 
   @override
   Widget build(BuildContext context) => SizedBox(
         width: double.infinity,
         height: height,
-        child: FilledButton(
-          onPressed: loading ? null : onPressed,
-          style: FilledButton.styleFrom(
-            backgroundColor: color,
-            disabledBackgroundColor: color.withValues(alpha: 0.5),
-            shape: RoundedRectangleBorder(
-                borderRadius:
-                    BorderRadius.circular(borderRadius ?? height / 2)),
-            elevation: 0,
-            textStyle: TextStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.w700,
-            ),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: brandStyle ? AppBrand.gradient : null,
+            borderRadius: BorderRadius.circular(borderRadius ?? height / 2),
           ),
-          child: loading
-              ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2.5, color: Colors.white),
-                )
-              : Text(label),
+          child: FilledButton(
+            onPressed: loading ? null : onPressed,
+            style: FilledButton.styleFrom(
+              backgroundColor: brandStyle ? Colors.transparent : color,
+              disabledBackgroundColor: brandStyle
+                  ? Colors.transparent
+                  : color.withValues(alpha: 0.5),
+              foregroundColor: brandStyle ? AppBrand.ink : Colors.white,
+              disabledForegroundColor: brandStyle ? AppBrand.ink : Colors.white,
+              shadowColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(borderRadius ?? height / 2)),
+              elevation: 0,
+              textStyle: TextStyle(
+                fontSize: fontSize,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            child: loading
+                ? SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: brandStyle ? AppBrand.ink : Colors.white),
+                  )
+                : Text(label),
+          ),
         ),
       );
 }

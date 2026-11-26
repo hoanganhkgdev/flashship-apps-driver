@@ -98,9 +98,10 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     final codeComplete = _otpCtrl.text.length == 6;
 
     return Scaffold(
-      backgroundColor: AppColors.primarySoft,
+      backgroundColor: AppColors.surface,
       resizeToAvoidBottomInset: true,
       body: SafeArea(
+        top: false,
         child: LayoutBuilder(
           builder: (context, constraints) => SingleChildScrollView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -113,12 +114,17 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                 ),
                 Container(
                   constraints: BoxConstraints(
-                    minHeight: compact ? 0 : constraints.maxHeight - 140,
+                    minHeight: compact
+                        ? 0
+                        : (constraints.maxHeight -
+                                140 -
+                                MediaQuery.paddingOf(context).top)
+                            .clamp(0, double.infinity),
                   ),
                   decoration: const BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(28)),
+                    borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(AppRadius.lg)),
                   ),
                   child: Align(
                     alignment: Alignment.topCenter,
@@ -168,6 +174,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                             ),
                             const SizedBox(height: AppSpacing.xl),
                             AuthPrimaryButton(
+                              brandStyle: true,
                               label: 'Xác nhận mã OTP',
                               loading: _loading,
                               onPressed: codeComplete ? _submit : null,
@@ -199,21 +206,11 @@ class _OtpHero extends StatelessWidget {
   const _OtpHero({required this.compact, required this.onBack});
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-        height: compact ? 92 : 140,
+  Widget build(BuildContext context) => Container(
+        height: (compact ? 92 : 140) + MediaQuery.paddingOf(context).top,
+        padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top),
+        decoration: const BoxDecoration(gradient: AppBrand.gradient),
         child: Stack(children: [
-          Positioned(
-            top: -52,
-            right: -38,
-            child: Container(
-              width: 150,
-              height: 150,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primary.withValues(alpha: .08),
-              ),
-            ),
-          ),
           Positioned(
             top: 12,
             left: 16,
@@ -249,14 +246,12 @@ class _OtpBrand extends StatelessWidget {
     final brand = Text.rich(
       TextSpan(children: [
         TextSpan(
-          text: 'FLASH',
-          style: TextStyle(
-              color: AppColors.success, fontSize: horizontal ? 21 : 23),
+          text: 'FLASH ',
+          style: TextStyle(color: AppBrand.ink, fontSize: horizontal ? 21 : 23),
         ),
         TextSpan(
           text: 'SHIP',
-          style: TextStyle(
-              color: AppColors.primary, fontSize: horizontal ? 21 : 23),
+          style: TextStyle(color: AppBrand.ink, fontSize: horizontal ? 21 : 23),
         ),
       ]),
       maxLines: 1,
@@ -294,7 +289,7 @@ class _OtpHeading extends StatelessWidget {
             width: 4,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.primary,
+              gradient: AppBrand.gradient,
               borderRadius: BorderRadius.circular(AppRadius.full),
             ),
           ),
@@ -306,7 +301,8 @@ class _OtpHeading extends StatelessWidget {
                 Text(
                   'Xác thực số điện thoại',
                   style: AppTextStyles.sectionTitle.copyWith(
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -341,13 +337,13 @@ class _OtpFieldLabel extends StatelessWidget {
           width: 34,
           height: 34,
           decoration: BoxDecoration(
-            color: AppColors.primarySoft,
+            gradient: AppBrand.gradient,
             borderRadius: BorderRadius.circular(AppRadius.sm),
           ),
           child: const Icon(
             Icons.password_rounded,
             size: 19,
-            color: AppColors.primary,
+            color: AppBrand.ink,
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
@@ -372,6 +368,7 @@ class _OtpSecurityNote extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.successSoft,
           borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.divider),
         ),
         child: Row(children: [
           const Icon(Icons.shield_outlined, size: 18, color: AppColors.success),
@@ -404,7 +401,7 @@ class _OtpProgress extends StatelessWidget {
           Container(
             height: 5,
             decoration: BoxDecoration(
-              color: AppColors.primary,
+              gradient: AppBrand.gradient,
               borderRadius: BorderRadius.circular(AppRadius.full),
             ),
           ),
@@ -423,7 +420,7 @@ class _OtpProgress extends StatelessWidget {
                 style: TextStyle(
                   fontSize: AppFontSize.sm,
                   fontWeight: FontWeight.w600,
-                  color: completed ? AppColors.success : AppColors.primaryDark,
+                  color: completed ? AppColors.success : AppBrand.ink,
                 ),
               ),
             ),

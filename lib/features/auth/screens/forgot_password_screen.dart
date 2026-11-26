@@ -136,8 +136,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     final compact = bottom > 0 || MediaQuery.sizeOf(context).height < 680;
 
     return Scaffold(
-      backgroundColor: AppColors.primarySoft,
+      backgroundColor: AppColors.surface,
       body: SafeArea(
+        top: false,
         child: LayoutBuilder(
           builder: (context, constraints) => SingleChildScrollView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -155,12 +156,17 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 ),
                 Container(
                   constraints: BoxConstraints(
-                    minHeight: compact ? 0 : constraints.maxHeight - 140,
+                    minHeight: compact
+                        ? 0
+                        : (constraints.maxHeight -
+                                140 -
+                                MediaQuery.paddingOf(context).top)
+                            .clamp(0, double.infinity),
                   ),
                   decoration: const BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(28)),
+                    borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(AppRadius.lg)),
                   ),
                   child: Align(
                     alignment: Alignment.topCenter,
@@ -190,6 +196,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                             ],
                             const SizedBox(height: AppSpacing.xl),
                             AuthPrimaryButton(
+                              brandStyle: true,
                               label: _step2 ? 'Đặt lại mật khẩu' : 'Gửi mã OTP',
                               loading: _loading,
                               onPressed: _step2 ? _resetPassword : _sendOtp,
@@ -233,7 +240,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             const SizedBox(height: AppSpacing.sm),
             AuthField(
               controller: _phoneCtrl,
-              fillColor: AppColors.surfaceAlt,
+              fillColor: AppColors.surface,
               hint: '0912 345 678',
               prefixIcon: const Icon(Icons.phone_outlined,
                   size: 20, color: AppColors.textPrimary),
@@ -241,7 +248,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               textInputAction: TextInputAction.done,
               onFieldSubmitted: (_) => _sendOtp(),
-              borderSide: const BorderSide(color: AppColors.divider),
+              borderSide:
+                  const BorderSide(color: AppColors.divider, width: 1.25),
               validator: (v) {
                 if (v == null || v.trim().isEmpty) {
                   return 'Vui lòng nhập số điện thoại';
@@ -287,8 +295,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   size: 20, color: AppColors.textPrimary),
               obscureText: _obscure1,
               textInputAction: TextInputAction.next,
-              fillColor: AppColors.surfaceAlt,
-              borderSide: const BorderSide(color: AppColors.divider),
+              fillColor: AppColors.surface,
+              borderSide:
+                  const BorderSide(color: AppColors.divider, width: 1.25),
               suffixIcon: IconButton(
                 onPressed: () => setState(() => _obscure1 = !_obscure1),
                 icon: Icon(
@@ -313,8 +322,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               obscureText: _obscure2,
               textInputAction: TextInputAction.done,
               onFieldSubmitted: (_) => _resetPassword(),
-              fillColor: AppColors.surfaceAlt,
-              borderSide: const BorderSide(color: AppColors.divider),
+              fillColor: AppColors.surface,
+              borderSide:
+                  const BorderSide(color: AppColors.divider, width: 1.25),
               suffixIcon: IconButton(
                 onPressed: () => setState(() => _obscure2 = !_obscure2),
                 icon: Icon(
@@ -339,21 +349,11 @@ class _ForgotHero extends StatelessWidget {
   const _ForgotHero({required this.compact, required this.onBack});
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-        height: compact ? 92 : 140,
+  Widget build(BuildContext context) => Container(
+        height: (compact ? 92 : 140) + MediaQuery.paddingOf(context).top,
+        padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top),
+        decoration: const BoxDecoration(gradient: AppBrand.gradient),
         child: Stack(children: [
-          Positioned(
-            top: -52,
-            right: -38,
-            child: Container(
-              width: 150,
-              height: 150,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primary.withValues(alpha: .08),
-              ),
-            ),
-          ),
           Positioned(
             top: 12,
             left: 16,
@@ -385,14 +385,12 @@ class _RecoveryBrand extends StatelessWidget {
     final brand = Text.rich(
       TextSpan(children: [
         TextSpan(
-          text: 'FLASH',
-          style:
-              TextStyle(color: AppColors.success, fontSize: compact ? 21 : 23),
+          text: 'FLASH ',
+          style: TextStyle(color: AppBrand.ink, fontSize: compact ? 21 : 23),
         ),
         TextSpan(
           text: 'SHIP',
-          style:
-              TextStyle(color: AppColors.primary, fontSize: compact ? 21 : 23),
+          style: TextStyle(color: AppBrand.ink, fontSize: compact ? 21 : 23),
         ),
       ]),
       maxLines: 1,
@@ -461,9 +459,8 @@ class _RecoveryStep extends StatelessWidget {
             duration: AppDuration.normal,
             height: 5,
             decoration: BoxDecoration(
-              color: active || completed
-                  ? AppColors.primary
-                  : AppColors.primarySoft,
+              color: active || completed ? null : AppColors.divider,
+              gradient: active || completed ? AppBrand.gradient : null,
               borderRadius: BorderRadius.circular(AppRadius.full),
             ),
           ),
@@ -485,7 +482,7 @@ class _RecoveryStep extends StatelessWidget {
                   color: completed
                       ? AppColors.success
                       : active
-                          ? AppColors.primaryDark
+                          ? AppBrand.ink
                           : AppColors.textTertiary,
                 ),
               ),
@@ -509,7 +506,7 @@ class _RecoveryHeading extends StatelessWidget {
             width: 4,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.primary,
+              gradient: AppBrand.gradient,
               borderRadius: BorderRadius.circular(AppRadius.full),
             ),
           ),
@@ -521,7 +518,8 @@ class _RecoveryHeading extends StatelessWidget {
                 Text(
                   step2 ? 'Tạo mật khẩu mới' : 'Khôi phục tài khoản',
                   style: AppTextStyles.sectionTitle.copyWith(
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -554,6 +552,7 @@ class _RecoverySecurityNote extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.successSoft,
           borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.divider),
         ),
         child: Row(children: [
           const Icon(Icons.shield_outlined, size: 18, color: AppColors.success),

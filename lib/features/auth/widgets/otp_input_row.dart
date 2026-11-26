@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/theme/app_theme.dart';
 
 /// 6 ô nhập OTP — TextField ẩn giữ focus/bàn phím số, hiển thị bằng 6 box.
 class OtpInputRow extends StatefulWidget {
@@ -89,17 +90,16 @@ class _OtpInputRowState extends State<OtpInputRow> {
                       width: boxWidth,
                       height: 56,
                       decoration: BoxDecoration(
-                        color: filled
-                            ? const Color(0xFFFCF6F3)
-                            : const Color(0xFFFCF6F3),
+                        color:
+                            active ? AppColors.primarySoft : AppColors.surface,
                         borderRadius: BorderRadius.circular(14),
                         border: active
-                            ? Border.all(
-                                color: const Color(0xFFFF6035), width: 1)
+                            ? Border.all(color: AppBrand.ink, width: 2)
                             : filled
                                 ? Border.all(
-                                    color: const Color(0xFFE5DDD9), width: 1)
-                                : Border.all(color: const Color(0xFFE5DDD9)),
+                                    color: AppColors.success, width: 1.25)
+                                : Border.all(
+                                    color: AppColors.divider, width: 1.25),
                       ),
                       child: Center(
                         child: Text(

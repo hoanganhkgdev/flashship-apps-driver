@@ -120,15 +120,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const fieldBorder = BorderSide(color: AppColors.divider, width: 1);
-    const fieldFill = AppColors.surfaceAlt;
+    const fieldBorder = BorderSide(color: AppColors.divider, width: 1.25);
+    const fieldFill = AppColors.surface;
 
     return Scaffold(
-      backgroundColor: AppColors.primarySoft,
+      backgroundColor: AppColors.surface,
       body: SafeArea(
+        top: false,
         child: LayoutBuilder(builder: (context, constraints) {
           final compact = MediaQuery.viewInsetsOf(context).bottom > 0 ||
-              constraints.maxHeight < 680;
+              constraints.maxHeight - MediaQuery.paddingOf(context).top < 680;
           return SingleChildScrollView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             child: Column(
@@ -141,8 +142,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 Container(
                   decoration: const BoxDecoration(
                     color: AppColors.surface,
-                    borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(28)),
+                    borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(AppRadius.lg)),
                   ),
                   child: Center(
                     child: ConstrainedBox(
@@ -320,40 +321,49 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               SizedBox(
                                 width: double.infinity,
                                 height: 52,
-                                child: FilledButton(
-                                  onPressed: _submitting ? null : _submit,
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
-                                    foregroundColor: Colors.white,
-                                    disabledBackgroundColor:
-                                        AppColors.primary.withValues(alpha: .5),
-                                    disabledForegroundColor: Colors.white,
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(AppRadius.md),
-                                    ),
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: AppBrand.gradient,
+                                    borderRadius:
+                                        BorderRadius.circular(AppRadius.md),
                                   ),
-                                  child: _submitting
-                                      ? const SizedBox.square(
-                                          dimension: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
+                                  child: FilledButton(
+                                    onPressed: _submitting ? null : _submit,
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: Colors.transparent,
+                                      foregroundColor: AppBrand.ink,
+                                      disabledBackgroundColor:
+                                          Colors.transparent,
+                                      disabledForegroundColor: AppBrand.ink,
+                                      shadowColor: Colors.transparent,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(AppRadius.md),
+                                      ),
+                                    ),
+                                    child: _submitting
+                                        ? const SizedBox.square(
+                                            dimension: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: AppBrand.ink,
+                                            ),
+                                          )
+                                        : const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text('Tiếp tục',
+                                                  style: TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight:
+                                                          FontWeight.w700)),
+                                              SizedBox(width: 7),
+                                              Icon(Icons.arrow_forward_rounded,
+                                                  size: 20),
+                                            ],
                                           ),
-                                        )
-                                      : const Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text('Tiếp tục',
-                                                style: TextStyle(
-                                                    fontWeight:
-                                                        FontWeight.w600)),
-                                            SizedBox(width: 7),
-                                            Icon(Icons.arrow_forward_rounded,
-                                                size: 20),
-                                          ],
-                                        ),
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: AppSpacing.lg),
@@ -370,6 +380,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                           color: AppColors.textSecondary),
                                     ),
                                     TextButton(
+                                      style: TextButton.styleFrom(
+                                          foregroundColor: AppBrand.ink),
                                       onPressed: () => context.go('/login'),
                                       child: const Text('Đăng nhập',
                                           style: TextStyle(
@@ -402,8 +414,10 @@ class _RegisterHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => compact
-      ? Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 20, 16),
+      ? Container(
+          decoration: const BoxDecoration(gradient: AppBrand.gradient),
+          padding: EdgeInsets.fromLTRB(
+              16, MediaQuery.paddingOf(context).top + 12, 20, 16),
           child: Row(children: [
             _RegisterBackButton(onTap: onBack),
             const SizedBox(width: AppSpacing.md),
@@ -412,21 +426,11 @@ class _RegisterHero extends StatelessWidget {
             const Expanded(child: _RegisterBrand(fontSize: 21)),
           ]),
         )
-      : SizedBox(
-          height: 172,
+      : Container(
+          height: 172 + MediaQuery.paddingOf(context).top,
+          padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top),
+          decoration: const BoxDecoration(gradient: AppBrand.gradient),
           child: Stack(children: [
-            Positioned(
-              top: -48,
-              right: -36,
-              child: Container(
-                width: 150,
-                height: 150,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.primary.withValues(alpha: .08),
-                ),
-              ),
-            ),
             Positioned(
               top: 12,
               left: 16,
@@ -436,7 +440,7 @@ class _RegisterHero extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _RegisterLogo(size: 76, radius: 22, padding: 3),
+                  _RegisterLogo(size: 76, radius: 16, padding: 3),
                   SizedBox(height: AppSpacing.sm),
                   _RegisterBrand(fontSize: 23),
                 ],
@@ -502,11 +506,11 @@ class _RegisterBrand extends StatelessWidget {
   Widget build(BuildContext context) => Text.rich(
         TextSpan(children: [
           TextSpan(
-              text: 'FLASH',
-              style: TextStyle(color: AppColors.success, fontSize: fontSize)),
+              text: 'FLASH ',
+              style: TextStyle(color: AppBrand.ink, fontSize: fontSize)),
           TextSpan(
               text: 'SHIP',
-              style: TextStyle(color: AppColors.primary, fontSize: fontSize)),
+              style: TextStyle(color: AppBrand.ink, fontSize: fontSize)),
         ]),
         maxLines: 1,
         style: const TextStyle(
@@ -528,7 +532,7 @@ class _RegisterIntro extends StatelessWidget {
             width: 4,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.primary,
+              gradient: AppBrand.gradient,
               borderRadius: BorderRadius.circular(AppRadius.full),
             ),
           ),
@@ -540,7 +544,8 @@ class _RegisterIntro extends StatelessWidget {
                 Text(
                   'Tạo tài khoản tài xế',
                   style: AppTextStyles.sectionTitle.copyWith(
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -582,7 +587,8 @@ class _Step extends StatelessWidget {
           Container(
             height: 5,
             decoration: BoxDecoration(
-              color: active ? AppColors.primary : AppColors.primarySoft,
+              color: active ? null : AppColors.divider,
+              gradient: active ? AppBrand.gradient : null,
               borderRadius: BorderRadius.circular(AppRadius.full),
             ),
           ),
@@ -591,7 +597,7 @@ class _Step extends StatelessWidget {
               style: TextStyle(
                 fontSize: AppFontSize.sm,
                 fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                color: active ? AppColors.primaryDark : AppColors.textTertiary,
+                color: active ? AppBrand.ink : AppColors.textSecondary,
               )),
         ],
       );
@@ -617,10 +623,10 @@ class _RegisterSection extends StatelessWidget {
               width: 34,
               height: 34,
               decoration: BoxDecoration(
-                color: AppColors.primarySoft,
+                gradient: AppBrand.gradient,
                 borderRadius: BorderRadius.circular(AppRadius.sm),
               ),
-              child: Icon(icon, size: 19, color: AppColors.primary),
+              child: Icon(icon, size: 19, color: AppBrand.ink),
             ),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
@@ -673,6 +679,7 @@ class _PasswordHints extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surfaceAlt,
             borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: AppColors.divider),
           ),
           child: Column(children: [
             _rule('Mật khẩu có ít nhất 6 ký tự', password.text.length >= 6),

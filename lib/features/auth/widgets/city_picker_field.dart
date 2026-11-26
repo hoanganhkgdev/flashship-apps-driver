@@ -28,15 +28,15 @@ class CityPickerField extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
               decoration: BoxDecoration(
-                color: const Color(0xFFFCF6F3),
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: loadFailed || (hasError && selected == null)
                       ? AppColors.danger
                       : selected != null
-                          ? const Color(0xFFFF6035)
-                          : const Color(0xFFE5DDD9),
-                  width: selected != null ? 1.2 : 1,
+                          ? AppBrand.ink
+                          : AppColors.divider,
+                  width: 1.25,
                 ),
               ),
               child: Row(children: [
@@ -84,7 +84,7 @@ class CityPickerField extends StatelessWidget {
                                 ? AppColors.danger
                                 : selected != null
                                     ? const Color(0xFF1B1411)
-                                    : const Color(0xFFA99F9A),
+                                    : AppColors.textSecondary,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,

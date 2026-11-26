@@ -12,15 +12,16 @@ class PendingIllustration extends StatelessWidget {
           width: 76,
           height: 76,
           decoration: BoxDecoration(
-            color: const Color(0xFFFFF1EA),
+            color: AppColors.surface,
             shape: BoxShape.circle,
-            border: Border.all(color: const Color(0xFFFFC4AF), width: 2),
+            border: Border.all(
+                color: AppBrand.ink.withValues(alpha: .4), width: 1.25),
           ),
           child: const Center(
             child: Icon(
               Icons.hourglass_empty_rounded,
               size: 31,
-              color: AppColors.primary,
+              color: AppBrand.ink,
             ),
           ),
         ),
@@ -54,15 +55,15 @@ class StepCard extends StatelessWidget {
             ? AppColors.successSoft
             : isActive
                 ? AppColors.primarySoft
-                : AppColors.surfaceAlt,
+                : AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(
           color: done
-              ? const Color(0xFFBFE2CB)
+              ? AppColors.success
               : isActive
-                  ? const Color(0xFFFFB8A2)
+                  ? AppBrand.ink
                   : AppColors.divider,
-          width: 1,
+          width: 1.25,
         ),
       ),
       child: Row(
@@ -75,8 +76,8 @@ class StepCard extends StatelessWidget {
               color: done
                   ? color.withValues(alpha: 0.12)
                   : isActive
-                      ? const Color(0xFFFFECE6)
-                      : const Color(0xFFE8E0DC),
+                      ? AppColors.primarySoft
+                      : AppColors.surfaceAlt,
               shape: BoxShape.circle,
             ),
             child: isActive
@@ -86,7 +87,7 @@ class StepCard extends StatelessWidget {
                       height: 16,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Color(0xFFFF6035),
+                        color: AppBrand.ink,
                       ),
                     ),
                   )
@@ -95,7 +96,7 @@ class StepCard extends StatelessWidget {
                     color: done
                         ? color
                         : isActive
-                            ? const Color(0xFFFF6035)
+                            ? AppBrand.ink
                             : AppColors.textTertiary,
                     size: 20,
                   ),
@@ -114,7 +115,7 @@ class StepCard extends StatelessWidget {
                     color: done
                         ? AppColors.textPrimary
                         : isActive
-                            ? const Color(0xFFFF6035)
+                            ? AppBrand.ink
                             : AppColors.textSecondary,
                   ),
                 ),
@@ -123,11 +124,7 @@ class StepCard extends StatelessWidget {
                   subtitle,
                   style: TextStyle(
                     fontSize: 12,
-                    color: done
-                        ? AppColors.textSecondary
-                        : isActive
-                            ? AppColors.textPrimary.withValues(alpha: 0.7)
-                            : AppColors.textSecondary.withValues(alpha: 0.7),
+                    color: AppColors.textSecondary,
                     fontWeight: isActive ? FontWeight.w500 : FontWeight.normal,
                   ),
                 ),
@@ -146,7 +143,7 @@ class StepCard extends StatelessWidget {
               color: done
                   ? AppColors.success
                   : isActive
-                      ? AppColors.primary
+                      ? AppBrand.ink
                       : AppColors.textTertiary,
             ),
           ),
@@ -163,9 +160,9 @@ class PendingSupportCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         decoration: BoxDecoration(
-          color: AppColors.surfaceAlt,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: AppColors.divider),
+          border: Border.all(color: AppColors.divider, width: 1.25),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -175,7 +172,7 @@ class PendingSupportCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF1EA),
+                  gradient: AppBrand.gradient,
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: const Icon(
@@ -210,13 +207,14 @@ class PendingSupportCard extends StatelessWidget {
               ),
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFE9E1),
+                  color: AppColors.primarySoft,
                   borderRadius: BorderRadius.circular(AppRadius.sm),
+                  border: Border.all(color: AppColors.primary),
                 ),
                 child: TextButton(
                   onPressed: onCallSupport,
                   style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFFFF6035),
+                    foregroundColor: AppBrand.ink,
                     padding:
                         const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     minimumSize: Size.zero,
@@ -255,6 +253,7 @@ class PendingActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AuthPrimaryButton(
+        brandStyle: true,
         label: approved ? 'Bắt đầu sử dụng' : 'Kiểm tra trạng thái',
         loading: loggingIn || checking,
         onPressed: approved ? onLogin : onCheck,

@@ -97,8 +97,7 @@ class _ResendCountdownLinkState extends State<ResendCountdownLink> {
                   style: TextStyle(
                     fontSize: AppFontSize.md,
                     fontWeight: FontWeight.w700,
-                    color:
-                        _sending ? AppColors.textSecondary : AppColors.primary,
+                    color: _sending ? AppColors.textSecondary : AppBrand.ink,
                   ),
                 ),
               ),

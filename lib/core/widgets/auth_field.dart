@@ -86,20 +86,23 @@ class AuthField extends StatelessWidget {
           suffixIconConstraints:
               const BoxConstraints(minWidth: 40, minHeight: 40),
           filled: true,
-          fillColor: fillColor ?? AppColors.surfaceAlt,
+          fillColor: fillColor ?? AppColors.surface,
           contentPadding: contentPadding ??
               const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(borderRadius),
-            borderSide: borderSide ?? BorderSide.none,
+            borderSide: borderSide ??
+                const BorderSide(color: AppColors.divider, width: 1.25),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(borderRadius),
-            borderSide: borderSide ?? BorderSide.none,
+            borderSide: borderSide ??
+                const BorderSide(color: AppColors.divider, width: 1.25),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(borderRadius),
-            borderSide: const BorderSide(color: AppColors.primary, width: 1.8),
+            borderSide:
+                const BorderSide(color: AppColors.primaryDark, width: 2),
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(borderRadius),

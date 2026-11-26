@@ -26,7 +26,7 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('FLASHSHIP', findRichText: true), findsOneWidget);
+    expect(find.text('FLASH SHIP', findRichText: true), findsOneWidget);
     expect(find.text('Tạo tài khoản tài xế'), findsOneWidget);
     expect(find.text('Thông tin tài xế'), findsOneWidget);
     expect(find.text('Bảo mật tài khoản'), findsOneWidget);
